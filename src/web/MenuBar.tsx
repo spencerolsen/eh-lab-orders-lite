@@ -7,9 +7,8 @@ const SECTIONS = [
 ];
 
 // The menu bar on every page. NavLink adds aria-current="page" to the link of
-// the current section (base.css styles it). Only Orders needs `end`: '/'
-// would otherwise count as current on every page, while /patients stays
-// current on a page under it such as /patients/<id>.
+// the current section (base.css styles it). A section stays current on a page
+// under it (/patients/<id> marks Patients), and '/' only on the home page.
 export function MenuBar() {
   return (
     <header className="menu-bar">
@@ -18,9 +17,7 @@ export function MenuBar() {
         <ul>
           {SECTIONS.map(({ to, label }) => (
             <li key={to}>
-              <NavLink to={to} end={to === '/'}>
-                {label}
-              </NavLink>
+              <NavLink to={to}>{label}</NavLink>
             </li>
           ))}
         </ul>
