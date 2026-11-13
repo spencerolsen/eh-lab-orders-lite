@@ -9,14 +9,17 @@ import { defineConfig } from 'vite';
 // API's own default (src/server/config.ts), for `pnpm dev:web` with no PORT.
 if (existsSync('.env')) process.loadEnvFile('.env');
 const apiUrl = `http://localhost:${process.env.PORT || '3000'}`;
+// Vite's own port, from WEB_PORT the same way; 5173 is the default
+// (src/server/config.ts). `pnpm dev` has already checked it.
+const webPort = Number(process.env.WEB_PORT || '5173');
 
 // The web app: index.html at the root loads src/web/main.tsx.
 export default defineConfig({
   plugins: [react()],
   server: {
-    // A fixed port, so the address in the README is always right; if 5173 is
+    // A fixed port, so the address is always the one in .env; if it is
     // taken, Vite stops with an error instead of picking another one.
-    port: 5173,
+    port: webPort,
     strictPort: true,
     // The browser talks only to Vite; Vite forwards API calls to the API, so
     // there is one origin and no CORS setup.

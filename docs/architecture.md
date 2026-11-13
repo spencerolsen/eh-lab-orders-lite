@@ -6,15 +6,15 @@ How the app is put together: the server, the web app, the database, and how they
 
 ```mermaid
 flowchart LR
-  B[Browser] -->|pages, scripts| V[Vite dev server :5173]
+  B[Browser] -->|pages, scripts| V[Vite dev server :5173, WEB_PORT]
   B -->|/api/..., /healthz| V
   V -->|proxy| A[API, Fastify :PORT]
-  A -->|SQL| D[(Postgres :5433)]
+  A -->|SQL| D[(Postgres :5433, DB_PORT)]
 ```
 
 In development the browser talks only to Vite. Vite serves the web app and forwards `/api` and `/healthz` to the API at `http://localhost:${PORT}`, the same `PORT` setting the API listens on (`pnpm dev` checks the settings and passes the port to both). So the browser sees one origin: no CORS setup, and the web code calls relative paths such as `/api/lab-tests`. The proxy replaces what a reverse proxy or a server serving both would do in production; serving the built app from the API is out of scope for now (the reviewer runs the dev setup).
 
-`pnpm dev` (`scripts/dev.ts`) starts it all: `.env` from `.env.example` when missing, the settings check, a Docker check, a check that the API's port (`PORT`) and Vite's port (5173) are different and both free, `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` as two child processes with prefixed output (coloured only when the output is a terminal). Each failed check stops with one line. On Ctrl-C (or `SIGTERM`) the script sends `SIGTERM` to each child pnpm process, which passes it on to its script: the API gets it once, through `tsx watch`, and runs its graceful shutdown; Vite exits. A second Ctrl-C sends `SIGKILL` to each child's whole process group (each child runs in its own group, so this reaches pnpm, tsx and node), for when something hangs. If either child process exits, the other is stopped too. A crash of the API itself does not count: if the API crashes, `tsx watch` stays up waiting for a file change (saving the fix restarts it), so `pnpm dev` keeps running until Ctrl-C. Sending the first signal to the whole group, as an earlier version did, made the API get it twice (directly and through `tsx watch`), and tsx then force-killed it instead of letting it shut down.
+`pnpm dev` (`scripts/dev.ts`) starts it all: `.env` from `.env.example` when missing, the settings check, a check that the database URLs use `DB_PORT`, a Docker check, a check that the API's port (`PORT`, default 3000) and Vite's port (`WEB_PORT`, default 5173) are different and both free, `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` as two child processes with prefixed output (coloured only when the output is a terminal). Each failed check stops with one line. On Ctrl-C (or `SIGTERM`) the script sends `SIGTERM` to each child pnpm process, which passes it on to its script: the API gets it once, through `tsx watch`, and runs its graceful shutdown; Vite exits. A second Ctrl-C sends `SIGKILL` to each child's whole process group (each child runs in its own group, so this reaches pnpm, tsx and node), for when something hangs. If either child process exits, the other is stopped too. A crash of the API itself does not count: if the API crashes, `tsx watch` stays up waiting for a file change (saving the fix restarts it), so `pnpm dev` keeps running until Ctrl-C. Sending the first signal to the whole group, as an earlier version did, made the API get it twice (directly and through `tsx watch`), and tsx then force-killed it instead of letting it shut down.
 
 ## Web app
 
@@ -88,7 +88,7 @@ Fastify writes a few lines of its own with no `event` name: `Server listening at
 
 ## Database
 
-- **Postgres 16 in Docker.** `compose.yaml` defines one service, `db`, published on host port **5433** so it does not clash with a local Postgres on 5432. Data lives in the named volume `db-data`, so it survives `pnpm db:down`. A healthcheck (`pg_isready` over TCP) tells `pnpm db:up` when the server is ready.
+- **Postgres 16 in Docker.** `compose.yaml` defines one service, `db`, published on host port **5433** (the `DB_PORT` setting) so it does not clash with a local Postgres on 5432. Data lives in the named volume `db-data`, so it survives `pnpm db:down`. A healthcheck (`pg_isready` over TCP) tells `pnpm db:up` when the server is ready.
 - **Two databases on one server.** `lab_orders` is for development; `lab_orders_test` is for tests. The test database is created by `db/init/01-create-test-database.sql`, which Postgres runs once, when the volume is first created. The app reads `DATABASE_URL`; only the test tooling reads `TEST_DATABASE_URL`, and it refuses a database whose name does not end in `_test`.
 - **Migrations** are plain SQL files in `db/migrations/`, applied in filename order by a small runner (`src/server/db/migrate.ts`). Each file runs in its own transaction together with the row that records it in `schema_migrations`, so a failing file leaves no partial change and is not recorded; the runner stops there. It refuses, before running it, a file with a line starting with its own `begin`/`commit`, a file not named `NNNN_description.sql`, two files with the same number, and a pending file older than the newest applied one. If a file ends the transaction some other way, a savepoint right after it fails, so the file is not recorded and the runner says to run `pnpm db:reset`. The project only rolls forward: there are no down migrations, and `pnpm db:reset` is the way back in development.
 - **Seed data** comes from `db/seed.ts`; every row has a fixed key and is inserted with `on conflict do nothing`.
@@ -102,7 +102,8 @@ Fastify writes a few lines of its own with no `event` name: `Server listening at
 |---|---|---|
 | `DATABASE_URL` | (required) | Postgres connection string for the app's database. |
 | `PORT` | `3000` | Port the API server listens on. |
+| `WEB_PORT` | `5173` | Port the web app (Vite) listens on. Only `pnpm dev` and `vite.config.ts` use it. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 | `CLINIC_TIMEZONE` | `America/Denver` | IANA time zone that decides which calendar day an order was placed on. |
 
-`TEST_DATABASE_URL` is not part of this config: only the test tooling reads it.
+`TEST_DATABASE_URL` is not part of this config: only the test tooling reads it. Two more settings in `.env` are read by Docker Compose, not by this config: `DB_PORT` (default `5433`, the database's host port) and `COMPOSE_PROJECT_NAME` (default `lab-orders-lite`, which names the container and the data volume). `DATABASE_URL` and `TEST_DATABASE_URL` carry the port too, so `pnpm dev` and `pnpm test` stop with one line when a URL on `localhost` uses a different port from `DB_PORT` (`checkDatabasePort` in `src/server/db/guards.ts`): otherwise a second copy of the project could silently use the first copy's database. The same check runs in `db:migrate`, `db:seed`, `db:reset` and `db:test:reset`, and it also refuses a changed `DB_PORT` while `COMPOSE_PROJECT_NAME` is empty or still `lab-orders-lite`, because Compose would then recreate the first copy's container on the new port, with the first copy's data volume.

@@ -42,15 +42,15 @@ pnpm comes with Node through Corepack. The commands below are written `pnpm <scr
 | `pnpm install` | Install dependencies (the pnpm version pinned in `package.json`). |
 | `pnpm lint` | ESLint with the TypeScript rules and the import boundary. |
 | `pnpm typecheck` | The TypeScript compiler in strict mode, no output files. |
-| `pnpm dev` | The whole app with one command (`scripts/dev.ts`): creates `.env` from `.env.example` when missing, checks the settings, that Docker runs and that ports 3000 (`PORT`) and 5173 are different and free, then `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` together with prefixed output. Ctrl-C stops both. |
+| `pnpm dev` | The whole app with one command (`scripts/dev.ts`): creates `.env` from `.env.example` when missing, checks the settings, that the database URLs use `DB_PORT`, that Docker runs and that ports 3000 (`PORT`) and 5173 (`WEB_PORT`) are different and free, then `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` together with prefixed output. Ctrl-C stops both. |
 | `pnpm dev:api` | Run the API server under `tsx watch` with readable development logs (`NODE_ENV=development`). |
-| `pnpm dev:web` | Run the Vite dev server on port 5173, proxying `/api` and `/healthz` to the API on `PORT`. |
+| `pnpm dev:web` | Run the Vite dev server on `WEB_PORT` (5173), proxying `/api` and `/healthz` to the API on `PORT`. |
 | `pnpm build` | Build the web app into `dist/web`. |
 | `pnpm start` | Run the API server under `tsx` with JSON logs. |
 | `pnpm test` | Unit, component and integration tests (Vitest projects `unit`, `component` and `integration`). The integration project starts the database container and waits until it is healthy, unless `CI` is set, and needs `.env` (or `TEST_DATABASE_URL` in the environment); the unit and component projects need neither Docker nor `.env`. One project alone: `pnpm test --project unit`, `--project component` or `--project integration`. |
 | `pnpm format` | Format the code with Prettier. Markdown is not formatted. |
 | `pnpm format:check` | Check the formatting without changing files. |
-| `pnpm db:up` | Start Postgres in Docker (host port 5433) and wait until it is healthy. |
+| `pnpm db:up` | Start Postgres in Docker (host port `DB_PORT`, 5433) and wait until it is healthy. |
 | `pnpm db:down` | Stop and remove the container. The data volume is kept. |
 | `pnpm db:migrate` | Apply the pending files in `db/migrations/` to the development database. |
 | `pnpm db:reset` | Drop and recreate the development database's schema, migrate, then seed. Refuses any database other than `lab_orders` and `lab_orders_test`, and refuses when `NODE_ENV=production`. |
@@ -62,6 +62,10 @@ The TypeScript scripts run under `tsx`, which loads `.env` with `--env-file-if-e
 `package.json` lists `esbuild` under `pnpm.ignoredBuiltDependencies`, so `pnpm install` skips its install script without a warning. The script is not needed: tsx, Vite and Vitest use esbuild's JavaScript API, which finds the binary in the platform package (`@esbuild/<platform>`) that pnpm installs as an optional dependency. The script only downloads that binary when the optional package is missing, and speeds up the `esbuild` command, which nothing here runs. A new dependency with an install script must be added to `ignoredBuiltDependencies` or `onlyBuiltDependencies` the same way, with its reason here.
 
 Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. LAB-21 adds `pnpm test:e2e`.
+
+The same checks run on GitHub Actions for every pull request and every push to `main` (`.github/workflows/ci.yml`, one job): `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build`, then `pnpm test` against a Postgres 16 service container on port 5432, with the settings in the job's environment (there is no `.env` in CI). Browser tests are not run there; they run locally. A new setting a check needs goes into the workflow's `env` as well as `.env.example`.
+
+**Several copies at once.** Each copy of the project (one per ticket built in parallel) needs its own `COMPOSE_PROJECT_NAME`, `DB_PORT` (with the same port in `DATABASE_URL` and `TEST_DATABASE_URL`), `PORT` and `WEB_PORT` in its `.env`; the README section "Running a second copy" has the exact lines. Nothing else in the code may hard-code a port or the project name.
 
 ## Conventions
 

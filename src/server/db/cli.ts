@@ -1,11 +1,14 @@
 // The database commands behind `pnpm db:migrate`, `pnpm db:reset` and
 // `pnpm db:test:reset`. Usage: tsx src/server/db/cli.ts <migrate|reset|test-reset>
 import { loadConfig } from '../config';
-import { assertResettable, testDatabaseUrl } from './guards';
+import { assertResettable, checkDatabasePort, testDatabaseUrl } from './guards';
 import { migrate, resetSchema } from './migrate';
 import { exitWithError, withClient } from './script';
 
 async function main(command: string | undefined): Promise<void> {
+  // Before any connection: a URL on the wrong port could reach (and reset)
+  // another copy's database.
+  checkDatabasePort(process.env);
   switch (command) {
     case 'migrate': {
       const { DATABASE_URL } = loadConfig();

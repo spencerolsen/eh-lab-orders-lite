@@ -38,6 +38,21 @@ describe('the _test guard in the harness', () => {
     expect(spawnSync).not.toHaveBeenCalled();
   });
 
+  it('the integration setup refuses a URL port that is not DB_PORT before starting anything', async () => {
+    vi.stubEnv(
+      'TEST_DATABASE_URL',
+      'postgres://lab_orders:lab_orders@127.0.0.1:1/lab_orders_test',
+    );
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('COMPOSE_PROJECT_NAME', 'lab-orders-lite-2');
+    vi.stubEnv('DB_PORT', '5434');
+    vi.stubEnv('CI', '');
+    await expect(setup()).rejects.toThrow(
+      /TEST_DATABASE_URL uses port 1, but the database container listens on DB_PORT 5434/,
+    );
+    expect(spawnSync).not.toHaveBeenCalled();
+  });
+
   it('says how to fix a missing TEST_DATABASE_URL', () => {
     vi.stubEnv('TEST_DATABASE_URL', '');
     expect(() => createTestPool()).toThrow(/cp \.env\.example \.env/);

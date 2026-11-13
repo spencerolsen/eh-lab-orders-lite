@@ -2,9 +2,9 @@
 //
 //   1. Creates .env from .env.example when there is none, then checks every
 //      setting (a missing or malformed one stops here with the config error).
-//   2. Checks that Docker is running, and that the API's port (PORT) and
-//      Vite's port (5173) are different and both free. Each check stops with
-//      one line.
+//   2. Checks that the database URLs use the container's port (DB_PORT), that
+//      Docker is running, and that the API's port (PORT) and Vite's port
+//      (WEB_PORT) are different and both free. Each check stops with one line.
 //   3. pnpm db:up (start Postgres, wait until healthy), db:migrate, db:seed.
 //      The seed runs every time: each row has a fixed key and is inserted with
 //      `on conflict do nothing`, so a second run inserts 0 rows.
@@ -24,6 +24,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 
 import { loadConfig } from '../src/server/config';
+import { checkDatabasePort } from '../src/server/db/guards';
 
 function say(line: string): void {
   console.log(`dev: ${line}`);
@@ -39,9 +40,6 @@ function pnpmCommand(args: string[]): [string, string[]] {
     ? [process.execPath, [pnpm, ...args]]
     : ['corepack', ['pnpm', ...args]];
 }
-
-// The port Vite listens on (server.port in vite.config.ts).
-const WEB_PORT = 5173;
 
 // True when something already listens on the port at this loopback address.
 // The API and Vite listen on 'localhost', which is both 127.0.0.1 and ::1, so
@@ -76,9 +74,19 @@ if (!existsSync('.env')) {
 }
 process.loadEnvFile('.env');
 // On a missing or malformed setting: one JSON error line, exit 1. The checked
-// port goes to both children, so the API listens where the proxy points.
-const { PORT } = loadConfig();
+// ports go to both children, so the API listens where the proxy points and
+// Vite listens where the checks below looked.
+const { PORT, WEB_PORT } = loadConfig();
 process.env.PORT = String(PORT);
+process.env.WEB_PORT = String(WEB_PORT);
+// A URL on another port than the container would reach another database (for
+// example another copy of the project's), so stop before starting anything.
+try {
+  checkDatabasePort(process.env);
+} catch (error) {
+  console.error(`dev: ${(error as Error).message}`);
+  process.exit(1);
+}
 
 // 2. Docker.
 if (spawnSync('docker', ['info'], { stdio: 'ignore' }).status !== 0) {
@@ -91,13 +99,13 @@ if (spawnSync('docker', ['info'], { stdio: 'ignore' }).status !== 0) {
 // if they are the same port: Vite would take it first.
 if (PORT === WEB_PORT) {
   console.error(
-    `dev: PORT is ${PORT}, which is the port the web app (Vite) uses. Set PORT to another number, for example 3000 (it may be set in your shell, which overrides .env).`,
+    `dev: PORT and WEB_PORT are both ${PORT}, but the API and the web app (Vite) need different ports. Change one of them in .env (a value set in your shell overrides .env).`,
   );
   process.exit(1);
 }
 for (const [port, what] of [
   [PORT, 'the API (PORT in .env)'],
-  [WEB_PORT, 'the web app (Vite)'],
+  [WEB_PORT, 'the web app (WEB_PORT in .env)'],
 ] as const) {
   for (const host of ['127.0.0.1', '::1']) {
     if (await portInUse(port, host)) {
