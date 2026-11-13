@@ -5,8 +5,8 @@ import {
   createPatientBody,
   dateOfBirthProblem,
   normalizeEmail,
-  normalizePhone,
 } from './patients';
+import { PHONE_CHARACTERS_REASON, PHONE_LENGTH_REASON } from './phone';
 
 const TODAY = '2026-01-14';
 const schema = createPatientBody(TODAY);
@@ -26,13 +26,6 @@ function problems(input: unknown): Record<string, string> {
     result.error.issues.map((issue) => [issue.path.join('.'), issue.message]),
   );
 }
-
-it('normalizePhone keeps the digits only', () => {
-  expect(normalizePhone('+1 (801) 555-0100')).toBe('18015550100');
-  expect(normalizePhone('(801) 555-0100')).toBe('8015550100');
-  expect(normalizePhone('801.555.0100 ')).toBe('8015550100');
-  expect(normalizePhone('abc')).toBe('');
-});
 
 it('normalizeEmail trims and lower-cases', () => {
   expect(normalizeEmail(' Jane@Example.test ')).toBe('jane@example.test');
@@ -91,7 +84,7 @@ describe('the new patient schema', () => {
     expect(problems({ ...neither, email: '  ', phone: null })).toEqual(
       CONTACT_REQUIRED_REASONS,
     );
-    expect(problems({ ...neither, phone: '5550100' })).toEqual({});
+    expect(problems({ ...neither, phone: '8015550100' })).toEqual({});
     expect(problems(valid)).toEqual({});
   });
 
@@ -103,37 +96,18 @@ describe('the new patient schema', () => {
     });
   });
 
-  it('refuses a phone with letters or other characters, instead of dropping them', () => {
-    const reason =
-      'may contain only digits, spaces, dashes, dots, parentheses and a leading +';
-    for (const phone of [
-      'abc',
-      '801 555 01OO',
-      '801/555/0100',
-      '1+8015550100',
-      '555\u00000100',
-    ]) {
-      expect(problems({ ...valid, phone })).toEqual({ phone: reason });
-    }
-  });
-
-  it('accepts a phone typed with formatting and stores the digits', () => {
+  // The phone rule itself is tested in phone.test.ts; this checks the schema
+  // uses it: the stored value is the 10 digits, and a problem is on phone.
+  it('stores a phone as its 10 digits and reports a bad one on phone', () => {
     expect(schema.parse({ ...valid, phone: '+1 (801) 555-0100' }).phone).toBe(
-      '18015550100',
-    );
-    expect(schema.parse({ ...valid, phone: '801.555.0100' }).phone).toBe(
       '8015550100',
     );
-  });
-
-  it('rejects a phone without 7 to 15 digits', () => {
-    expect(problems({ ...valid, phone: '555-010' })).toEqual({
-      phone: 'must have 7 to 15 digits',
+    expect(problems({ ...valid, phone: '555-0100' })).toEqual({
+      phone: PHONE_LENGTH_REASON,
     });
-    expect(problems({ ...valid, phone: '1'.repeat(16) })).toEqual({
-      phone: 'must have 7 to 15 digits',
+    expect(problems({ ...valid, phone: '801 555 01OO' })).toEqual({
+      phone: PHONE_CHARACTERS_REASON,
     });
-    expect(problems({ ...valid, phone: '1'.repeat(15) })).toEqual({});
   });
 
   it('rejects an email that does not look like one', () => {

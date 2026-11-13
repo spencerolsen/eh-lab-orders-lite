@@ -49,7 +49,7 @@ const FIELDS: { name: Field; label: string; type: string; help?: string }[] = [
     name: 'phone',
     label: 'Phone',
     type: 'tel',
-    help: 'Spaces, dashes and parentheses are fine.',
+    help: 'A US number with its area code, for example (801) 555-0101.',
   },
 ];
 

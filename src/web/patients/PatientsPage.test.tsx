@@ -12,7 +12,7 @@ const SEEDED: Patient[] = [
     lastName: 'Example',
     dateOfBirth: '2020-02-29',
     email: null,
-    phone: '5550101',
+    phone: '8015550101',
   },
   {
     id: 'p2',
@@ -67,7 +67,7 @@ it('lists the patients with their date of birth as typed', async () => {
   renderApp('/patients');
   expect(await screen.findByRole('table')).toBeTruthy();
   expect(rowTexts()).toEqual([
-    ['Demo Example', 'Feb 29, 2020', '', '5550101'],
+    ['Demo Example', 'Feb 29, 2020', '', '(801) 555-0101'],
     ['Test Patient', 'Mar 9, 1984', 'test.patient@example.test', ''],
   ]);
 });

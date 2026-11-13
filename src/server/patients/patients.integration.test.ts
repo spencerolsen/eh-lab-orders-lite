@@ -84,10 +84,13 @@ describe('POST /api/patients', () => {
     const phoneOnly = await post({
       ...valid,
       email: '',
-      phone: '5550100',
+      phone: '801-555-0101',
     });
     expect(phoneOnly.statusCode).toBe(201);
-    expect(phoneOnly.json()).toMatchObject({ email: null, phone: '5550100' });
+    expect(phoneOnly.json()).toMatchObject({
+      email: null,
+      phone: '8015550101',
+    });
   });
 
   it('creates two patients with identical details (no duplicate check yet)', async () => {
@@ -108,13 +111,14 @@ describe('POST /api/patients', () => {
     [{ ...valid, email: undefined }, ['email', 'phone']],
     [{ ...valid, email: 'not-an-email' }, ['email']],
     [{ ...valid, phone: 'abc' }, ['phone']],
+    [{ ...valid, phone: '555-0100' }, ['phone']],
     [{ ...valid, isAdmin: true }, ['isAdmin']],
     // A NUL that would reach Postgres (which refuses it) is a 400, not a 500.
     [{ ...valid, firstName: 'Test\u0000' }, ['firstName']],
     [{ ...valid, lastName: 'Patient\u0000' }, ['lastName']],
     [{ ...valid, dateOfBirth: '1984-03-0\u0000' }, ['dateOfBirth']],
     [{ ...valid, email: 'test\u0000@example.test' }, ['email']],
-    [{ ...valid, phone: '555\u00000100' }, ['phone']],
+    [{ ...valid, phone: '801\u00005550100' }, ['phone']],
   ])('rejects %j with 400 on %j', async (body, fields) => {
     const response = await post(body);
     expect(response.statusCode).toBe(400);
@@ -218,23 +222,27 @@ describe('the database constraints', () => {
       'patients_contact_required',
     ],
     [
-      `('Test', 'Patient', '1984-03-09', null, '555abc')`,
-      'patients_phone_digits',
+      `('Test', 'Patient', '1984-03-09', null, '801555abcd')`,
+      'patients_phone_ten_digits',
+    ],
+    [
+      `('Test', 'Patient', '1984-03-09', null, '5550100')`,
+      'patients_phone_ten_digits',
     ],
     [
       `('Test', 'Patient', '1984-03-09', 'Jane@Example.test', null)`,
       'patients_email_lower_case',
     ],
     [
-      `(' ', 'Patient', '1984-03-09', null, '5550100')`,
+      `(' ', 'Patient', '1984-03-09', null, '8015550100')`,
       'patients_first_name_not_blank',
     ],
     [
-      `('Test', '', '1984-03-09', null, '5550100')`,
+      `('Test', '', '1984-03-09', null, '8015550100')`,
       'patients_last_name_not_blank',
     ],
     [
-      `('Test', 'Patient', current_date + 2, null, '5550100')`,
+      `('Test', 'Patient', current_date + 2, null, '8015550100')`,
       'patients_date_of_birth_not_future',
     ],
   ])('rejects %s (%s)', async (values, constraint) => {
@@ -245,7 +253,7 @@ describe('the database constraints', () => {
   });
 
   it('accepts current_date + 1, the loose backstop for a clinic ahead of UTC', async () => {
-    await insert(`('Test', 'Patient', current_date + 1, null, '5550100')`);
+    await insert(`('Test', 'Patient', current_date + 1, null, '8015550100')`);
     expect(await storedRows()).toHaveLength(1);
   });
 });
@@ -264,7 +272,8 @@ describe('no patient detail reaches the log', () => {
     'zqxlastmarker',
     '1961-07-23',
     'zqx.emailmarker',
-    '5550177',
+    '8015550177',
+    '(801) 555-0177',
     '555-0177',
     // The impossible date of birth the rejected request sends.
     '1961-07-32',

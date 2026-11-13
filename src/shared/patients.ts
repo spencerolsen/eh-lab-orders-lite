@@ -3,43 +3,15 @@
 import { z } from 'zod';
 
 import { DATE_PATTERN, isAfterDay, isRealDate } from './dates';
+import { normalizePhone, phoneProblem } from './phone';
 
 export const NAME_MAX_LENGTH = 100;
 export const EMAIL_MAX_LENGTH = 254;
-// A phone number is stored as digits only. 7 digits is a local number without
-// an area code; 15 is the longest number the international standard (E.164)
-// allows. Storing international numbers with their + is a future version.
-export const PHONE_MIN_DIGITS = 7;
-export const PHONE_MAX_DIGITS = 15;
-
 // The reasons given on email and on phone when neither is present.
 export const CONTACT_REQUIRED_REASONS = {
   email: 'is required when there is no phone number',
   phone: 'is required when there is no email',
 } as const;
-
-// What a phone may be typed with: digits, spaces, dashes, dots, parentheses
-// and one leading +. A letter is refused, not dropped: '801 555 01OO' is a
-// typo, and dropping the letters would store a different, shorter number.
-const PHONE_CHARACTERS = /^\+?[0-9 ().-]+$/;
-
-// '(801) 555-0100' becomes '8015550100'. Run it only on a phone that passed
-// phoneProblem, which refuses anything but digits and formatting.
-export function normalizePhone(value: string): string {
-  return value.replace(/\D/g, '');
-}
-
-// Why a typed phone number is not acceptable, or undefined when it is.
-export function phoneProblem(value: string): string | undefined {
-  if (!PHONE_CHARACTERS.test(value.trim())) {
-    return 'may contain only digits, spaces, dashes, dots, parentheses and a leading +';
-  }
-  const digits = normalizePhone(value).length;
-  if (digits < PHONE_MIN_DIGITS || digits > PHONE_MAX_DIGITS) {
-    return `must have ${PHONE_MIN_DIGITS} to ${PHONE_MAX_DIGITS} digits`;
-  }
-  return undefined;
-}
 
 // ' Jane@Example.test ' becomes 'jane@example.test'.
 export function normalizeEmail(value: string): string {

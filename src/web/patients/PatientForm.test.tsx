@@ -111,7 +111,7 @@ describe('PatientForm', () => {
         'First name': 'Test',
         'Last name': 'Patient',
         'Date of birth': '2026-01-15',
-        Phone: '5550100',
+        Phone: '801-555-0100',
       });
       await save();
       expect(errorUnder('Date of birth')).toBeNull();
@@ -126,7 +126,7 @@ describe('PatientForm', () => {
         'First name': 'Test',
         'Last name': 'Patient',
         'Date of birth': '2026-01-16',
-        Phone: '5550100',
+        Phone: '801-555-0100',
       });
       await save();
       expect(errorUnder('Date of birth')).toBe(

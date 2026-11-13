@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 
 import { formatDate } from '../../shared/dates';
+import { formatPhone } from '../../shared/phone';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
@@ -50,7 +51,7 @@ function PatientList({ query }: { query: ReturnType<typeof usePatients> }) {
             <td>{patientName(patient)}</td>
             <td>{formatDate(patient.dateOfBirth)}</td>
             <td>{patient.email ?? ''}</td>
-            <td>{patient.phone ?? ''}</td>
+            <td>{patient.phone ? formatPhone(patient.phone) : ''}</td>
           </tr>
         ))}
       </tbody>

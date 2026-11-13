@@ -1,5 +1,5 @@
 // Six obviously fake patients: made-up names, the reserved example.test email
-// domain and 555-01xx phone numbers. Fixed ids and `on conflict (id) do
+// domain and US phone numbers in the fictional 555-0100 to 555-0199 range. Fixed ids and `on conflict (id) do
 // nothing`, so running the seed twice leaves the same rows.
 import type pg from 'pg';
 
@@ -19,7 +19,7 @@ export const SEED_PATIENTS: readonly SeedPatient[] = [
     lastName: 'Patient',
     dateOfBirth: '1984-03-09',
     email: 'test.patient@example.test',
-    phone: '5550100',
+    phone: '8015550100',
   },
   {
     id: '5eed0008-0000-4000-8000-000000000002',
@@ -35,7 +35,7 @@ export const SEED_PATIENTS: readonly SeedPatient[] = [
     lastName: 'Example',
     dateOfBirth: '2020-02-29',
     email: null,
-    phone: '5550101',
+    phone: '8015550101',
   },
   {
     id: '5eed0008-0000-4000-8000-000000000004',
@@ -43,7 +43,7 @@ export const SEED_PATIENTS: readonly SeedPatient[] = [
     lastName: 'Tester',
     dateOfBirth: '1975-07-04',
     email: 'fake.tester@example.test',
-    phone: '5550102',
+    phone: '8015550102',
   },
   {
     id: '5eed0008-0000-4000-8000-000000000005',
@@ -51,7 +51,7 @@ export const SEED_PATIENTS: readonly SeedPatient[] = [
     lastName: 'Record',
     dateOfBirth: '2001-01-01',
     email: null,
-    phone: '5550103',
+    phone: '8015550103',
   },
   {
     id: '5eed0008-0000-4000-8000-000000000006',
@@ -59,7 +59,7 @@ export const SEED_PATIENTS: readonly SeedPatient[] = [
     lastName: 'Sample',
     dateOfBirth: '1968-10-15',
     email: 'another.sample@example.test',
-    phone: '5550104',
+    phone: '8015550104',
   },
 ];
 
