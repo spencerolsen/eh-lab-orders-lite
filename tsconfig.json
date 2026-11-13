@@ -1,10 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["node"],
+    // Node types are visible in web code too: the accepted cost of one tsconfig.
+    // vite/client types the CSS imports in src/web.
+    "types": ["node", "vite/client"],
 
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -16,5 +19,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "db", "*.ts"]
+  "include": ["src", "db", "scripts", "*.ts"]
 }

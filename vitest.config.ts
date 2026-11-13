@@ -1,4 +1,6 @@
 import { existsSync } from 'node:fs';
+
+import react from '@vitejs/plugin-react';
 import { BaseSequencer, type TestSpecification } from 'vitest/node';
 import { configDefaults, defineConfig } from 'vitest/config';
 
@@ -21,7 +23,11 @@ class FilePathOrder extends BaseSequencer {
   }
 }
 
-// `pnpm test` runs both projects. One project alone: `pnpm test --project unit`.
+// `pnpm test` runs all three projects. One project alone, for example
+// `pnpm test --project unit`. The file name decides the project:
+//   <name>.test.ts              unit (Node, no database)
+//   <name>.test.tsx             component (jsdom and Testing Library)
+//   <name>.integration.test.ts  integration (the test database)
 export default defineConfig({
   test: {
     sequence: { sequencer: FilePathOrder },
@@ -29,8 +35,17 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
-          include: ['src/**/*.test.{ts,tsx}', 'eslint-rules/**/*.test.js'],
+          include: ['src/**/*.test.ts', 'eslint-rules/**/*.test.js'],
           exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
+        },
+      },
+      {
+        plugins: [react()],
+        test: {
+          name: 'component',
+          include: ['src/**/*.test.tsx'],
+          environment: 'jsdom',
+          setupFiles: ['src/web/testing/setup.ts'],
         },
       },
       {
