@@ -20,6 +20,12 @@ function labTest(code: string, fields: Partial<LabTest> = {}): LabTest {
 
 type Reply = { status: number; body?: unknown };
 
+// Matches an input's accessible description (its help text, then its error)
+// when it ends with the error `message`.
+function endsWith(message: string) {
+  return (description: string) => description.endsWith(message);
+}
+
 // A fake API: the list is `list` (or `listReply`), and each POST gets
 // `onPost(body)`. Returns the mock so a test can look at the requests.
 function fakeApi({
@@ -209,6 +215,23 @@ describe('the add form', () => {
     ).toBe('');
   });
 
+  it('Clear empties the fields and removes the messages', async () => {
+    const fetch = fakeApi({});
+    renderApp('/catalog');
+
+    await fillForm({ code: 'AB', name: '', price: 'abc', turnaround: '1' });
+    expect(document.querySelectorAll('.field-error')).toHaveLength(2);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(document.querySelectorAll('.field-error')).toHaveLength(0);
+    expect(screen.getByLabelText<HTMLInputElement>('Code').value).toBe('');
+    expect(
+      screen.getByLabelText<HTMLInputElement>('Price (dollars)').value,
+    ).toBe('');
+    expect(posts(fetch)).toHaveLength(0);
+  });
+
   it('accepts a price of 0', async () => {
     const fetch = fakeApi({
       onPost: () => ({ status: 201, body: labTest('FREE', { priceCents: 0 }) }),
@@ -254,7 +277,7 @@ describe('the add form', () => {
     expect(
       await screen.findByRole('textbox', {
         name: 'Code',
-        description: 'This code already exists',
+        description: endsWith('This code already exists'),
       }),
     ).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
@@ -281,7 +304,7 @@ describe('the add form', () => {
     expect(
       await screen.findByRole('textbox', {
         name: 'Name',
-        description: 'Server says no',
+        description: endsWith('Server says no'),
       }),
     ).toBeTruthy();
   });
@@ -366,7 +389,10 @@ describe('the add form', () => {
       await fillForm({ ...valid, ...change });
 
       expect(
-        screen.getByRole('textbox', { name: field, description: message }),
+        screen.getByRole('textbox', {
+          name: field,
+          description: endsWith(message),
+        }),
       ).toBeTruthy();
       // Only the one field is marked wrong.
       expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(

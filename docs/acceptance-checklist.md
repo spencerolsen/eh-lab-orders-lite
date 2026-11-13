@@ -44,6 +44,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Add code `cbc` (or `CBC`, `Cbc`): "This code already exists" appears under the code field, and the table still has one CBC.
 - [ ] Each of these shows a message under the right field and sends no request (the browser's network tab stays empty): a blank name; a price of `-1`, `12.345` or `abc`; a turnaround of `0`, `1.5` or `366`.
 - [ ] A price of `0` is accepted and shows as `$0.00`.
+- [ ] The page uses the theme: the price column is right-aligned, each field has its help text under it, errors are red under their field with a red outline on the input, and "Clear" empties the form and removes the messages.
 - [ ] Stop the API (keep Vite running) and reload the page: the list shows "Can't reach the server. Try again." with a "Try again" button, not a blank table. With the API running but the database stopped (`pnpm db:down`), the list shows "Something went wrong on the server. Try again. Reference: <id>"; the same id is on the `request.failed` line in the API's log.
 - [ ] Run `pnpm db:seed` a second time: it reports 0 rows inserted, and the page still shows the same tests.
 

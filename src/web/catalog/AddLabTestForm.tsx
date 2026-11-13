@@ -4,6 +4,7 @@ import { type FormEvent, useState } from 'react';
 import {
   type CreateLabTestBody,
   createLabTestBody,
+  MAX_TURNAROUND_DAYS,
 } from '../../shared/lab-tests';
 import { parseDollarsToCents } from '../../shared/money';
 import { ApiError } from '../api/client';
@@ -80,15 +81,23 @@ export function AddLabTestForm() {
     else mutation.reset();
   }
 
+  // Empties the form and removes every message.
+  function clear() {
+    setValues(EMPTY);
+    setErrors({});
+    mutation.reset();
+  }
+
   function change(key: keyof Values) {
     return (text: string) => setValues((old) => ({ ...old, [key]: text }));
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form className="form card" onSubmit={onSubmit} noValidate>
       <TextField
         id="lab-test-code"
         label="Code"
+        help="2 to 20 letters, digits or hyphens; saved in capitals."
         value={values.code}
         onChange={change('code')}
         error={shown.code}
@@ -103,6 +112,7 @@ export function AddLabTestForm() {
       <TextField
         id="lab-test-price"
         label="Price (dollars)"
+        help="For example 12.50. Use 0 for a free test."
         inputMode="decimal"
         value={values.price}
         onChange={change('price')}
@@ -111,25 +121,33 @@ export function AddLabTestForm() {
       <TextField
         id="lab-test-turnaround"
         label="Turnaround (business days)"
+        help={`A whole number from 1 to ${MAX_TURNAROUND_DAYS}.`}
         inputMode="numeric"
         value={values.turnaround}
         onChange={change('turnaround')}
         error={shown.turnaroundDays}
       />
       {otherError && <ErrorMessage error={mutation.error} />}
-      <button type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? 'Adding…' : 'Add lab test'}
-      </button>
+      <div className="form-actions">
+        <button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Adding…' : 'Add lab test'}
+        </button>
+        <button type="button" className="button-secondary" onClick={clear}>
+          Clear
+        </button>
+      </div>
     </form>
   );
 }
 
-// A labelled text input with its error, if any, right under it. The error is
-// the input's accessible description, so a screen reader reads it with the
-// field.
+// A labelled text input with optional help text and its error, if any, under
+// it (the theme's field markup, AGENTS.md "Styling a page"). Help and error
+// are the input's accessible description, so a screen reader reads them with
+// the field.
 function TextField({
   id,
   label,
+  help,
   value,
   onChange,
   error,
@@ -137,12 +155,17 @@ function TextField({
 }: {
   id: string;
   label: string;
+  help?: string;
   value: string;
   onChange: (text: string) => void;
   error: string | undefined;
   inputMode?: 'decimal' | 'numeric';
 }) {
+  const helpId = `${id}-help`;
   const errorId = `${id}-error`;
+  const describedBy = [help && helpId, error && errorId]
+    .filter(Boolean)
+    .join(' ');
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
@@ -153,8 +176,13 @@ function TextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={describedBy || undefined}
       />
+      {help && (
+        <p id={helpId} className="field-help">
+          {help}
+        </p>
+      )}
       {error && (
         <p id={errorId} className="field-error">
           {error}

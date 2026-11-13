@@ -25,7 +25,7 @@ export function CatalogPage() {
     <>
       <h1>Lab tests</h1>
       <section aria-labelledby="lab-test-list">
-        <h2 id="lab-test-list">Catalog</h2>
+        <h2 id="lab-test-list">All tests</h2>
         {labTests.isPending ? (
           <Loading label="Loading lab tests…" />
         ) : labTests.isError ? (
@@ -49,12 +49,14 @@ export function CatalogPage() {
 
 function LabTestTable({ labTests }: { labTests: LabTest[] }) {
   return (
-    <table>
+    <table className="table">
       <thead>
         <tr>
           <th scope="col">Code</th>
           <th scope="col">Name</th>
-          <th scope="col">Price</th>
+          <th scope="col" className="numeric">
+            Price
+          </th>
           <th scope="col">Turnaround</th>
           <th scope="col">Active</th>
         </tr>
@@ -64,7 +66,7 @@ function LabTestTable({ labTests }: { labTests: LabTest[] }) {
           <tr key={test.id}>
             <td>{test.code}</td>
             <td>{test.name}</td>
-            <td>{formatCents(test.priceCents)}</td>
+            <td className="numeric">{formatCents(test.priceCents)}</td>
             <td>{formatTurnaround(test.turnaroundDays)}</td>
             <td>{test.isActive ? 'Yes' : 'No'}</td>
           </tr>
