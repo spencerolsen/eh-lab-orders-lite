@@ -1,0 +1,3 @@
+-- Baseline: the starting point for every later migration.
+-- It contains no tables. The migration runner creates its own bookkeeping
+-- table, schema_migrations, before it applies any file.

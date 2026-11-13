@@ -8,7 +8,7 @@ This is an early stub. The full README is written in LAB-22.
 
 - Node 22 (the exact major version is in `.nvmrc`)
 - pnpm, through Corepack (`corepack enable`); the version is pinned in `package.json`
-- Docker, for the Postgres database (added in LAB-02)
+- Docker, for the Postgres database
 
 ## Commands
 
@@ -19,6 +19,23 @@ pnpm typecheck
 pnpm test
 pnpm format:check
 ```
+
+## Database
+
+Postgres 16 runs in Docker on host port 5433 (so it does not clash with a local Postgres on 5432). It holds two databases: `lab_orders` for development and `lab_orders_test` for tests.
+
+```sh
+cp .env.example .env     # settings; the defaults work with the Docker database
+pnpm db:up               # start Postgres and wait until it is healthy
+pnpm db:migrate          # apply pending migrations
+pnpm db:seed             # insert the fake sample data
+pnpm db:reset            # start the development database over: drop, migrate, seed
+pnpm db:test:reset       # start the test database over: drop, migrate
+pnpm test:integration    # integration tests against the test database
+pnpm db:down             # stop the database (the data is kept)
+```
+
+The init script that creates `lab_orders_test` runs only when the database volume is first created. If `lab_orders_test` is missing (for example because the volume is older than the script), run `docker compose down -v` and then `pnpm db:up` again. This deletes all local data.
 
 ## Docs
 

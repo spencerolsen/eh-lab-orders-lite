@@ -36,7 +36,7 @@ The decisions these tasks implement are in the process log (`docs/process.md` on
 | ID | Task | Type | Depends on | Status |
 |---|---|---|---|---|
 | [LAB-01](tasks/LAB-01-repo-skeleton-and-tooling.md) | Repo skeleton and tooling | Groundwork | — | Done |
-| [LAB-02](tasks/LAB-02-database-and-config.md) | Database, migrations and config | Groundwork | LAB-01 | Not started |
+| [LAB-02](tasks/LAB-02-database-and-config.md) | Database, migrations and config | Groundwork | LAB-01 | Done |
 | [LAB-03](tasks/LAB-03-api-foundation.md) | API foundation: server, logging, errors, health | Groundwork | LAB-02 | Not started |
 | [LAB-04](tasks/LAB-04-web-foundation.md) | Web foundation: app shell and navigation | Groundwork | LAB-03 | Not started |
 | [LAB-05](tasks/LAB-05-continuous-integration.md) | Checks on every pull request | Groundwork | LAB-04 | Not started |

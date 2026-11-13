@@ -12,17 +12,30 @@
     "lint": "eslint .",
     "typecheck": "tsc",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d --wait db",
+    "db:down": "docker compose down",
+    "db:migrate": "tsx --env-file-if-exists=.env src/server/db/cli.ts migrate",
+    "db:reset": "tsx --env-file-if-exists=.env src/server/db/cli.ts reset && tsx --env-file-if-exists=.env db/seed.ts",
+    "db:seed": "tsx --env-file-if-exists=.env db/seed.ts",
+    "db:test:reset": "tsx --env-file-if-exists=.env src/server/db/cli.ts test-reset"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
     "eslint": "10.14.0",
     "globals": "17.14.0",
     "prettier": "3.10.1",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",
     "vitest": "5.1.0"
+  },
+  "dependencies": {
+    "pg": "8.23.1",
+    "zod": "4.6.7"
   }
 }

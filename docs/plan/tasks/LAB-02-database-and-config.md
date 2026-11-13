@@ -1,6 +1,6 @@
 # LAB-02: Database, migrations and config
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Groundwork
 - **Depends on:** LAB-01 (Repo skeleton and tooling)
 - **Unblocks:** LAB-03 (API foundation: server, logging, errors, health)
@@ -23,9 +23,9 @@ It comes before the server because the server's first job is to read its config 
 **Tooling**
 - Migrations are plain `.sql` files in `db/migrations/`, named `0001_description.sql`, applied in filename order. The first file is the bookkeeping-only baseline; the runner creates `schema_migrations` itself if it is missing.
 - Runner (`src/server/db/migrate.ts`): applies each unapplied file inside its own transaction, records it, stops at the first failure and rolls that file back. Re-running when everything is applied does nothing. Prints the name of each file applied.
-- Commands: `pnpm db:migrate` (apply pending), `pnpm db:reset` (drop and recreate the schema, then migrate, then seed; refuses to run if the database name does not contain `lab_orders` or if `NODE_ENV=production`), `pnpm db:up` and `pnpm db:down` (wrap Docker Compose).
+- Commands: `pnpm db:migrate` (apply pending), `pnpm db:reset` (drop and recreate the schema, then migrate, then seed; refuses to run unless the database name is exactly `lab_orders` or `lab_orders_test`, and refuses if `NODE_ENV=production`), `pnpm db:up` and `pnpm db:down` (wrap Docker Compose).
 - `pnpm db:seed` runs `db/seed.ts`. It exists here and is empty for now, with a comment that sample data is obviously fake. It is the one seed command every later task extends: each task that adds a table adds its fake rows to this file. One mechanism for every seeded row: each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so running the seed twice leaves the same rows.
-- `pnpm db:test:reset` runs reset and migrate against the database in `TEST_DATABASE_URL`, and refuses to run unless its name ends in `_test`.
+- `pnpm db:test:reset` runs reset and migrate against the database in `TEST_DATABASE_URL`, and refuses any database other than `lab_orders_test` (it applies both the `_test` rule and the reset guard).
 
 **Config**
 - `src/server/config.ts` parses `process.env` with a Zod schema and exports one typed, frozen object. Settings: `DATABASE_URL` (required, a postgres URL), `PORT` (integer, default 3000), `LOG_LEVEL` (one of `debug`, `info`, `warn`, `error`; default `info`), `CLINIC_TIMEZONE` (an IANA name checked against the runtime's known zones; default `America/Denver`). The clinic timezone decides which calendar day an order was placed on, used from LAB-11.
@@ -33,7 +33,7 @@ It comes before the server because the server's first job is to read its config 
 - `.env.example` from LAB-01 is updated to match exactly. `.env` is loaded in development with the `--env-file` flag, given to `tsx`, which runs the TypeScript scripts and the server (plain `node` cannot resolve the extensionless imports; see LAB-03). When `.env` is missing, the `pnpm dev` script (LAB-04) copies `.env.example` to `.env` and prints one line saying so; this validation still refuses to start when a setting is missing or malformed.
 
 **Database access**
-- `src/server/db/pool.ts` creates one `pg` pool from config and exports it with a `closePool()` function.
+- `src/server/db/pool.ts` exports `createPool(databaseUrl)` and `closePool(pool)`. The app creates its one pool at startup from `config.DATABASE_URL` (LAB-03); tests create theirs from `TEST_DATABASE_URL`. The pool has an `'error'` listener, so a broken idle connection (for example a database restart) is logged as one JSON line (`event: "db.pool_error"`, the error code only) instead of ending the process.
 - `src/server/db/types.ts` registers a type parser so Postgres `DATE` (type id 1082) comes back as the raw `YYYY-MM-DD` string, not a JS `Date`.
 
 ## Acceptance criteria
@@ -42,7 +42,7 @@ It comes before the server because the server's first job is to read its config 
 - [ ] The database accepts connections on host port 5433, and both `lab_orders` and `lab_orders_test` exist.
 - [ ] `pnpm db:migrate` on a fresh database creates `schema_migrations` and records the baseline file; running it again applies 0 files and exits 0.
 - [ ] A migration file with a syntax error leaves no partial changes and is not recorded; the command exits non-zero and names the file.
-- [ ] `pnpm db:reset` returns the development database to a clean migrated state, and refuses to run against a database whose name lacks `lab_orders`.
+- [ ] `pnpm db:reset` returns the development database to a clean migrated state, and refuses to run against any database other than `lab_orders` and `lab_orders_test`.
 - [ ] With `DATABASE_URL` unset the process exits with code 1 and one JSON line at `error` level naming `DATABASE_URL`; with `PORT=abc` the line names `PORT`; with `CLINIC_TIMEZONE=Mars/Base` it names `CLINIC_TIMEZONE`.
 - [ ] A `DATABASE_URL` containing a password that is also invalid in another way never prints that password in the line.
 - [ ] `select '2000-02-29'::date as d` through the app's pool returns the string `'2000-02-29'` under both `TZ=America/Los_Angeles` and `TZ=Pacific/Auckland`.
@@ -56,6 +56,7 @@ It comes before the server because the server's first job is to read its config 
 
 - **Unit** (`config.test.ts`): valid env gives the typed object with defaults; each invalid setting is reported by name; several errors are reported together in one line; the password is not in the output.
 - **Integration** (test database, one test file): `migrate runs pending files once and records them`; `migrate rolls back a failing file`; `date type parser returns YYYY-MM-DD strings under a non-UTC timezone`.
+- Integration tests are named `*.integration.test.ts` and run with `pnpm test:integration`, which reads `TEST_DATABASE_URL` (from the environment, or from `.env` when it exists). `pnpm test` stays unit-only and needs no database; LAB-03 folds the integration tests into `pnpm test`.
 - The shared integration harness (truncate between test files, Fastify inject) is built in LAB-03.
 
 ## Docs to update

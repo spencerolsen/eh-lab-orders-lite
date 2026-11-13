@@ -1,0 +1,37 @@
+# Local Postgres for development and tests. Start it with `pnpm db:up`.
+name: lab-orders-lite
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: lab_orders
+      POSTGRES_PASSWORD: lab_orders
+      POSTGRES_DB: lab_orders
+    ports:
+      # Host port 5433, so it does not clash with a local Postgres on 5432.
+      - '5433:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Scripts here run once, when the data volume is first created.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Checks over TCP, so it only passes once the init scripts have finished
+      # and the server is listening for real connections.
+      test:
+        [
+          'CMD',
+          'pg_isready',
+          '-h',
+          '127.0.0.1',
+          '-U',
+          'lab_orders',
+          '-d',
+          'lab_orders',
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db-data:

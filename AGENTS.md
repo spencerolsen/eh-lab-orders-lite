@@ -34,11 +34,20 @@ Tests sit next to the code they test, named `<name>.test.ts`. The smoke test is 
 | `pnpm install` | Install dependencies (pnpm through Corepack; the version is pinned in `package.json`). |
 | `pnpm lint` | ESLint with the TypeScript rules and the import boundary. |
 | `pnpm typecheck` | The TypeScript compiler in strict mode, no output files. |
-| `pnpm test` | Unit and integration tests (Vitest). |
+| `pnpm test` | Unit tests (Vitest). No database needed. LAB-03 adds the integration tests to this command. |
+| `pnpm test:integration` | Integration tests (`*.integration.test.ts`) against the test database in `TEST_DATABASE_URL`. Needs the database running (`pnpm db:up`). |
 | `pnpm format` | Format the code with Prettier. Markdown is not formatted. |
 | `pnpm format:check` | Check the formatting without changing files. |
+| `pnpm db:up` | Start Postgres in Docker (host port 5433) and wait until it is healthy. |
+| `pnpm db:down` | Stop and remove the container. The data volume is kept. |
+| `pnpm db:migrate` | Apply the pending files in `db/migrations/` to the development database. |
+| `pnpm db:reset` | Drop and recreate the development database's schema, migrate, then seed. Refuses any database other than `lab_orders` and `lab_orders_test`, and refuses when `NODE_ENV=production`. |
+| `pnpm db:seed` | Insert the fake sample rows from `db/seed.ts`. |
+| `pnpm db:test:reset` | Drop, recreate and migrate the test database in `TEST_DATABASE_URL`. Refuses any database other than `lab_orders_test`. |
 
-Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. Later tasks add `pnpm dev` (LAB-04), the database commands (LAB-02) and `pnpm test:e2e` (LAB-21).
+The TypeScript scripts run under `tsx`, which loads `.env` with `--env-file-if-exists` (copy `.env.example` to `.env` first). Plain `node` cannot run them, because imports are extensionless.
+
+Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. Later tasks add `pnpm dev` (LAB-04) and `pnpm test:e2e` (LAB-21).
 
 ## Conventions
 
@@ -47,6 +56,17 @@ Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before op
 - **Logs carry ids and counts only.** No names, dates of birth or other patient details in logs.
 - **Each fixed list of values is defined once in `src/shared/`** (for example order statuses), and everything else (database checks, schemas, the screens) derives from it.
 - Imports are relative (`../shared/money`).
+
+## Database
+
+- **Migrations** are plain SQL files in `db/migrations/`, named `NNNN_description.sql` (for example `0002_lab_tests.sql`) and applied in filename order by `src/server/db/migrate.ts`. Each file runs in its own transaction and is recorded in `schema_migrations`.
+- **Never edit a migration that has been applied** (merged to `main`). To change the schema, add a new file with the next number.
+- A migration file contains no `begin`, `commit`, `rollback` or `abort`; the runner wraps it in a transaction. It refuses a file with a line that starts with `begin`, `commit` or `rollback` before running it, and stops with a message to run `pnpm db:reset` if a file ends the transaction any other way (an `abort`, or a `commit` in the middle of a line).
+- The runner also refuses a file not named `NNNN_description.sql` (lower case), two files with the same number, and a pending file that sorts before the newest applied one: give a new file the next free number.
+- **Run one migration runner at a time** (one `pnpm db:migrate`, `pnpm db:reset` or test run against a database). There is no lock, but a race cannot apply a file twice: the second runner fails with a duplicate-key error (on the primary key of `schema_migrations` on a migrated database, or, on a brand-new database, while creating `schema_migrations`), so nothing is applied twice and it exits with an error.
+- **Every task that adds a table extends `db/seed.ts`** with obviously fake rows. Each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so running the seed twice leaves the same rows.
+- **Settings** are read once at startup by `loadConfig()` in `src/server/config.ts`, which exits with one JSON error line if any is missing or invalid. Add a new setting there and to `.env.example`.
+- Test tooling uses only `TEST_DATABASE_URL`, and refuses a database whose name does not end in `_test` (`src/server/db/guards.ts`).
 
 ## Workflow
 
