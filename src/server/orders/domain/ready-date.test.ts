@@ -118,9 +118,9 @@ describe('estimateReadyDate: the order day is the clinic’s calendar day', () =
     expect(ready(new Date('2026-11-14T07:30:00Z'), 1)).toBe('2026-11-16');
   });
 
-  it('Saturday 02:00 UTC is Friday evening in the clinic, so it counts as Friday', () => {
-    // Friday 7 pm in Denver: 2 days is Tuesday. As a Saturday it would also
-    // be Tuesday, so the Thursday cases above are what tell the days apart.
+  it('Saturday 02:00 UTC (Friday 7 pm in the clinic) is ready Tuesday with 2 days, the same as a Saturday order', () => {
+    // Friday and Saturday orders agree under this rule, so this case cannot
+    // tell the clinic day from the UTC day; the Thursday cases above can.
     expect(ready(new Date('2026-11-14T02:00:00Z'), 2)).toBe('2026-11-17');
   });
 

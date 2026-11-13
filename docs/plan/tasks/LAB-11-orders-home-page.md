@@ -47,7 +47,7 @@ This task builds the order tables and the two business rules that every later or
 - [ ] Each row shows the patient's name and date of birth, the test count, the total, the ready date and the status.
 - [ ] A row's total equals the sum of its items' `price_cents`, and the `orders` table has no total column.
 - [ ] A Monday order with longest turnaround 1 day is ready Tuesday; a Friday order with 1 day is ready Monday; a Saturday or Sunday order with 1 day is ready Monday, and with 2 days Tuesday, the same as a Friday order.
-- [ ] A moment that is Saturday 02:00 UTC but Friday evening in `CLINIC_TIMEZONE` is treated as Friday.
+- [ ] A moment that is Friday 06:30 UTC but 11:30 pm Thursday in `CLINIC_TIMEZONE` is treated as Thursday: with 1 day it is ready Friday, not Monday.
 - [ ] With the same inputs the function always returns the same date, because it reads no clock of its own.
 - [ ] Inserting an `order_items` row with a negative price, a turnaround of 0, or a repeated (order, test) pair is rejected by the database.
 - [ ] Running the seed twice leaves the same 4 orders (same ids) and the same items; `pnpm dev` runs it every time.
