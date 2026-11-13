@@ -89,7 +89,7 @@ Body (all fields required, no others allowed):
 | Field | Rule |
 |---|---|
 | `code` | Text, trimmed and upper-cased, then 2 to 20 letters, digits or hyphens (`demo-09` is stored as `DEMO-09`). |
-| `name` | Text, trimmed, 1 to 100 characters. |
+| `name` | Text, trimmed, 1 to 100 characters, with no control characters (a NUL, tab or line break is a 400). |
 | `priceCents` | Whole number of cents, 0 or more. |
 | `turnaroundDays` | Whole number of business days, 1 to 365. |
 
@@ -100,6 +100,35 @@ Body (all fields required, no others allowed):
 | 409 `DUPLICATE_TEST_CODE` | A test with this code already exists (`cbc` and `CBC` are the same code). Message: "This code already exists". No row is added. |
 
 Logged: `lab_test.created` at `info` with `labTestId`; `lab_test.duplicate_code` at `warn`, without the code.
+
+### `PATCH /api/lab-tests/:id`
+
+Changes some of a test's fields and leaves the others as they are. `:id` is the test's uuid.
+
+Body: at least one of these fields, no others allowed. Each has the same rule as in `POST /api/lab-tests`, from the same schema pieces.
+
+| Field | Rule |
+|---|---|
+| `name` | Text, trimmed, 1 to 100 characters, with no control characters (a NUL, tab or line break is a 400). |
+| `priceCents` | Whole number of cents, 0 or more. |
+| `turnaroundDays` | Whole number of business days, 1 to 365. |
+| `isActive` | `true` or `false`. `false` deactivates the test: it stays in the list and in old orders, but is not offered on new ones (LAB-12). |
+
+`code` is not accepted: a test's code never changes. A body with `code` is refused with a detail on `code`, not silently ignored.
+
+| Status | Body |
+|---|---|
+| 200 | The updated test, in the same shape as one item of `GET /api/lab-tests`. |
+| 400 `VALIDATION_ERROR` | The id is not a uuid (detail on `id`); the body is empty `{}` (detail on `(input)`: "Send at least one of name, priceCents, turnaroundDays, isActive"); a field breaks its rule; or there is `code` or another unknown field (`{ "field": "code", "reason": "is not an allowed field" }`). Nothing is changed. |
+| 404 `NOT_FOUND` | No test has this id. Message: "There is no lab test with this id". |
+
+The update is one SQL statement, so it is atomic and sets `updated_at` itself. Editing a price or turnaround changes only orders placed afterwards: order items keep their own copy (LAB-12). When two people save the same test, the last save wins (see `docs/plan/backlog.md`).
+
+Logged: `lab_test.updated` at `info` with `labTestId` and `fieldCount` (how many fields were sent), and `active: "activated"` or `"deactivated"` when the active flag changed; never a value or a field name. A refused update is the standard `request.rejected` line at `warn`.
+
+### No `DELETE`
+
+Lab tests are never deleted, only deactivated, because orders point at them. `DELETE /api/lab-tests/:id` is not a route, so it gets the standard 404 `NOT_FOUND` ("There is nothing at this address") and removes nothing.
 
 ### `POST /api/patients`
 

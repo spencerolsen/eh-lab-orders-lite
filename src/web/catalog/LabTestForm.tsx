@@ -4,12 +4,14 @@ import { type FormEvent, useState } from 'react';
 import {
   type CreateLabTestBody,
   createLabTestBody,
+  type LabTest,
   MAX_TURNAROUND_DAYS,
+  type UpdateLabTestBody,
 } from '../../shared/lab-tests';
-import { parseDollarsToCents } from '../../shared/money';
+import { centsToDollarsText, parseDollarsToCents } from '../../shared/money';
 import { ApiError } from '../api/client';
 import { ErrorMessage } from '../components/ErrorMessage';
-import { createLabTest, LAB_TESTS_KEY } from './api';
+import { createLabTest, LAB_TESTS_KEY, updateLabTest } from './api';
 
 // The fields, named as in the API body, so a 400's details land on the right
 // field.
@@ -20,6 +22,32 @@ type Values = { code: string; name: string; price: string; turnaround: string };
 const EMPTY: Values = { code: '', name: '', price: '', turnaround: '' };
 const FIELDS: Field[] = ['code', 'name', 'priceCents', 'turnaroundDays'];
 export const PRICE_MESSAGE = 'Enter a price in dollars, like 12.50';
+export const CODE_LOCKED_HELP = 'Code cannot be changed';
+
+// What the fields hold when editing `test`: the price in dollars, as typed.
+function valuesOf(test: LabTest): Values {
+  return {
+    code: test.code,
+    name: test.name,
+    price: centsToDollarsText(test.priceCents),
+    turnaround: String(test.turnaroundDays),
+  };
+}
+
+// Only the fields that differ from the stored test, so a save never sends
+// the code (which the API refuses) or a value nobody changed.
+function changedFields(
+  body: CreateLabTestBody,
+  test: LabTest,
+): UpdateLabTestBody {
+  const changes: UpdateLabTestBody = {};
+  if (body.name !== test.name) changes.name = body.name;
+  if (body.priceCents !== test.priceCents) changes.priceCents = body.priceCents;
+  if (body.turnaroundDays !== test.turnaroundDays) {
+    changes.turnaroundDays = body.turnaroundDays;
+  }
+  return changes;
+}
 
 // Checks what was typed with the same schema the server uses. Returns the body
 // to send, or the message to show under each field that is wrong.
@@ -57,15 +85,38 @@ function fieldErrorsFrom(error: unknown): FieldErrors {
   return errors;
 }
 
-export function AddLabTestForm() {
+// The form under the table. Without `editing` it adds a test. With it, it
+// edits that test: the fields start with its values, the code is shown but
+// locked, and Save sends only what changed. `onDone` is called after a save
+// and on Cancel, so the page can close the edit.
+export function LabTestForm({
+  editing,
+  onDone,
+}: {
+  editing?: LabTest;
+  onDone?: () => void;
+}) {
   const queryClient = useQueryClient();
-  const [values, setValues] = useState<Values>(EMPTY);
+  const [values, setValues] = useState<Values>(
+    editing ? valuesOf(editing) : EMPTY,
+  );
   const [errors, setErrors] = useState<FieldErrors>({});
   const mutation = useMutation({
-    mutationFn: createLabTest,
+    mutationFn: (body: CreateLabTestBody) =>
+      editing
+        ? updateLabTest(editing.id, changedFields(body, editing))
+        : createLabTest(body),
     onSuccess: async () => {
       setValues(EMPTY);
       await queryClient.invalidateQueries({ queryKey: LAB_TESTS_KEY });
+      onDone?.();
+    },
+    onError: async (error) => {
+      // The test was removed from the list since it was loaded: show the
+      // message and fetch the list again.
+      if (error instanceof ApiError && error.code === 'NOT_FOUND') {
+        await queryClient.invalidateQueries({ queryKey: LAB_TESTS_KEY });
+      }
     },
   });
 
@@ -77,30 +128,49 @@ export function AddLabTestForm() {
     event.preventDefault();
     const { body, errors: found } = validate(values);
     setErrors(found);
-    if (body) mutation.mutate(body);
-    else mutation.reset();
+    if (!body) {
+      mutation.reset();
+      return;
+    }
+    // Saving an edit that changed nothing just closes it: an empty PATCH is
+    // a 400.
+    if (editing && Object.keys(changedFields(body, editing)).length === 0) {
+      onDone?.();
+      return;
+    }
+    mutation.mutate(body);
   }
 
-  // Empties the form and removes every message.
+  // Add: empties the form and removes every message. Edit: drops the
+  // changes and closes the edit.
   function clear() {
     setValues(EMPTY);
     setErrors({});
     mutation.reset();
+    if (editing) onDone?.();
   }
 
   function change(key: keyof Values) {
     return (text: string) => setValues((old) => ({ ...old, [key]: text }));
   }
 
+  const submitLabel = editing ? 'Save changes' : 'Add lab test';
+  const pendingLabel = editing ? 'Saving…' : 'Adding…';
+
   return (
     <form className="form card" onSubmit={onSubmit} noValidate>
       <TextField
         id="lab-test-code"
         label="Code"
-        help="2 to 20 letters, digits or hyphens; saved in capitals."
+        help={
+          editing
+            ? CODE_LOCKED_HELP
+            : '2 to 20 letters, digits or hyphens; saved in capitals.'
+        }
         value={values.code}
         onChange={change('code')}
         error={shown.code}
+        disabled={editing !== undefined}
       />
       <TextField
         id="lab-test-name"
@@ -108,6 +178,7 @@ export function AddLabTestForm() {
         value={values.name}
         onChange={change('name')}
         error={shown.name}
+        autoFocus={editing !== undefined}
       />
       <TextField
         id="lab-test-price"
@@ -130,10 +201,10 @@ export function AddLabTestForm() {
       {otherError && <ErrorMessage error={mutation.error} />}
       <div className="form-actions">
         <button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Adding…' : 'Add lab test'}
+          {mutation.isPending ? pendingLabel : submitLabel}
         </button>
         <button type="button" className="button-secondary" onClick={clear}>
-          Clear
+          {editing ? 'Cancel' : 'Clear'}
         </button>
       </div>
     </form>
@@ -152,6 +223,8 @@ function TextField({
   onChange,
   error,
   inputMode,
+  disabled,
+  autoFocus,
 }: {
   id: string;
   label: string;
@@ -160,6 +233,8 @@ function TextField({
   onChange: (text: string) => void;
   error: string | undefined;
   inputMode?: 'decimal' | 'numeric';
+  disabled?: boolean;
+  autoFocus?: boolean;
 }) {
   const helpId = `${id}-help`;
   const errorId = `${id}-error`;
@@ -177,6 +252,8 @@ function TextField({
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
+        disabled={disabled}
+        autoFocus={autoFocus}
       />
       {help && (
         <p id={helpId} className="field-help">

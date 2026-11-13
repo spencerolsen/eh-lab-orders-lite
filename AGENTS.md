@@ -103,6 +103,9 @@ Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere i
 | Field | `<div className="field">` holding `<label htmlFor="code">`, the `<input id="code">` (or `select`, `textarea`), then optional `<p id="code-help" className="field-help">` and `<p id="code-error" className="field-error">` |
 | Invalid field | `aria-invalid="true"` on the input and the error message's id in its `aria-describedby` (with the help text's id, space-separated); the red outline comes from `aria-invalid`, never a class |
 | Table | `<table className="table">` with `<th scope="col">` in a `<thead>`; add `className="numeric"` to the `th` and `td` of a number column (prices, counts) to right-align it |
+| Buttons in a table row | `<td><div className="row-actions">` holding the buttons (Edit, Deactivate); give each an `aria-label` naming the row (`Edit CBC`) |
+| Inactive (dimmed) row | `<tr className="muted">`, and say it in a cell as text (`Inactive`): never the colour alone |
+| Locked field | `<input disabled>` with a `field-help` line saying why (`Code cannot be changed`) |
 | Order status | `<StatusBadge status="ordered" />` from `components/StatusBadge` |
 | Surface | `className="card"` for a box on the page; `className="stack"` puts children in a column with a gap; `className="muted"` for secondary text |
 | Dialog or slide-out panel | `<dialog className="dialog">` or `<dialog className="panel">`, opened with `showModal()` (the backdrop is styled) |

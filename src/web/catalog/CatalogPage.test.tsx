@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { LAB_TEST_MESSAGES, type LabTest } from '../../shared/lab-tests';
 import { renderApp } from '../testing/render';
-import { PRICE_MESSAGE } from './AddLabTestForm';
+import { CODE_LOCKED_HELP, PRICE_MESSAGE } from './LabTestForm';
 
 function labTest(code: string, fields: Partial<LabTest> = {}): LabTest {
   return {
@@ -26,22 +26,33 @@ function endsWith(message: string) {
   return (description: string) => description.endsWith(message);
 }
 
-// A fake API: the list is `list` (or `listReply`), and each POST gets
-// `onPost(body)`. Returns the mock so a test can look at the requests.
+// A fake API: the list is `list` (or `listReply`), each POST gets
+// `onPost(body)` and each PATCH `onPatch(id, body)`. Returns the mock so a
+// test can look at the requests.
 function fakeApi({
   list = [],
   listReply,
   onPost = () => ({ status: 500 }),
+  onPatch = () => ({ status: 500 }),
 }: {
   list?: LabTest[];
   listReply?: () => Promise<Reply>;
   onPost?: (body: Record<string, unknown>) => Reply;
+  onPatch?: (
+    id: string,
+    body: Record<string, unknown>,
+  ) => Reply | Promise<Reply>;
 }) {
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     let reply: Reply;
     if (url === '/healthz') reply = { status: 200, body: { status: 'ok' } };
     else if (init?.method === 'POST') {
       reply = onPost(
+        JSON.parse(init.body as string) as Record<string, unknown>,
+      );
+    } else if (init?.method === 'PATCH') {
+      reply = await onPatch(
+        url.replace('/api/lab-tests/', ''),
         JSON.parse(init.body as string) as Record<string, unknown>,
       );
     } else reply = listReply ? await listReply() : { status: 200, body: list };
@@ -81,17 +92,19 @@ async function fillForm(values: {
   await userEvent.click(screen.getByRole('button', { name: 'Add lab test' }));
 }
 
+// Each row's cells, without the last one (the Edit and Activate buttons).
 function rowTexts(): string[][] {
   const [, ...rows] = screen.getAllByRole('row');
   return rows.map((row) =>
     within(row)
       .getAllByRole('cell')
+      .slice(0, -1)
       .map((cell) => cell.textContent ?? ''),
   );
 }
 
 describe('the lab test list', () => {
-  it('shows each test with its price in dollars, turnaround and active flag', async () => {
+  it('shows each test with its price in dollars, turnaround and status', async () => {
     fakeApi({
       list: [
         labTest('A1C', {
@@ -107,10 +120,10 @@ describe('the lab test list', () => {
     expect(await screen.findByRole('table')).toBeTruthy();
     expect(
       screen.getAllByRole('columnheader').map((th) => th.textContent),
-    ).toEqual(['Code', 'Name', 'Price', 'Turnaround', 'Active']);
+    ).toEqual(['Code', 'Name', 'Price', 'Turnaround', 'Status', 'Actions']);
     expect(rowTexts()).toEqual([
-      ['A1C', 'Test A1C', '$12.50', '3 business days', 'No'],
-      ['CBC', 'Test CBC', '$0.00', '1 business day', 'Yes'],
+      ['A1C', 'Test A1C', '$12.50', '3 business days', 'Inactive'],
+      ['CBC', 'Test CBC', '$0.00', '1 business day', 'Active'],
     ]);
   });
 
@@ -198,7 +211,7 @@ describe('the add form', () => {
         'Demo Panel',
         '$19.99',
         '2 business days',
-        'Yes',
+        'Active',
       ]);
     });
     expect(posts(fetch)).toEqual([
@@ -401,4 +414,277 @@ describe('the add form', () => {
       expect(posts(fetch)).toHaveLength(0);
     },
   );
+});
+
+// A fake PATCH that changes the matching test in `list`, as the server would.
+function patchInto(list: LabTest[]) {
+  return (id: string, body: Record<string, unknown>): Reply => {
+    const index = list.findIndex((test) => test.id === id);
+    const updated = { ...list[index], ...body } as LabTest;
+    list[index] = updated;
+    return { status: 200, body: updated };
+  };
+}
+
+// The PATCH requests sent: the id in the path and the parsed body.
+function patches(fetch: ReturnType<typeof fakeApi>): [string, unknown][] {
+  return fetch.mock.calls
+    .filter(([, init]) => init?.method === 'PATCH')
+    .map(([url, init]) => [url, JSON.parse(init?.body as string) as unknown]);
+}
+
+function listRequests(fetch: ReturnType<typeof fakeApi>): number {
+  return fetch.mock.calls.filter(
+    ([url, init]) =>
+      url === '/api/lab-tests' && (init?.method ?? 'GET') === 'GET',
+  ).length;
+}
+
+const notFound: Reply = {
+  status: 404,
+  body: {
+    error: {
+      code: 'NOT_FOUND',
+      message: 'There is no lab test with this id',
+      requestId: 'req-404',
+    },
+  },
+};
+
+const CBC = labTest('CBC', {
+  id: '10000000-0000-4000-8000-000000000001',
+  name: 'Complete Blood Count',
+  priceCents: 1000,
+  turnaroundDays: 1,
+});
+const TSH = labTest('TSH', {
+  id: '10000000-0000-4000-8000-000000000002',
+  name: 'Thyroid Stimulating Hormone',
+});
+
+async function startEditing(code: string) {
+  await userEvent.click(
+    await screen.findByRole('button', { name: `Edit ${code}` }),
+  );
+}
+
+describe('the edit form', () => {
+  it('fills in the row, shows the code locked, and cannot be typed into', async () => {
+    fakeApi({ list: [{ ...CBC, priceCents: 1250 }, TSH] });
+    renderApp('/catalog');
+
+    await startEditing('CBC');
+
+    expect(screen.getByRole('heading', { name: 'Edit CBC' })).toBeTruthy();
+    const code = screen.getByRole('textbox', {
+      name: 'Code',
+      description: CODE_LOCKED_HELP,
+    });
+    expect((code as HTMLInputElement).disabled).toBe(true);
+    await userEvent.type(code, 'XYZ');
+    expect((code as HTMLInputElement).value).toBe('CBC');
+    expect(screen.getByLabelText<HTMLInputElement>('Name').value).toBe(
+      'Complete Blood Count',
+    );
+    expect(
+      screen.getByLabelText<HTMLInputElement>('Price (dollars)').value,
+    ).toBe('12.50');
+    expect(
+      screen.getByLabelText<HTMLInputElement>('Turnaround (business days)')
+        .value,
+    ).toBe('1');
+  });
+
+  it('saves a new name, sending only the name, and shows it with the code kept', async () => {
+    const list = [CBC, TSH];
+    const fetch = fakeApi({ list, onPatch: patchInto(list) });
+    renderApp('/catalog');
+
+    await startEditing('CBC');
+    const name = screen.getByLabelText('Name');
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Full Blood Count');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => {
+      expect(rowTexts()[0]).toEqual([
+        'CBC',
+        'Full Blood Count',
+        '$10.00',
+        '1 business day',
+        'Active',
+      ]);
+    });
+    expect(patches(fetch)).toEqual([
+      [`/api/lab-tests/${CBC.id}`, { name: 'Full Blood Count' }],
+    ]);
+    // Back to adding.
+    expect(
+      screen.getByRole('heading', { name: 'Add a lab test' }),
+    ).toBeTruthy();
+    expect(screen.getByLabelText<HTMLInputElement>('Code').disabled).toBe(
+      false,
+    );
+  });
+
+  it('sends a price of 25.00 as 2500 cents and shows $25.00', async () => {
+    const list = [CBC];
+    const fetch = fakeApi({ list, onPatch: patchInto(list) });
+    renderApp('/catalog');
+
+    await startEditing('CBC');
+    const price = screen.getByLabelText('Price (dollars)');
+    await userEvent.clear(price);
+    await userEvent.type(price, '25.00');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(rowTexts()[0]?.[2]).toBe('$25.00'));
+    expect(patches(fetch)).toEqual([
+      [`/api/lab-tests/${CBC.id}`, { priceCents: 2500 }],
+    ]);
+  });
+
+  it('Cancel drops the changes and sends nothing', async () => {
+    const fetch = fakeApi({ list: [CBC] });
+    renderApp('/catalog');
+
+    await startEditing('CBC');
+    await userEvent.type(screen.getByLabelText('Name'), ' changed');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(patches(fetch)).toEqual([]);
+    expect(
+      screen.getByRole('heading', { name: 'Add a lab test' }),
+    ).toBeTruthy();
+    expect(screen.getByLabelText<HTMLInputElement>('Name').value).toBe('');
+    expect(rowTexts()[0]?.[1]).toBe('Complete Blood Count');
+  });
+
+  it('closes without a request when nothing changed', async () => {
+    const fetch = fakeApi({ list: [CBC] });
+    renderApp('/catalog');
+
+    await startEditing('CBC');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(patches(fetch)).toEqual([]);
+    expect(
+      screen.getByRole('heading', { name: 'Add a lab test' }),
+    ).toBeTruthy();
+  });
+
+  it('shows a field error and sends nothing for a turnaround of 0', async () => {
+    const fetch = fakeApi({ list: [CBC] });
+    renderApp('/catalog');
+
+    await startEditing('CBC');
+    const turnaround = screen.getByLabelText('Turnaround (business days)');
+    await userEvent.clear(turnaround);
+    await userEvent.type(turnaround, '0');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      screen.getByRole('textbox', {
+        name: 'Turnaround (business days)',
+        description: endsWith(LAB_TEST_MESSAGES.turnaroundDays),
+      }),
+    ).toBeTruthy();
+    expect(patches(fetch)).toEqual([]);
+  });
+
+  it('shows the message and fetches the list again when the test is gone (404)', async () => {
+    const fetch = fakeApi({ list: [CBC], onPatch: () => notFound });
+    renderApp('/catalog');
+
+    await startEditing('CBC');
+    await userEvent.type(screen.getByLabelText('Name'), ' changed');
+    const before = listRequests(fetch);
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'There is no lab test with this id. Reference: req-404',
+    );
+    await waitFor(() => expect(listRequests(fetch)).toBe(before + 1));
+  });
+});
+
+describe('Activate and Deactivate', () => {
+  it('deactivates TSH at once, marks the row Inactive, and activates it again', async () => {
+    const list = [CBC, TSH];
+    const fetch = fakeApi({ list, onPatch: patchInto(list) });
+    renderApp('/catalog');
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Deactivate TSH' }),
+    );
+
+    const activate = await screen.findByRole('button', {
+      name: 'Activate TSH',
+    });
+    const row = activate.closest('tr') as HTMLElement;
+    expect(within(row).getByText('Inactive')).toBeTruthy();
+    expect(row.className).toBe('muted');
+    expect(rowTexts()[0]?.[4]).toBe('Active');
+
+    await userEvent.click(activate);
+
+    await screen.findByRole('button', { name: 'Deactivate TSH' });
+    expect(rowTexts()[1]?.[4]).toBe('Active');
+    expect(patches(fetch)).toEqual([
+      [`/api/lab-tests/${TSH.id}`, { isActive: false }],
+      [`/api/lab-tests/${TSH.id}`, { isActive: true }],
+    ]);
+  });
+
+  it('disables only that row button while its request runs', async () => {
+    let answer: (reply: Reply) => void = () => {};
+    fakeApi({
+      list: [CBC, TSH],
+      onPatch: () => new Promise<Reply>((resolve) => (answer = resolve)),
+    });
+    renderApp('/catalog');
+
+    const button = await screen.findByRole('button', {
+      name: 'Deactivate TSH',
+    });
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect((button as HTMLButtonElement).disabled).toBe(true),
+    );
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Deactivate CBC' })
+        .disabled,
+    ).toBe(false);
+
+    answer({ status: 200, body: { ...TSH, isActive: false } });
+    await waitFor(() =>
+      expect((button as HTMLButtonElement).disabled).toBe(false),
+    );
+  });
+
+  it('shows the message and fetches the list again when the test is gone (404)', async () => {
+    const fetch = fakeApi({ list: [TSH], onPatch: () => notFound });
+    renderApp('/catalog');
+
+    const button = await screen.findByRole('button', {
+      name: 'Deactivate TSH',
+    });
+    const before = listRequests(fetch);
+    await userEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'There is no lab test with this id',
+    );
+    await waitFor(() => expect(listRequests(fetch)).toBe(before + 1));
+  });
+
+  it('offers no way to delete a test', async () => {
+    fakeApi({ list: [CBC, TSH] });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    expect(screen.queryAllByRole('button', { name: /delete|remove/i })).toEqual(
+      [],
+    );
+  });
 });

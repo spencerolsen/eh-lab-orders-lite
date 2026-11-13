@@ -65,8 +65,9 @@ The look is inspired by the palette of the company this exercise is for: a deep 
 | text `#451f41` | page `#fffaf2` | Body text | 13.25 |
 | text `#451f41` | surface `#fffdf9` | Text in cards, tables, dialogs, fields | 13.55 |
 | text `#451f41` | surface-tint `#ddf3ee` | A hovered table row | 11.89 |
-| text-muted `#6b5a68` | page `#fffaf2` | Footer, loading text | 6.15 |
+| text-muted `#6b5a68` | page `#fffaf2` | Footer, loading text, a locked (disabled) field | 6.15 |
 | text-muted `#6b5a68` | surface `#fffdf9` | Help text in a card | 6.29 |
+| text-muted `#6b5a68` | surface-tint `#ddf3ee` | A hovered inactive (dimmed) table row | 5.51 |
 | brand-strong `#003438` | page `#fffaf2` | Headings | 13.05 |
 | brand-strong `#003438` | surface `#fffdf9` | Headings in a card or dialog | 13.35 |
 | brand-strong `#003438` | surface-tint `#ddf3ee` | Table header, `ordered` badge | 11.71 |

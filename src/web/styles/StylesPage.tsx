@@ -91,6 +91,18 @@ export function StylesPage() {
           </p>
         </div>
         <div className="field">
+          <label htmlFor="sample-locked">Locked code</label>
+          <input
+            id="sample-locked"
+            defaultValue="SAMPLE1"
+            disabled
+            aria-describedby="sample-locked-help"
+          />
+          <p id="sample-locked-help" className="field-help">
+            Code cannot be changed
+          </p>
+        </div>
+        <div className="field">
           <label htmlFor="sample-kind">Kind</label>
           <select id="sample-kind" defaultValue="blood">
             <option value="blood">Blood</option>
@@ -141,6 +153,49 @@ export function StylesPage() {
               <StatusBadge status="cancelled" />
             </td>
             <td className="numeric">$7.25</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        An inactive row is dimmed with <code>className=&quot;muted&quot;</code>{' '}
+        and says so in words; buttons in a cell sit in <code>row-actions</code>.
+      </p>
+      <table className="table">
+        <thead>
+          <tr>
+            <th scope="col">Code</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SAMPLE4</td>
+            <td>Active</td>
+            <td>
+              <div className="row-actions">
+                <button type="button" className="button-secondary">
+                  Edit
+                </button>
+                <button type="button" className="button-secondary">
+                  Deactivate
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr className="muted">
+            <td>SAMPLE5</td>
+            <td>Inactive</td>
+            <td>
+              <div className="row-actions">
+                <button type="button" className="button-secondary">
+                  Edit
+                </button>
+                <button type="button" className="button-secondary">
+                  Activate
+                </button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
