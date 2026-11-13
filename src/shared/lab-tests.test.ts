@@ -78,22 +78,22 @@ describe('createLabTestBody', () => {
     },
   );
 
-  it.each([0, -1, 1.5, '2'])('rejects the turnaround %j', (turnaroundDays) => {
-    expect(problems({ ...valid, turnaroundDays })).toEqual({
-      turnaroundDays: LAB_TEST_MESSAGES.turnaroundDays,
-    });
+  it.each([0, -1, 1.5, '2', 366, 2 ** 31])(
+    'rejects the turnaround %j',
+    (turnaroundDays) => {
+      expect(problems({ ...valid, turnaroundDays })).toEqual({
+        turnaroundDays: LAB_TEST_MESSAGES.turnaroundDays,
+      });
+    },
+  );
+
+  it('accepts a turnaround of 365 days, the most allowed', () => {
+    expect(problems({ ...valid, turnaroundDays: 365 })).toEqual({});
   });
 
-  it('rejects values too large for the database integer columns', () => {
-    expect(
-      problems({
-        ...valid,
-        priceCents: 2_147_483_648,
-        turnaroundDays: 2 ** 31,
-      }),
-    ).toEqual({
+  it('rejects a price too large for the database integer column', () => {
+    expect(problems({ ...valid, priceCents: 2_147_483_648 })).toEqual({
       priceCents: LAB_TEST_MESSAGES.tooLarge,
-      turnaroundDays: LAB_TEST_MESSAGES.tooLarge,
     });
     expect(problems({ ...valid, priceCents: 2_147_483_647 })).toEqual({});
   });

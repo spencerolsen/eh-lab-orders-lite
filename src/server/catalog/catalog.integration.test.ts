@@ -227,6 +227,7 @@ describe('the lab_tests table', () => {
   it.each([
     { name: 'a negative price', values: ['NEG', 'Negative', -1, 1] },
     { name: 'a zero turnaround', values: ['ZERO', 'Zero', 100, 0] },
+    { name: 'a turnaround over 365', values: ['LONG', 'Long', 100, 366] },
     { name: 'a lower-case code', values: ['cbc', 'Lower', 100, 1] },
     { name: 'a blank code', values: ['  ', 'Blank code', 100, 1] },
     { name: 'a blank name', values: ['BLANK', ' ', 100, 1] },

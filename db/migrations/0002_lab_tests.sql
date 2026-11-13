@@ -17,5 +17,5 @@ create table lab_tests (
   constraint lab_tests_code_not_blank check (btrim(code) <> ''),
   constraint lab_tests_name_not_blank check (btrim(name) <> ''),
   constraint lab_tests_price_cents_not_negative check (price_cents >= 0),
-  constraint lab_tests_turnaround_days_positive check (turnaround_days >= 1)
+  constraint lab_tests_turnaround_days_range check (turnaround_days between 1 and 365)
 );

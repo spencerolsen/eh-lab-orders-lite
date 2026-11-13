@@ -91,7 +91,7 @@ Body (all fields required, no others allowed):
 | `code` | Text, trimmed and upper-cased, then 2 to 20 letters, digits or hyphens (`demo-09` is stored as `DEMO-09`). |
 | `name` | Text, trimmed, 1 to 100 characters. |
 | `priceCents` | Whole number of cents, 0 or more. |
-| `turnaroundDays` | Whole number of business days, 1 or more. |
+| `turnaroundDays` | Whole number of business days, 1 to 365. |
 
 | Status | Body |
 |---|---|

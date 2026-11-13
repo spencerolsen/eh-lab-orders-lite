@@ -6,13 +6,17 @@ import { z } from 'zod';
 // The largest value a Postgres `integer` column holds.
 const MAX_INTEGER = 2_147_483_647;
 
+// The longest turnaround a test may have, in business days. A cap keeps the
+// ready-date arithmetic (LAB-11) on sane numbers; the database checks it too.
+export const MAX_TURNAROUND_DAYS = 365;
+
 // Each message says what a valid value looks like. The API returns it as the
 // field's reason, and the form shows it under the field.
 export const LAB_TEST_MESSAGES = {
   code: 'Use 2 to 20 letters, digits or hyphens',
   name: 'Enter a name of 1 to 100 characters',
   priceCents: 'Must be a whole number of cents, 0 or more',
-  turnaroundDays: 'Enter a whole number of business days, 1 or more',
+  turnaroundDays: 'Enter a whole number of business days from 1 to 365',
   tooLarge: 'Too large',
 } as const;
 
@@ -43,7 +47,7 @@ const turnaroundDays = z
   .number({ error: m.turnaroundDays })
   .int({ error: m.turnaroundDays })
   .min(1, { error: m.turnaroundDays })
-  .max(MAX_INTEGER, { error: m.tooLarge });
+  .max(MAX_TURNAROUND_DAYS, { error: m.turnaroundDays });
 
 // POST /api/lab-tests. Strict: an unknown field is a 400. A new test is always
 // active, so isActive is not accepted here.

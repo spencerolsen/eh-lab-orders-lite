@@ -13,7 +13,7 @@ erDiagram
     text code UK "upper case"
     text name
     integer price_cents ">= 0"
-    integer turnaround_days ">= 1"
+    integer turnaround_days "1 to 365"
     boolean is_active
     timestamptz created_at
     timestamptz updated_at
@@ -41,7 +41,7 @@ The lab test catalog (LAB-06, migration `0002_lab_tests.sql`). Tests are never d
 | `code` | `text` | Not null, unique (`lab_tests_code_key`), upper case (`lab_tests_code_upper`: `code = upper(code)`), not blank. |
 | `name` | `text` | Not null, not blank. |
 | `price_cents` | `integer` | Not null, `>= 0` (`lab_tests_price_cents_not_negative`). Whole cents. |
-| `turnaround_days` | `integer` | Not null, `>= 1` (`lab_tests_turnaround_days_positive`). Business days. |
+| `turnaround_days` | `integer` | Not null, 1 to 365 (`lab_tests_turnaround_days_range`). Business days; the cap keeps the ready-date arithmetic (LAB-11) on sane numbers. |
 | `is_active` | `boolean` | Not null, defaults to `true`. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, default `now()`. |
 
