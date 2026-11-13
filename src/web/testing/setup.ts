@@ -10,7 +10,7 @@ afterEach(() => {
 
 // jsdom has no showModal(), close() or Escape handling for <dialog>. This
 // stands in for the three, enough for the panel and dialog tests: showModal
-// sets `open` and moves focus in, close clears it and fires "close", and Escape closes the last
+// sets `open` and moves focus in, close clears it and queues "close", and Escape closes the last
 // opened modal dialog, as a browser does.
 const openModals: HTMLDialogElement[] = [];
 HTMLDialogElement.prototype.showModal = function showModal(
@@ -26,7 +26,8 @@ HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
   this.removeAttribute('open');
   const at = openModals.indexOf(this);
   if (at >= 0) openModals.splice(at, 1);
-  this.dispatchEvent(new Event('close'));
+  // A browser queues the event as a task; it does not run it at once.
+  setTimeout(() => this.dispatchEvent(new Event('close')));
 };
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') openModals.at(-1)?.close();

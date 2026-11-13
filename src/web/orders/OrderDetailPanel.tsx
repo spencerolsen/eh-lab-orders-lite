@@ -40,13 +40,21 @@ export function OrderDetailPanel({ orderId }: { orderId: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [, setSearchParams] = useSearchParams();
 
+  // What had focus before the panel opened (kept across React's development
+  // double run of effects, when focus has already moved into the panel).
+  const opener = useRef<Element | null>(null);
+
   useEffect(() => {
     const element = dialog.current;
-    const opener = document.activeElement;
+    opener.current ??= document.activeElement;
     if (element && !element.open) element.showModal();
     return () => {
-      if (element?.open) element.close();
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      // Removing a dialog from the page closes it. Focus goes back once the
+      // element is really gone, not when React only re-runs the effect.
+      setTimeout(() => {
+        const from = opener.current;
+        if (!element?.isConnected && from instanceof HTMLElement) from.focus();
+      });
     };
   }, []);
 
