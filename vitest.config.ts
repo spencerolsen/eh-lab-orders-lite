@@ -2,11 +2,10 @@ import { existsSync } from 'node:fs';
 import { BaseSequencer, type TestSpecification } from 'vitest/node';
 import { configDefaults, defineConfig } from 'vitest/config';
 
-// The integration tests read TEST_DATABASE_URL from the environment (CI sets
-// it), else from .env, else from .env.example, whose defaults match the Docker
-// database, so `pnpm test` works on a fresh clone. Values already set win.
-const envFile = existsSync('.env') ? '.env' : '.env.example';
-if (existsSync(envFile)) process.loadEnvFile(envFile);
+// The integration tests read TEST_DATABASE_URL from .env (copy .env.example
+// to .env first). Values already in the environment win, which is how CI,
+// with no .env file, provides it.
+if (existsSync('.env')) process.loadEnvFile('.env');
 
 // Test files run in file-path order, the same on every machine and every run.
 // (Vitest's default order depends on earlier runs.) The two harness files in

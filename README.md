@@ -16,7 +16,7 @@ This is an early stub. The full README is written in LAB-22.
 pnpm install
 pnpm lint
 pnpm typecheck
-pnpm test              # unit and integration tests; starts the database container first
+pnpm test              # unit and integration tests; needs .env (cp .env.example .env), starts the database container itself
 pnpm format:check
 ```
 

@@ -36,7 +36,7 @@ Tests sit next to the code they test: unit tests named `<name>.test.ts`, integra
 | `pnpm typecheck` | The TypeScript compiler in strict mode, no output files. |
 | `pnpm dev:api` | Run the API server under `tsx watch` with readable development logs (`NODE_ENV=development`). |
 | `pnpm start` | Run the API server under `tsx` with JSON logs. |
-| `pnpm test` | Unit and integration tests (Vitest projects `unit` and `integration`). Starts the database container first and waits until it is healthy, unless `CI` is set. One project alone: `pnpm test --project unit` or `--project integration`. |
+| `pnpm test` | Unit and integration tests (Vitest projects `unit` and `integration`). The integration project starts the database container and waits until it is healthy, unless `CI` is set; the unit project needs neither Docker nor `.env`. Needs `.env` (or `TEST_DATABASE_URL` in the environment). One project alone: `pnpm test --project unit` or `--project integration`. |
 | `pnpm format` | Format the code with Prettier. Markdown is not formatted. |
 | `pnpm format:check` | Check the formatting without changing files. |
 | `pnpm db:up` | Start Postgres in Docker (host port 5433) and wait until it is healthy. |
