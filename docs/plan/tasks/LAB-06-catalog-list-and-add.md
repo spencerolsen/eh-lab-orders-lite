@@ -1,6 +1,6 @@
 # LAB-06: Catalog: see and add lab tests
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-05 (Checks on every pull request)
 - **Unblocks:** LAB-07 (Catalog: edit and activate or deactivate tests), LAB-11 (Orders: see orders on the home page)
