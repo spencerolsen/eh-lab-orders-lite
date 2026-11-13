@@ -2,27 +2,47 @@ import { z } from 'zod';
 
 export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 
+// A postgres:// or postgresql:// URL with a host and a database name.
 function isPostgresUrl(value: string): boolean {
   if (!URL.canParse(value)) return false;
-  const { protocol } = new URL(value);
-  return protocol === 'postgres:' || protocol === 'postgresql:';
+  const { protocol, hostname, pathname } = new URL(value);
+  return (
+    (protocol === 'postgres:' || protocol === 'postgresql:') &&
+    hostname !== '' &&
+    pathname.length > 1
+  );
 }
 
+// A time zone the runtime knows, such as UTC or America/Denver: the formatter
+// throws a RangeError for any other name. It also accepts offsets such as
+// +05:00, which are not zone names, so those are refused first.
 function isKnownTimeZone(value: string): boolean {
-  return Intl.supportedValuesOf('timeZone').includes(value);
+  if (/^[+-]/.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+const PORT_RANGE = 'must be between 1 and 65535';
 
 // Every reason below is fixed text: no reason ever repeats the value it was
 // given, because DATABASE_URL may hold a password.
 const configSchema = z.object({
   DATABASE_URL: z
     .string({ error: 'is required' })
-    .refine(isPostgresUrl, 'must be a valid postgres:// or postgresql:// URL'),
-  PORT: z.coerce
-    .number({ error: 'must be a whole number' })
-    .int('must be a whole number')
-    .min(1, 'must be between 1 and 65535')
-    .max(65535, 'must be between 1 and 65535')
+    .refine(
+      isPostgresUrl,
+      'must be a postgres:// or postgresql:// URL with a host and a database name',
+    ),
+  // Digits only, so values such as 1e3, 0x50 or 3000.0 are refused.
+  PORT: z
+    .string()
+    .regex(/^\d+$/, 'must be a whole number')
+    .transform(Number)
+    .pipe(z.number().min(1, PORT_RANGE).max(65535, PORT_RANGE))
     .default(3000),
   LOG_LEVEL: z
     .enum(LOG_LEVELS, { error: `must be one of ${LOG_LEVELS.join(', ')}` })

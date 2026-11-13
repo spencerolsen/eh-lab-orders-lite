@@ -6,7 +6,9 @@ export function databaseName(databaseUrl: string): string {
 }
 
 // The reset commands drop every table, so they only run against this project's
-// own databases, and never in production.
+// own two databases, and never in production.
+const RESETTABLE_DATABASES = ['lab_orders', 'lab_orders_test'];
+
 export function assertResettable(
   databaseUrl: string,
   nodeEnv: string | undefined,
@@ -15,9 +17,9 @@ export function assertResettable(
     throw new Error('Refusing to reset: NODE_ENV is production');
   }
   const name = databaseName(databaseUrl);
-  if (!name.includes('lab_orders')) {
+  if (!RESETTABLE_DATABASES.includes(name)) {
     throw new Error(
-      `Refusing to reset database "${name}": its name does not contain lab_orders`,
+      `Refusing to reset database "${name}": only ${RESETTABLE_DATABASES.join(' and ')} can be reset`,
     );
   }
 }

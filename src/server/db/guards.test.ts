@@ -21,11 +21,14 @@ describe('assertResettable', () => {
     ).not.toThrow();
   });
 
-  it('refuses a database whose name lacks lab_orders', () => {
-    expect(() => assertResettable(url('postgres'), undefined)).toThrow(
-      /does not contain lab_orders/,
-    );
-  });
+  it.each(['postgres', 'not_lab_orders_prod', 'lab_orders_copy', 'other_test'])(
+    'refuses the database %s',
+    (name) => {
+      expect(() => assertResettable(url(name), undefined)).toThrow(
+        /only lab_orders and lab_orders_test can be reset/,
+      );
+    },
+  );
 
   it('refuses when NODE_ENV is production', () => {
     expect(() => assertResettable(url('lab_orders'), 'production')).toThrow(

@@ -1,23 +1,9 @@
 // The database commands behind `pnpm db:migrate`, `pnpm db:reset` and
 // `pnpm db:test:reset`. Usage: tsx src/server/db/cli.ts <migrate|reset|test-reset>
-import pg from 'pg';
-
 import { loadConfig } from '../config';
 import { assertResettable, testDatabaseUrl } from './guards';
 import { migrate, resetSchema } from './migrate';
-
-async function withClient(
-  databaseUrl: string,
-  work: (client: pg.Client) => Promise<void>,
-) {
-  const client = new pg.Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    await work(client);
-  } finally {
-    await client.end();
-  }
-}
+import { exitWithError, withClient } from './script';
 
 async function main(command: string | undefined): Promise<void> {
   switch (command) {
@@ -55,9 +41,5 @@ async function main(command: string | undefined): Promise<void> {
 try {
   await main(process.argv[2]);
 } catch (error) {
-  console.error(error instanceof Error ? error.message : error);
-  if (error instanceof Error && error.cause instanceof Error) {
-    console.error(`  cause: ${error.cause.message}`);
-  }
-  process.exit(1);
+  exitWithError(error);
 }

@@ -42,14 +42,34 @@ describe('parseConfig', () => {
   it.each([
     ['DATABASE_URL', { DATABASE_URL: undefined }],
     ['DATABASE_URL', { DATABASE_URL: 'mysql://localhost/lab_orders' }],
+    ['DATABASE_URL', { DATABASE_URL: 'postgres:lab_orders' }],
+    ['DATABASE_URL', { DATABASE_URL: 'postgres://u:p@localhost:5433' }],
     ['PORT', { PORT: 'abc' }],
     ['PORT', { PORT: '70000' }],
+    ['PORT', { PORT: '0' }],
+    ['PORT', { PORT: '1e3' }],
+    ['PORT', { PORT: '0x50' }],
+    ['PORT', { PORT: '3000.0' }],
+    ['PORT', { PORT: '' }],
     ['LOG_LEVEL', { LOG_LEVEL: 'verbose' }],
     ['CLINIC_TIMEZONE', { CLINIC_TIMEZONE: 'Mars/Base' }],
+    ['CLINIC_TIMEZONE', { CLINIC_TIMEZONE: '' }],
+    ['CLINIC_TIMEZONE', { CLINIC_TIMEZONE: '+05:00' }],
   ])('reports an invalid %s by name', (setting, overrides) => {
     const problems = problemsFor({ DATABASE_URL: validUrl, ...overrides });
     expect(problems.map((problem) => problem.setting)).toEqual([setting]);
   });
+
+  it.each(['UTC', 'Etc/UTC', 'Asia/Kolkata', 'America/Denver'])(
+    'accepts the time zone %s and keeps it as typed',
+    (zone) => {
+      const result = parseConfig({
+        DATABASE_URL: validUrl,
+        CLINIC_TIMEZONE: zone,
+      });
+      expect(result.ok && result.config.CLINIC_TIMEZONE).toBe(zone);
+    },
+  );
 
   it('reports several problems together', () => {
     const problems = problemsFor({ PORT: 'abc', CLINIC_TIMEZONE: 'Mars/Base' });
@@ -90,7 +110,8 @@ describe('loadConfig', () => {
       problems: [
         {
           setting: 'DATABASE_URL',
-          reason: 'must be a valid postgres:// or postgresql:// URL',
+          reason:
+            'must be a postgres:// or postgresql:// URL with a host and a database name',
         },
         { setting: 'PORT', reason: 'must be a whole number' },
       ],
