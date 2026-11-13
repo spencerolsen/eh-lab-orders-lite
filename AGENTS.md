@@ -42,7 +42,7 @@ pnpm comes with Node through Corepack. The commands below are written `pnpm <scr
 | `pnpm install` | Install dependencies (the pnpm version pinned in `package.json`). |
 | `pnpm lint` | ESLint with the TypeScript rules and the import boundary. |
 | `pnpm typecheck` | The TypeScript compiler in strict mode, no output files. |
-| `pnpm dev` | The whole app with one command (`scripts/dev.ts`): creates `.env` from `.env.example` when missing, checks the settings, that Docker runs and that ports 3000 (`PORT`) and 5173 are free, then `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` together with prefixed output. Ctrl-C stops both. |
+| `pnpm dev` | The whole app with one command (`scripts/dev.ts`): creates `.env` from `.env.example` when missing, checks the settings, that Docker runs and that ports 3000 (`PORT`) and 5173 are different and free, then `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` together with prefixed output. Ctrl-C stops both. |
 | `pnpm dev:api` | Run the API server under `tsx watch` with readable development logs (`NODE_ENV=development`). |
 | `pnpm dev:web` | Run the Vite dev server on port 5173, proxying `/api` and `/healthz` to the API on `PORT`. |
 | `pnpm build` | Build the web app into `dist/web`. |

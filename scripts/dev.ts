@@ -3,7 +3,8 @@
 //   1. Creates .env from .env.example when there is none, then checks every
 //      setting (a missing or malformed one stops here with the config error).
 //   2. Checks that Docker is running, and that the API's port (PORT) and
-//      Vite's port (5173) are free. Each check stops with one line.
+//      Vite's port (5173) are different and both free. Each check stops with
+//      one line.
 //   3. pnpm db:up (start Postgres, wait until healthy), db:migrate, db:seed.
 //      The seed runs every time: each row has a fixed key and is inserted with
 //      `on conflict do nothing`, so a second run inserts 0 rows.
@@ -86,7 +87,14 @@ if (spawnSync('docker', ['info'], { stdio: 'ignore' }).status !== 0) {
 }
 
 // 2b. The two ports, before anything is started: otherwise the API would fail
-// to listen while `tsx watch` and Vite kept running.
+// to listen while `tsx watch` and Vite kept running. Both free is not enough
+// if they are the same port: Vite would take it first.
+if (PORT === WEB_PORT) {
+  console.error(
+    `dev: PORT is ${PORT}, which is the port the web app (Vite) uses. Set PORT to another number, for example 3000 (it may be set in your shell, which overrides .env).`,
+  );
+  process.exit(1);
+}
 for (const [port, what] of [
   [PORT, 'the API (PORT in .env)'],
   [WEB_PORT, 'the web app (Vite)'],

@@ -20,6 +20,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Put `PORT=abc` in `.env` and run `pnpm dev`: it stops with the `config.invalid` line before starting anything. Put it back.
 - [ ] With Docker stopped, `pnpm dev` prints one line saying Docker is not running and exits with an error.
 - [ ] With another program listening on port 3000 (for example `python3 -m http.server 3000 --bind 127.0.0.1`), `pnpm dev` prints one line naming port 3000 and exits with an error before starting anything. The same for port 5173.
+- [ ] `PORT=5173 corepack pnpm dev` (a `PORT` in the shell overrides `.env`) prints one line saying `PORT` is the web app's port and to set another number, and exits with an error before starting anything.
 - [ ] http://localhost:5173/healthz returns the API's `{"status":"ok"}` (the proxy works).
 - [ ] The menu bar shows Orders, Patients and Catalog on every page. Clicking each changes the URL and the page without a full reload; the current one is highlighted and has `aria-current="page"`.
 - [ ] http://localhost:5173/does-not-exist shows "Page not found" with a link back to the orders page.
