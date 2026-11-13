@@ -1,6 +1,6 @@
 # LAB-09: Patients: search by name and edit a patient
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-08 (Patients: add and list patients)
 - **Unblocks:** LAB-10 (Patients: duplicate warning on create), LAB-12 (Orders: place an order), LAB-14 (Orders: filter the list by status and patient)
