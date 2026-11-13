@@ -11,7 +11,7 @@ let t: TestApp;
 
 beforeEach(async () => {
   t = startTestApp();
-  await t.pool.query('truncate table patients');
+  await t.pool.query('truncate table patients cascade');
 });
 
 afterEach(async () => {
@@ -162,7 +162,7 @@ describe('GET /api/patients?q=', () => {
   });
 
   it(`returns at most ${SEARCH_RESULT_LIMIT} patients, in the list's order`, async () => {
-    await t.pool.query('truncate table patients');
+    await t.pool.query('truncate table patients cascade');
     await t.pool.query(
       `insert into patients (first_name, last_name, date_of_birth, email)
        select 'Many', 'Tester ' || lpad(n::text, 3, '0'), '1990-01-01',
