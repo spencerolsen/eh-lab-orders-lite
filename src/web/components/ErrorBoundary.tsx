@@ -31,11 +31,13 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 function CrashScreen() {
   return (
     <main className="page">
-      <h1>Something went wrong.</h1>
-      <p>Reload the page.</p>
-      <button type="button" onClick={() => window.location.reload()}>
-        Reload the page
-      </button>
+      <div className="card crash-screen">
+        <h1>Something went wrong.</h1>
+        <p>Reload the page.</p>
+        <button type="button" onClick={() => window.location.reload()}>
+          Reload the page
+        </button>
+      </div>
     </main>
   );
 }

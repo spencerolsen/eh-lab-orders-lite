@@ -16,9 +16,9 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
 - `src/web/`: the browser app (React, Vite, React Router, TanStack Query). Each feature gets its own folder, `src/web/<feature>/`, with its page (for example `catalog/CatalogPage.tsx`).
   - `main.tsx` mounts the app (error boundary, query client, router); `App.tsx` holds the routes; `Layout.tsx` and `MenuBar.tsx` are the frame around every page; `NotFoundPage.tsx` is the screen for unknown paths.
   - `api/`: `client.ts` (`apiFetch` and `ApiError`, the only way to call the API), `errors.ts` (`describeError`, the sentence shown for a failed request), `query-client.ts` (TanStack Query defaults).
-  - `components/`: shared `Loading`, `EmptyState`, `ErrorMessage` and the `ErrorBoundary`. A page shows loading, empty and error states with these, never its own.
+  - `components/`: shared `Loading`, `EmptyState`, `ErrorMessage`, `StatusBadge` and the `ErrorBoundary`. A page shows loading, empty and error states with these, never its own.
   - `health/ServerStatus.tsx`: the footer line that says whether the API answers.
-  - `styles/base.css`: the only stylesheet, plain CSS with colour and spacing variables.
+  - `styles/base.css`: the only stylesheet, plain CSS: the theme's custom properties and the shared classes (see "Styling a page"). `styles/StylesPage.tsx` is the `/styles` sample page.
   - `testing/`: the component test setup and `renderApp(path)`, which renders the whole app at a path with a fake `fetch`.
 - `src/shared/`: code used by both sides: request and response schemas, money and date helpers, and every fixed list of values.
 - `docs/`: architecture, API, data model, data flow, testing and the acceptance checklist. `docs/plan/` holds the build plan and one ticket per task.
@@ -81,6 +81,30 @@ The same checks run on GitHub Actions for every pull request and every push to `
 - Show the three states with the shared components: `Loading` while pending, `EmptyState` for an empty list, `ErrorMessage` (with `onRetry` for a query) for an error. `ErrorMessage` uses `describeError`, so the user sees the server's message for a 4xx, a generic one for a 5xx or when the server cannot be reached, and the request id as "Reference: <id>".
 - Field errors from a 400 are in `error.details` (an `ApiError`), one `{ field, reason }` per field.
 - The web code never imports `src/server`: a type both sides need (like the error body in `src/shared/api-error.ts`) goes in `src/shared`.
+
+## Styling a page
+
+Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere in the menu and shows every shared style; copy markup from `src/web/styles/StylesPage.tsx`. The theme and the contrast table are in `docs/architecture.md`.
+
+- **Never write a colour.** Use the custom properties in `src/web/styles/base.css` (`var(--color-brand)`, `var(--color-text-muted)`, ...), named by role. No hex value goes anywhere under `src/web/` except where they are defined. Spacing is `var(--space-1)` to `var(--space-5)`.
+- **Use the shared classes**; a page needs little or no CSS of its own. If it does, add it to `base.css` with the same variables.
+- **Desktop only:** no media queries or breakpoints.
+- Headings `h1` to `h3` and every `<button>` are styled without a class.
+
+| What | Markup |
+|---|---|
+| Page heading with actions on the right | `<div className="page-header"><h1>Patients</h1><button type="button">Add a patient</button></div>` (a page with no actions uses a bare `<h1>`) |
+| Primary button | `<button type="button">Save</button>` (the default look) |
+| Secondary button | `<button type="button" className="button-secondary">Cancel</button>` |
+| Danger button | `<button type="button" className="button-danger">Cancel order</button>` |
+| Link that looks like a primary button | `<Link className="button" to="...">New order</Link>` |
+| Form | `<form className="form">` (fields in a column), buttons in `<div className="form-actions">`; `className="form card"` puts it on a surface |
+| Field | `<div className="field">` holding `<label htmlFor="code">`, the `<input id="code">` (or `select`, `textarea`), then optional `<p id="code-help" className="field-help">` and `<p id="code-error" className="field-error">` |
+| Invalid field | `aria-invalid="true"` on the input and the error message's id in its `aria-describedby` (with the help text's id, space-separated); the red outline comes from `aria-invalid`, never a class |
+| Table | `<table className="table">` with `<th scope="col">` in a `<thead>`; add `className="numeric"` to the `th` and `td` of a number column (prices, counts) to right-align it |
+| Order status | `<StatusBadge status="ordered" />` from `components/StatusBadge` |
+| Surface | `className="card"` for a box on the page; `className="stack"` puts children in a column with a gap; `className="muted"` for secondary text |
+| Dialog or slide-out panel | `<dialog className="dialog">` or `<dialog className="panel">`, opened with `showModal()` (the backdrop is styled) |
 
 ## Adding a route
 
