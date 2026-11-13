@@ -57,6 +57,8 @@ Tests sit next to the code they test, and the file name decides how they run: un
 
 The TypeScript scripts run under `tsx`, which loads `.env` with `--env-file-if-exists` (`pnpm dev` creates `.env` from `.env.example`; otherwise copy it yourself). Plain `node` cannot run them, because imports are extensionless.
 
+`package.json` lists `esbuild` under `pnpm.ignoredBuiltDependencies`, so `pnpm install` skips its install script without a warning. The script is not needed: tsx, Vite and Vitest use esbuild's JavaScript API, which finds the binary in the platform package (`@esbuild/<platform>`) that pnpm installs as an optional dependency. The script only downloads that binary when the optional package is missing, and speeds up the `esbuild` command, which nothing here runs. A new dependency with an install script must be added to `ignoredBuiltDependencies` or `onlyBuiltDependencies` the same way, with its reason here.
+
 Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. LAB-21 adds `pnpm test:e2e`.
 
 ## Conventions
