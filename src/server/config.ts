@@ -28,10 +28,6 @@ function isKnownTimeZone(value: string): boolean {
 
 const PORT_RANGE = 'must be between 1 and 65535';
 
-// The API's port when PORT is not set. The Vite proxy (vite.config.ts) uses it
-// too, so the proxy and the API agree on the port without a second setting.
-export const DEFAULT_PORT = 3000;
-
 // Every reason below is fixed text: no reason ever repeats the value it was
 // given, because DATABASE_URL may hold a password.
 const configSchema = z.object({
@@ -47,7 +43,7 @@ const configSchema = z.object({
     .regex(/^\d+$/, 'must be a whole number')
     .transform(Number)
     .pipe(z.number().min(1, PORT_RANGE).max(65535, PORT_RANGE))
-    .default(DEFAULT_PORT),
+    .default(3000),
   LOG_LEVEL: z
     .enum(LOG_LEVELS, { error: `must be one of ${LOG_LEVELS.join(', ')}` })
     .default('info'),

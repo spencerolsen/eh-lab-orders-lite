@@ -46,7 +46,10 @@ if (!existsSync('.env')) {
   say('no .env file, so copied .env.example to .env');
 }
 process.loadEnvFile('.env');
-loadConfig(); // on a missing or malformed setting: one JSON error line, exit 1
+// On a missing or malformed setting: one JSON error line, exit 1. The checked
+// port goes to both children, so the API listens where the proxy points.
+const { PORT } = loadConfig();
+process.env.PORT = String(PORT);
 
 // 2. Docker.
 if (spawnSync('docker', ['info'], { stdio: 'ignore' }).status !== 0) {
