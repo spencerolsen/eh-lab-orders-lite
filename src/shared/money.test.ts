@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCents, parseDollarsToCents } from './money';
+import { centsToDollarsText, formatCents, parseDollarsToCents } from './money';
 
 describe('parseDollarsToCents', () => {
   it.each([
@@ -60,4 +60,23 @@ describe('formatCents', () => {
       expect(parseDollarsToCents(formatCents(cents).slice(1))).toBe(cents);
     }
   });
+});
+
+describe('centsToDollarsText', () => {
+  it.each([
+    [1250, '12.50'],
+    [0, '0.00'],
+    [5, '0.05'],
+    [123456, '1234.56'],
+    [2_147_483_647, '21474836.47'],
+  ])('writes %i cents as %j', (cents, text) => {
+    expect(centsToDollarsText(cents)).toBe(text);
+  });
+
+  it.each([0, 1, 99, 100, 1999, 2500, 2_147_483_647])(
+    'reads back to the same cents through parseDollarsToCents (%i)',
+    (cents) => {
+      expect(parseDollarsToCents(centsToDollarsText(cents))).toBe(cents);
+    },
+  );
 });

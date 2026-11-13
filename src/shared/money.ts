@@ -23,3 +23,10 @@ export function formatCents(cents: number): string {
   const rest = String(abs % 100).padStart(2, '0');
   return `${sign}$${dollars}.${rest}`;
 }
+
+// 1250 -> "12.50", 0 -> "0.00", 123456 -> "1234.56": a price in dollars as a
+// form field holds it, with no "$" and no commas, so parseDollarsToCents reads
+// it back to the same cents.
+export function centsToDollarsText(cents: number): string {
+  return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+}

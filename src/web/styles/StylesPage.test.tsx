@@ -35,7 +35,11 @@ it('the styles page renders every shared style without throwing', () => {
   expect(main.getByRole('alert').textContent).toContain(
     'Reference: req-sample',
   );
-  expect(screen.getByRole('table')).toBeTruthy();
+  // The plain table, and the one with an inactive row and row buttons.
+  expect(screen.getAllByRole('table')).toHaveLength(2);
+  expect(screen.getByLabelText<HTMLInputElement>('Locked code').disabled).toBe(
+    true,
+  );
 });
 
 it('the styles page is not linked from the menu', () => {

@@ -215,6 +215,13 @@ textarea {
   background: var(--color-surface);
 }
 
+/* A field that cannot be changed, like a lab test's code when editing it. */
+input:disabled {
+  color: var(--color-text-muted);
+  background: var(--color-page);
+  cursor: not-allowed;
+}
+
 input[aria-invalid='true'],
 select[aria-invalid='true'],
 textarea[aria-invalid='true'] {
@@ -265,6 +272,12 @@ textarea[aria-invalid='true'] {
 
 .table tbody tr:hover {
   background: var(--color-surface-tint);
+}
+
+/* Buttons side by side in a table cell (Edit, Deactivate). */
+.row-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* Numbers (prices, counts) line up on the right. */
