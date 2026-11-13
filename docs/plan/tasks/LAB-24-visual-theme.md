@@ -1,6 +1,6 @@
 # LAB-24: Visual theme
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Groundwork
 - **Depends on:** LAB-04 (Web foundation: app shell and navigation)
 - **Unblocks:** nothing (feature tickets use the theme as soon as it is merged; none of them waits for it)
