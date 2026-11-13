@@ -28,6 +28,7 @@ function problems(input: unknown): Record<string, string> {
 }
 
 it('normalizePhone keeps the digits only', () => {
+  expect(normalizePhone('+1 (801) 555-0100')).toBe('18015550100');
   expect(normalizePhone('(801) 555-0100')).toBe('8015550100');
   expect(normalizePhone('801.555.0100 ')).toBe('8015550100');
   expect(normalizePhone('abc')).toBe('');
@@ -67,6 +68,15 @@ describe('the new patient schema', () => {
     });
   });
 
+  it.each(['Test\u0000', 'Te\tst', 'Test\nPatient', 'Test\u007f'])(
+    'refuses control characters in a name (%j)',
+    (firstName) => {
+      expect(problems({ ...valid, firstName })).toEqual({
+        firstName: 'must not contain control characters',
+      });
+    },
+  );
+
   it('limits names to 100 characters', () => {
     expect(problems({ ...valid, lastName: 'x'.repeat(100) })).toEqual({});
     expect(problems({ ...valid, lastName: 'x'.repeat(101) })).toEqual({
@@ -93,10 +103,30 @@ describe('the new patient schema', () => {
     });
   });
 
+  it('refuses a phone with letters or other characters, instead of dropping them', () => {
+    const reason =
+      'may contain only digits, spaces, dashes, dots, parentheses and a leading +';
+    for (const phone of [
+      'abc',
+      '801 555 01OO',
+      '801/555/0100',
+      '1+8015550100',
+      '555\u00000100',
+    ]) {
+      expect(problems({ ...valid, phone })).toEqual({ phone: reason });
+    }
+  });
+
+  it('accepts a phone typed with formatting and stores the digits', () => {
+    expect(schema.parse({ ...valid, phone: '+1 (801) 555-0100' }).phone).toBe(
+      '18015550100',
+    );
+    expect(schema.parse({ ...valid, phone: '801.555.0100' }).phone).toBe(
+      '8015550100',
+    );
+  });
+
   it('rejects a phone without 7 to 15 digits', () => {
-    expect(problems({ ...valid, phone: 'abc' })).toEqual({
-      phone: 'must have 7 to 15 digits',
-    });
     expect(problems({ ...valid, phone: '555-010' })).toEqual({
       phone: 'must have 7 to 15 digits',
     });

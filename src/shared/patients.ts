@@ -8,7 +8,7 @@ export const NAME_MAX_LENGTH = 100;
 export const EMAIL_MAX_LENGTH = 254;
 // A phone number is stored as digits only. 7 digits is a local number without
 // an area code; 15 is the longest number the international standard (E.164)
-// allows. International formats (a leading +) are a future version.
+// allows. Storing international numbers with their + is a future version.
 export const PHONE_MIN_DIGITS = 7;
 export const PHONE_MAX_DIGITS = 15;
 
@@ -18,9 +18,27 @@ export const CONTACT_REQUIRED_REASONS = {
   phone: 'is required when there is no email',
 } as const;
 
-// '(801) 555-0100' becomes '8015550100'.
+// What a phone may be typed with: digits, spaces, dashes, dots, parentheses
+// and one leading +. A letter is refused, not dropped: '801 555 01OO' is a
+// typo, and dropping the letters would store a different, shorter number.
+const PHONE_CHARACTERS = /^\+?[0-9 ().-]+$/;
+
+// '(801) 555-0100' becomes '8015550100'. Run it only on a phone that passed
+// phoneProblem, which refuses anything but digits and formatting.
 export function normalizePhone(value: string): string {
   return value.replace(/\D/g, '');
+}
+
+// Why a typed phone number is not acceptable, or undefined when it is.
+export function phoneProblem(value: string): string | undefined {
+  if (!PHONE_CHARACTERS.test(value.trim())) {
+    return 'may contain only digits, spaces, dashes, dots, parentheses and a leading +';
+  }
+  const digits = normalizePhone(value).length;
+  if (digits < PHONE_MIN_DIGITS || digits > PHONE_MAX_DIGITS) {
+    return `must have ${PHONE_MIN_DIGITS} to ${PHONE_MAX_DIGITS} digits`;
+  }
+  return undefined;
 }
 
 // ' Jane@Example.test ' becomes 'jane@example.test'.
@@ -34,13 +52,17 @@ const requiredText = z.string({
     issue.input === undefined ? 'is required' : 'must be text',
 });
 
+// Control characters (a NUL, a tab, a line break) are refused: Postgres text
+// cannot hold a NUL, and none of them belongs in a name.
 const nameField = requiredText
   .trim()
   .min(1, 'is required')
-  .max(NAME_MAX_LENGTH, `must be ${NAME_MAX_LENGTH} characters or fewer`);
+  .max(NAME_MAX_LENGTH, `must be ${NAME_MAX_LENGTH} characters or fewer`)
+  .regex(/^[^\p{Cc}]*$/u, 'must not contain control characters');
 
 // Why a date of birth is not acceptable, or undefined when it is. `today` is
-// the clinic's (or, in the browser, the user's) calendar day, 'YYYY-MM-DD'.
+// the clinic's calendar day on the server, and in the browser the latest day
+// anywhere (latestTodayAnywhere), 'YYYY-MM-DD'.
 export function dateOfBirthProblem(
   value: string,
   today: string,
@@ -76,21 +98,12 @@ const emailField = optionalText
       .optional(),
   );
 
-const phoneDigits = new RegExp(
-  `^\\d{${PHONE_MIN_DIGITS},${PHONE_MAX_DIGITS}}$`,
-);
-
 const phoneField = optionalText
-  .transform((value) => (value === undefined ? value : normalizePhone(value)))
-  .pipe(
-    z
-      .string()
-      .regex(
-        phoneDigits,
-        `must have ${PHONE_MIN_DIGITS} to ${PHONE_MAX_DIGITS} digits`,
-      )
-      .optional(),
-  );
+  .superRefine((value, ctx) => {
+    const reason = value === undefined ? undefined : phoneProblem(value);
+    if (reason) ctx.addIssue({ code: 'custom', message: reason });
+  })
+  .transform((value) => (value === undefined ? value : normalizePhone(value)));
 
 // The fields of a new patient. A factory, because "not in the future" needs
 // today's date: the server calls it with today(CLINIC_TIMEZONE, clock()).

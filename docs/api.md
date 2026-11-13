@@ -111,10 +111,10 @@ Adds a patient. Body (unknown fields are a 400):
 
 | Field | Rule |
 |---|---|
-| `firstName`, `lastName` | Required. Trimmed, then 1 to 100 characters. |
+| `firstName`, `lastName` | Required. Trimmed, then 1 to 100 characters, with no control characters (a NUL, tab or line break). |
 | `dateOfBirth` | Required. `YYYY-MM-DD`, a real calendar date (`2020-02-29` yes, `2020-02-30` and `1984-13-01` no), and not after today in the clinic's time zone (`CLINIC_TIMEZONE`, by the server's clock). |
 | `email` | Optional. Empty text or `null` counts as absent. Trimmed and lower-cased, then it must look like an email address (at most 254 characters). |
-| `phone` | Optional. Empty text or `null` counts as absent. Everything but the digits is removed (`(801) 555-0100` becomes `8015550100`), then 7 to 15 digits must remain. |
+| `phone` | Optional. Empty text or `null` counts as absent. It may contain only digits, spaces, dashes, dots, parentheses and a leading `+`; a letter is refused, not dropped (`801 555 01OO` is a typo). The formatting is removed (`(801) 555-0100` becomes `8015550100`, `+1 801 555 0100` becomes `18015550100`), then 7 to 15 digits must remain. |
 | `email` or `phone` | At least one of the two must be present. If neither is, `details` names both, `email` and `phone`. |
 
 The rules are one schema, `createPatientBody` in `src/shared/patients.ts`, which the New patient form also uses. There is no duplicate check (LAB-10): two identical bodies create two patients.

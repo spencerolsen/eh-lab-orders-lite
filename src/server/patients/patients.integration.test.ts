@@ -109,6 +109,12 @@ describe('POST /api/patients', () => {
     [{ ...valid, email: 'not-an-email' }, ['email']],
     [{ ...valid, phone: 'abc' }, ['phone']],
     [{ ...valid, isAdmin: true }, ['isAdmin']],
+    // A NUL that would reach Postgres (which refuses it) is a 400, not a 500.
+    [{ ...valid, firstName: 'Test\u0000' }, ['firstName']],
+    [{ ...valid, lastName: 'Patient\u0000' }, ['lastName']],
+    [{ ...valid, dateOfBirth: '1984-03-0\u0000' }, ['dateOfBirth']],
+    [{ ...valid, email: 'test\u0000@example.test' }, ['email']],
+    [{ ...valid, phone: '555\u00000100' }, ['phone']],
   ])('rejects %j with 400 on %j', async (body, fields) => {
     const response = await post(body);
     expect(response.statusCode).toBe(400);
@@ -132,16 +138,25 @@ describe('POST /api/patients', () => {
 describe('the clinic time zone decides "today"', () => {
   it("just before midnight in the clinic, accepts the clinic's today and rejects its tomorrow", async () => {
     await t.close();
-    // 23:59 in Denver on Jan 14 (UTC-7), already Jan 15 in UTC.
-    t = startTestApp({ clock: () => new Date('2026-01-15T06:59:00Z') });
-    expect(
-      (await post({ ...valid, dateOfBirth: '2026-01-14' })).statusCode,
-    ).toBe(201);
-    const tomorrow = await post({ ...valid, dateOfBirth: '2026-01-15' });
-    expect(tomorrow.statusCode).toBe(400);
-    expect(tomorrow.json<ErrorBody>().error.details).toEqual([
-      { field: 'dateOfBirth', reason: 'cannot be in the future' },
-    ]);
+    // The process runs in UTC, as CI does, whatever the machine's own zone:
+    // a server that used its own zone instead of CLINIC_TIMEZONE would then
+    // think it is already Jan 15 and fail this test on every machine.
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      // 23:59 in Denver on Jan 14 (UTC-7), already Jan 15 in UTC.
+      t = startTestApp({ clock: () => new Date('2026-01-15T06:59:00Z') });
+      expect(
+        (await post({ ...valid, dateOfBirth: '2026-01-14' })).statusCode,
+      ).toBe(201);
+      const tomorrow = await post({ ...valid, dateOfBirth: '2026-01-15' });
+      expect(tomorrow.statusCode).toBe(400);
+      expect(tomorrow.json<ErrorBody>().error.details).toEqual([
+        { field: 'dateOfBirth', reason: 'cannot be in the future' },
+      ]);
+    } finally {
+      process.env.TZ = originalTz;
+    }
   });
 });
 
@@ -251,6 +266,8 @@ describe('no patient detail reaches the log', () => {
     'zqx.emailmarker',
     '5550177',
     '555-0177',
+    // The impossible date of birth the rejected request sends.
+    '1961-07-32',
   ];
 
   function expectNoMarkers(): void {

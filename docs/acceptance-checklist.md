@@ -55,7 +55,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Save with first name, last name or date of birth empty: an error appears under that field, and goes away when the field is edited.
 - [ ] Save with neither email nor phone: an error appears under both; typing in either clears both. Only an email, or only a phone, saves.
 - [ ] Date of birth `2020-02-30`, `1984-13-01`, tomorrow's date and `31/12/1990` each show an error under date of birth; today's date and `2020-02-29` save.
-- [ ] A phone typed `(801) 555-0100` shows as `8015550100` in the list; an email typed `Jane@Example.test` shows as `jane@example.test`. A phone of `abc` shows an error under phone.
+- [ ] A phone typed `(801) 555-0100` shows as `8015550100` in the list; an email typed `Jane@Example.test` shows as `jane@example.test`. A phone of `abc` or `801 555 01OO` shows an error under phone.
 - [ ] The Save patient button is disabled and reads "Saving…" while the request runs.
 - [ ] With the API stopped, Patients shows "Can't reach the server. Try again." with a Try again button.
 - [ ] While doing all of the above, the API's log (the `pnpm dev` output) shows `patient.created` with an id only, and no name, date of birth, email or phone on any line.
