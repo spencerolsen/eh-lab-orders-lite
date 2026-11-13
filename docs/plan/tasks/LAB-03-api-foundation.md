@@ -1,6 +1,6 @@
 # LAB-03: API foundation: server, logging, errors, health
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Groundwork
 - **Depends on:** LAB-02 (Database, migrations and config)
 - **Unblocks:** LAB-04 (Web foundation: app shell and navigation)
