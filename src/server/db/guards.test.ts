@@ -76,6 +76,7 @@ describe('checkDatabasePort', () => {
   it('accepts a second copy with DB_PORT and both URLs changed', () => {
     expect(() =>
       checkDatabasePort({
+        COMPOSE_PROJECT_NAME: 'lab-orders-lite-2',
         DB_PORT: '5434',
         DATABASE_URL: at('5434'),
         TEST_DATABASE_URL: at('5434', '127.0.0.1'),
@@ -83,9 +84,30 @@ describe('checkDatabasePort', () => {
     ).not.toThrow();
   });
 
+  it.each([
+    ['no', undefined],
+    ['an empty', ''],
+    ['the default', 'lab-orders-lite'],
+  ])(
+    'refuses a changed DB_PORT with %s project name, which would take over the first copy',
+    (_, name) => {
+      expect(() =>
+        checkDatabasePort({
+          COMPOSE_PROJECT_NAME: name,
+          DB_PORT: '5434',
+          DATABASE_URL: at('5434'),
+          TEST_DATABASE_URL: at('5434'),
+        }),
+      ).toThrow(
+        'DB_PORT is 5434, but COMPOSE_PROJECT_NAME is still lab-orders-lite (or empty)',
+      );
+    },
+  );
+
   it('names the URL whose port differs from DB_PORT', () => {
     expect(() =>
       checkDatabasePort({
+        COMPOSE_PROJECT_NAME: 'lab-orders-lite-2',
         DB_PORT: '5434',
         DATABASE_URL: at('5434'),
         TEST_DATABASE_URL: at('5433'),

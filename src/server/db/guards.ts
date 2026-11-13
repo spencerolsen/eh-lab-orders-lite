@@ -50,13 +50,22 @@ export function testDatabaseUrl(
 // reach the first copy's database, and the tests would empty it. So `pnpm dev`
 // and `pnpm test` refuse to start when a URL on this machine (localhost) uses
 // another port. A URL on another host is not the Docker database and is left
-// alone.
+// alone. The same commands refuse a changed DB_PORT with the default project
+// name: Compose would then recreate the first copy's container on the new port,
+// with the first copy's data volume. An empty COMPOSE_PROJECT_NAME counts as
+// the default, because Compose falls back to `name:` in compose.yaml.
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
 export function checkDatabasePort(
   env: Record<string, string | undefined>,
 ): void {
   const dbPort = env.DB_PORT || '5433';
+  const project = env.COMPOSE_PROJECT_NAME || 'lab-orders-lite';
+  if (dbPort !== '5433' && project === 'lab-orders-lite') {
+    throw new Error(
+      `DB_PORT is ${dbPort}, but COMPOSE_PROJECT_NAME is still lab-orders-lite (or empty), so this copy would take over the first copy's database: give it its own name in .env (README, "Running a second copy")`,
+    );
+  }
   for (const setting of ['DATABASE_URL', 'TEST_DATABASE_URL']) {
     const value = env[setting];
     if (!value || !URL.canParse(value)) continue;

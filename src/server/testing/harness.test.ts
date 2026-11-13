@@ -44,6 +44,7 @@ describe('the _test guard in the harness', () => {
       'postgres://lab_orders:lab_orders@127.0.0.1:1/lab_orders_test',
     );
     vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('COMPOSE_PROJECT_NAME', 'lab-orders-lite-2');
     vi.stubEnv('DB_PORT', '5434');
     vi.stubEnv('CI', '');
     await expect(setup()).rejects.toThrow(
