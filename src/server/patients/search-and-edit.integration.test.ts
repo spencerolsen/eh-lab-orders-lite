@@ -129,10 +129,14 @@ describe('GET /api/patients?q=', () => {
     expect(await names('%')).toEqual(['Under_score 100%']);
   });
 
-  it('is safe from SQL in the text', async () => {
-    expect(await names("' or 1=1 --")).toEqual([]);
-    expect(await names('Smith')).toEqual(['Jane Smith']);
-  });
+  // Each its own test, so text written into the SQL fails more than one.
+  it.each(["' or 1=1 --", "'; select 1; -- /* $1", 'Smith"); --'])(
+    'treats %j as plain text, not SQL',
+    async (q) => {
+      expect(await names(q)).toEqual([]);
+      expect(await names('Smith')).toEqual(['Jane Smith']);
+    },
+  );
 
   it('accepts 100 characters and refuses 101 with 400', async () => {
     expect((await search('a'.repeat(100))).statusCode).toBe(200);
