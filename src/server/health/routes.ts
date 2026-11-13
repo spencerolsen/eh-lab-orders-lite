@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
 
+import type { HealthOk } from '../../shared/health';
+
 // How long the database gets to answer, counting both getting a connection and
 // running the query. A host that is down or unreachable never answers at all,
 // so the check gives up after this long and replies 503 (well within the
@@ -39,7 +41,7 @@ export function healthRoutes(app: FastifyInstance, pool: pg.Pool): void {
   app.get('/healthz', async (request, reply) => {
     try {
       await databaseAnswers(pool);
-      return { status: 'ok' };
+      return { status: 'ok' } satisfies HealthOk;
     } catch (error) {
       // The error code only: the message of a connection error names the host.
       const { code } = error as { code?: unknown };

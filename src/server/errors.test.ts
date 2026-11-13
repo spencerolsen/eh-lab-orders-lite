@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { errorBodySchema } from '../shared/api-error';
 import {
   AppError,
   BusinessRuleError,
@@ -57,6 +58,18 @@ describe('toErrorResponse', () => {
         },
         expected: true,
       });
+    },
+  );
+
+  it.each([
+    new ValidationError([{ field: 'name', reason: 'is required' }]),
+    new BusinessRuleError(RULE_CODE, 'Not allowed'),
+    new Error('unexpected'),
+  ])(
+    'builds a body the web client accepts as the standard shape (%#)',
+    (error) => {
+      const { body } = toErrorResponse(error, 'req-1');
+      expect(errorBodySchema.parse(body)).toEqual(body);
     },
   );
 
