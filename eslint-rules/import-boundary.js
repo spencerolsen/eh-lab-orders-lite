@@ -86,7 +86,9 @@ export const importBoundary = {
       ExportAllDeclaration: (node) => check(node.source),
       ImportExpression: (node) => check(node.source),
       // A type written as import('...'), as in `typeof import('../server/x')`.
-      TSImportType: (node) => check(node.argument?.literal),
+      // typescript-eslint 8 gives its path as `source` (a string literal); the
+      // older `argument` property is deprecated.
+      TSImportType: (node) => check(node.source),
     };
   },
 };
