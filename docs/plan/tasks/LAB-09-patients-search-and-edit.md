@@ -28,6 +28,7 @@ Search and the single-patient endpoint come before placing an order because LAB-
 
 **UI**
 - Patients list: a search box above the table. The text is kept in the URL (`/patients?q=smith`), the request is sent 300 ms after typing stops, and "No patients match" shows when there are no results. Rows link to the patient page.
+- `PatientForm` (LAB-08) takes the schema it checks with as a prop (the create schema for a new patient, the update schema here), and a small function maps a `Patient` to the form's text values (`null` email or phone becomes `''`).
 - Patient page at `/patients/:id`: the `PatientForm` from LAB-08 in edit mode, filled with stored values. Save sends only changed fields; success shows "Saved" and stays on the page. A missing patient shows a not-found message with a link to the list. The page heading uses `PatientLabel`.
 
 **Logging**
