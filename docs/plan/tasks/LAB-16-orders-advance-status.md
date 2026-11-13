@@ -15,7 +15,7 @@ This is the first task that changes an order after it is placed, so it is where 
 ## Requirements
 
 **Data**
-- No migration. The `orders.status` check constraint and `updated_at` already exist.
+- No migration. The `orders.status` check constraint and `updated_at` already exist. There is no trigger on `updated_at`: the conditional `UPDATE` sets it (`updated_at = now()`), and no trigger should be added.
 
 **API**
 - `POST /api/orders/:id/transitions` with body `{ "to": "collected" | "completed" }`; the allowed `to` values are the forward statuses derived from `ORDER_STATUSES` (LAB-11) and the transition table (LAB-15), not a second typed list (`ordered` and `cancelled` are not valid targets here). Success: 200 with the updated order in the same shape as `GET /api/orders/:id`.
