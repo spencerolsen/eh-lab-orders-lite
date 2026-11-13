@@ -115,7 +115,9 @@ export function buildApp(deps: AppDeps): FastifyInstance {
           event: 'request.rejected',
           code: body.error.code,
           statusCode,
-          fields: body.error.details?.map((detail) => detail.field),
+          // A count only: field names can be keys the client chose (an
+          // unknown field, a record key), and so can hold patient details.
+          fieldCount: body.error.details?.length ?? 0,
         },
         `Request rejected: ${body.error.code}`,
       );

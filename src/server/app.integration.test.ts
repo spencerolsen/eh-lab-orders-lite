@@ -35,6 +35,12 @@ beforeEach(() => {
     );
     return { count: rows.length };
   });
+  t.app.get('/test/bad-date', async (request) => {
+    const db = withQueryLog(t.pool, request.log);
+    // Postgres repeats the value in its error message.
+    await db.query('select $1::date', ['Sentinel Jane 1980-02-03']);
+    return { reached: true };
+  });
 });
 
 afterEach(async () => {
@@ -318,6 +324,43 @@ describe('request ids and logging', () => {
     ).toBe(requestId);
     expect(linesFor(requestId).length).toBeGreaterThan(0);
     expect(t.logText()).not.toContain('has spaces');
+  });
+
+  it('a rejected request logs a field count, not its body, keys or query string', async () => {
+    const response = await t.inject({
+      method: 'POST',
+      url: '/test/items/1?q=Sentinel-Query',
+      headers: { 'x-request-id': 'rejected-1' },
+      payload: { name: ['Sentinel-Value'], 'Sentinel-Key-1': true },
+    });
+
+    expect(response.statusCode).toBe(400);
+    // The caller still gets the field names back: it sent them.
+    expect(response.body).toContain('Sentinel-Key-1');
+    expect(linesFor('rejected-1')).toContainEqual(
+      expect.objectContaining({
+        level: 'warn',
+        event: 'request.rejected',
+        code: 'VALIDATION_ERROR',
+        fieldCount: 2,
+      }),
+    );
+    expect(t.logText()).not.toContain('Sentinel');
+  });
+
+  it('a database error that repeats a submitted value is logged without it', async () => {
+    const response = await t.inject({
+      method: 'GET',
+      url: '/test/bad-date',
+      headers: { 'x-request-id': 'pg-1' },
+    });
+
+    expect(response.statusCode).toBe(500);
+    const failed = linesFor('pg-1').find(
+      (line) => line.event === 'request.failed',
+    );
+    expect(failed?.err).toMatchObject({ type: 'DatabaseError', code: '22007' });
+    expect(t.logText()).not.toContain('Sentinel');
   });
 
   it('query duration is logged at debug without parameters', async () => {

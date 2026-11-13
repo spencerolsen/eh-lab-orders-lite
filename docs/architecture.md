@@ -44,8 +44,8 @@ Rules for every line:
 | Event | Level | Fields | Where |
 |---|---|---|---|
 | `request.completed` | `info` | `method`, `route`, `statusCode`, `durationMs` | Once per request, `app.ts`. `route` is the route pattern (`/api/patients/:id`), never the raw URL; a path that matches no route is logged as `(unmatched)`. |
-| `request.rejected` | `warn` | `code`, `statusCode`, `fields` (names of the invalid fields) | The error handler, for every 4xx error. |
-| `request.failed` | `error` | `err` (type, message, code, stack) | The error handler, for every 500. |
+| `request.rejected` | `warn` | `code`, `statusCode`, `fieldCount` (how many fields were invalid; not their names, which can be keys the client chose) | The error handler, for every 4xx error. |
+| `request.failed` | `error` | `err` (type, message, code, stack; for a Postgres error, code and schema names but no message) | The error handler, for every 500. |
 | `health.db_unavailable` | `error` | `code` (the error code only) | `/healthz` when the database does not answer. |
 | `db.query` | `debug` | `command` (`SELECT`, ...), `rowCount`, `durationMs` | `withQueryLog`, once per query. |
 | `db.pool_error` | `error` | `code` | The pool, when an idle connection breaks. |
@@ -53,7 +53,7 @@ Rules for every line:
 | `app.start_failed`, `app.shutdown_timeout`, `app.shutdown_failed` | `error` | `err`, `capMs` | `main.ts`. |
 | `config.invalid` | `error` | `problems` | `config.ts`, before the logger exists. |
 
-Never logged: request bodies, query strings, headers, the raw URL, SQL text or parameters, and rows. An error's `err` field keeps only its type, message, code and stack, because other properties (such as a Postgres error's `detail`) can repeat row values. Connection errors are logged by code only, because their messages name the database host. Lines carry no `pid` or `hostname`.
+Never logged: request bodies, query strings, headers, the raw URL, SQL text or parameters, and rows. An error's `err` field keeps only its type, message, code and stack, because other properties can repeat row values. A Postgres error is logged as `type: "DatabaseError"` with its SQLSTATE `code`, the schema names `constraint`, `table` and `column`, and a stack whose first line is `DatabaseError <code>` instead of the message: its message can repeat a submitted value (`invalid input syntax for type date: "..."`), and its `detail` repeats row values. Connection errors are logged by code only, because their messages name the database host. Lines carry no `pid` or `hostname`.
 
 ## Database
 
