@@ -1,6 +1,6 @@
 # LAB-02: Database, migrations and config
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Groundwork
 - **Depends on:** LAB-01 (Repo skeleton and tooling)
 - **Unblocks:** LAB-03 (API foundation: server, logging, errors, health)
