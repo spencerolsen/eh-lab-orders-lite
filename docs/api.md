@@ -100,3 +100,32 @@ Body (all fields required, no others allowed):
 | 409 `DUPLICATE_TEST_CODE` | A test with this code already exists (`cbc` and `CBC` are the same code). Message: "This code already exists". No row is added. |
 
 Logged: `lab_test.created` at `info` with `labTestId`; `lab_test.duplicate_code` at `warn`, without the code.
+
+### `POST /api/patients`
+
+Adds a patient. Body (unknown fields are a 400):
+
+```json
+{ "firstName": "Test", "lastName": "Patient", "dateOfBirth": "1984-03-09", "email": "test.patient@example.test", "phone": "(801) 555-0100" }
+```
+
+| Field | Rule |
+|---|---|
+| `firstName`, `lastName` | Required. Trimmed, then 1 to 100 characters. |
+| `dateOfBirth` | Required. `YYYY-MM-DD`, a real calendar date (`2020-02-29` yes, `2020-02-30` and `1984-13-01` no), and not after today in the clinic's time zone (`CLINIC_TIMEZONE`, by the server's clock). |
+| `email` | Optional. Empty text or `null` counts as absent. Trimmed and lower-cased, then it must look like an email address (at most 254 characters). |
+| `phone` | Optional. Empty text or `null` counts as absent. Everything but the digits is removed (`(801) 555-0100` becomes `8015550100`), then 7 to 15 digits must remain. |
+| `email` or `phone` | At least one of the two must be present. If neither is, `details` names both, `email` and `phone`. |
+
+The rules are one schema, `createPatientBody` in `src/shared/patients.ts`, which the New patient form also uses. There is no duplicate check (LAB-10): two identical bodies create two patients.
+
+| Status | Body |
+|---|---|
+| 201 | The patient: `{ "id", "firstName", "lastName", "dateOfBirth", "email", "phone" }`, with the stored (normalized) values; an absent `email` or `phone` is `null`. |
+| 400 | `VALIDATION_ERROR`, one `details` entry per failed field, for example `{ "field": "dateOfBirth", "reason": "cannot be in the future" }`. |
+
+The server logs `patient.created` with the `patientId` only.
+
+### `GET /api/patients`
+
+Every patient, as an array of the same shape as the 201 above, sorted by last name, then first name (ignoring case), then id.

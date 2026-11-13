@@ -48,6 +48,18 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Stop the API (keep Vite running) and reload the page: the list shows "Can't reach the server. Try again." with a "Try again" button, not a blank table. With the API running but the database stopped (`pnpm db:down`), the list shows "Something went wrong on the server. Try again. Reference: <id>"; the same id is on the `request.failed` line in the API's log.
 - [ ] Run `pnpm db:seed` a second time: it reports 0 rows inserted, and the page still shows the same tests.
 
+### Patients: add and list (LAB-08)
+
+- [ ] After `pnpm db:seed`, Patients lists exactly 6 patients, sorted by last name (Example, Patient, Person, Record, Sample, Tester). With the table empty (`truncate patients` in `psql`), the page shows "No patients yet."
+- [ ] New patient, fill every field, Save patient: the list opens and shows the patient, with the date of birth exactly as typed (`1984-03-09` shows "Mar 9, 1984").
+- [ ] Save with first name, last name or date of birth empty: an error appears under that field, and goes away when the field is edited.
+- [ ] Save with neither email nor phone: an error appears under both; typing in either clears both. Only an email, or only a phone, saves.
+- [ ] Date of birth `2020-02-30`, `1984-13-01`, tomorrow's date and `31/12/1990` each show an error under date of birth; today's date and `2020-02-29` save.
+- [ ] A phone typed `(801) 555-0100` shows as `8015550100` in the list; an email typed `Jane@Example.test` shows as `jane@example.test`. A phone of `abc` shows an error under phone.
+- [ ] The Save patient button is disabled and reads "Saving…" while the request runs.
+- [ ] With the API stopped, Patients shows "Can't reach the server. Try again." with a Try again button.
+- [ ] While doing all of the above, the API's log (the `pnpm dev` output) shows `patient.created` with an id only, and no name, date of birth, email or phone on any line.
+
 ## Checkpoint 2
 
 **Runs:** once LAB-13 to LAB-17 have all merged.

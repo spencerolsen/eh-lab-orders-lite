@@ -40,3 +40,29 @@ The add form shows a 409 `DUPLICATE_TEST_CODE` and a 400's `details` under their
 - **When the API is down:** the proxy answers `502` with no standard body, so `apiFetch` throws `ApiError` with code `SERVER_UNREACHABLE`; a query retries once, then the page shows "Can't reach the server. Try again." with no reference (there is no request id, because the API never saw the request).
 - **A 500:** the body is in the standard shape with the generic message; `describeError` shows "Something went wrong on the server. Try again. Reference: <id>", and the stack is only in the server log under that id.
 - **A render error** (a bug in a component) never reaches this path: the error boundary shows "Something went wrong. Reload the page."
+
+## A date of birth, from the form to the database and back
+
+A date of birth is a calendar day and stays a `YYYY-MM-DD` string at every step; nothing on the way builds a JavaScript `Date` from it.
+
+```mermaid
+sequenceDiagram
+  participant F as PatientForm
+  participant A as API (POST /api/patients)
+  participant D as Postgres
+  participant L as Patients list
+
+  F->>F: user types 1984-03-09 (a text field)
+  Note over F: createPatientBody(today(browser zone, new Date())): real date, not after today (advisory)
+  F->>A: { "dateOfBirth": "1984-03-09", ... }
+  Note over A: createPatientBody(today(CLINIC_TIMEZONE, clock())): the check that decides
+  A->>D: insert ... $3 = '1984-03-09' (a date column)
+  D-->>A: date_of_birth '1984-03-09' (the DATE type parser keeps the string)
+  A-->>F: 201 { "dateOfBirth": "1984-03-09" }
+  L->>A: GET /api/patients
+  A-->>L: [{ "dateOfBirth": "1984-03-09" }]
+  Note over L: formatDate splits the string: "Mar 9, 1984"
+```
+
+- **"Today" is the clinic's.** The server asks `today(CLINIC_TIMEZONE, clock())`, so a date of birth of the clinic's today is accepted even when it is already tomorrow in UTC, and the clinic's tomorrow is refused. The browser runs the same check with its own time zone only to warn early; the server's answer wins.
+- **A rejected value goes back as a field problem**, `{ field: "dateOfBirth", reason: "..." }` in `details`, and the form shows it under the date of birth. The value itself is never logged.
