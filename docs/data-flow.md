@@ -66,3 +66,26 @@ sequenceDiagram
 
 - **"Today" is the clinic's.** The server asks `today(CLINIC_TIMEZONE, clock())`, so a date of birth of the clinic's today is accepted even when it is already tomorrow in UTC, and the clinic's tomorrow is refused. The browser does not know the clinic's time zone, so it checks against the latest day anywhere on Earth (`latestTodayAnywhere`, UTC+14): it catches a date that is plainly in the future, never blocks one the clinic accepts, and the server's answer wins.
 - **A rejected value goes back as a field problem**, `{ field: "dateOfBirth", reason: "..." }` in `details`, and the form shows it under the date of birth. The value itself is never logged.
+
+## The orders list, from the database to the home page
+
+`GET /api/orders` (LAB-11) in one query, and the two derived values on the way.
+
+```mermaid
+sequenceDiagram
+  participant P as OrdersPage
+  participant A as API (GET /api/orders)
+  participant D as Postgres
+
+  P->>A: GET /api/orders (TanStack Query, key ['orders'])
+  A->>D: one select: orders join patients, left join order_items,<br/>array_agg(price_cents) per order, newest first, id breaks ties
+  D-->>A: one row per order with item_prices [2500, 3800]
+  Note over A: toOrderListItem: testCount = item_prices.length,<br/>totalCents = calculateTotal(item_prices),<br/>createdAtClinic = clinicDateTime(CLINIC_TIMEZONE, created_at)
+  A-->>P: { items, hasMore: false, clinicTimezone }
+  Note over P: orderListSchema.parse; PatientLabel, formatCents,<br/>formatDate, StatusBadge, formatDateTime(createdAtClinic)
+```
+
+- **One query, however many orders.** The patient comes by a join and the item prices as one array per order, so there is no query per row.
+- **The total is worked out here, every time,** by `calculateTotal` on the frozen item prices; the database has no total column and the SQL has no `SUM`. The ready date is read as stored: it was worked out once, when the order was placed.
+- **The created time is formatted on the server** in `CLINIC_TIMEZONE` and shown as sent, so a browser in another time zone still shows the clinic's time, and the column header names the zone.
+- **Nothing about a patient is logged:** the request line (`request.completed`) and one `db.query` debug line are all.

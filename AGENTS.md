@@ -11,7 +11,7 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
 - `src/server/`: the API server. Each feature gets its own folder, `src/server/<feature>/` (for example `orders`, `patients`, `catalog`).
   - `routes.ts`: HTTP routes. A route parses its input explicitly with the shared schema, then calls the repository or the service.
   - `repo.ts`: the SQL queries for that feature, hand-written, with typed row mappers. Queries live here and nowhere else.
-  - `domain/`: business rules as pure functions (no Fastify, no `pg`), unit tested on their own. Rules never live in routes or repositories.
+  - `domain/`: business rules as pure functions (no Fastify, no `pg`, no clock: the caller passes the time in), unit tested on their own. Rules never live in routes or repositories. The order total (`calculateTotal`) and ready date (`estimateReadyDate`) are in `src/server/orders/domain/`; call them, never reimplement them.
   - `service.ts`: only where a feature needs a transaction or combines rules with several queries (for example placing an order). Simple features call the repository from the route.
 - `src/web/`: the browser app (React, Vite, React Router, TanStack Query). Each feature gets its own folder, `src/web/<feature>/`, with its page (for example `catalog/CatalogPage.tsx`).
   - `main.tsx` mounts the app (error boundary, query client, router); `App.tsx` holds the routes; `Layout.tsx` and `MenuBar.tsx` are the frame around every page; `NotFoundPage.tsx` is the screen for unknown paths.
@@ -135,6 +135,17 @@ Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere i
 - **Every task that adds a table adds a seed** with obviously fake rows: a file in `db/seeds/` exporting one function that takes the database client and returns how many rows it inserted, and one line in the `SEEDS` list in `db/seed.ts`. Each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so running the seed twice leaves the same rows.
 - **Settings** are read once at startup by `loadConfig()` in `src/server/config.ts`, which exits with one JSON error line if any is missing or invalid. Add a new setting there and to `.env.example`.
 - Test tooling uses only `TEST_DATABASE_URL`, and refuses a database whose name does not end in `_test` (`src/server/db/guards.ts`).
+
+## Adding an order status
+
+The statuses are written in exactly two places, and everything else derives from the first:
+
+1. **The migration:** a new file in `db/migrations/` that drops and re-adds the `orders_status_known` CHECK with the new list (never edit `0004_orders.sql` once merged).
+2. **`ORDER_STATUSES`** in `src/shared/orders.ts`, in the same order as the CHECK. `src/server/orders/schema.integration.test.ts` fails until the two agree.
+3. **The transition table** in `src/server/orders/domain/` (LAB-15): which moves lead into and out of the new status. Its unit tests cover every pair.
+4. **The labels:** `ORDER_STATUS_LABELS` in the same file (the type checker refuses a status without one) and a `.badge-<status>` tint in `src/web/styles/base.css`.
+
+Nothing else types a status out: schemas use `orderStatusSchema` and screens use `ORDER_STATUSES` and `ORDER_STATUS_LABELS`.
 
 ## Workflow
 

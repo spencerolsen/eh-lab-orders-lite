@@ -16,7 +16,7 @@ This follows LAB-16 because it reuses the transition table (LAB-15) and the same
 
 **Data**
 - A migration adding to `orders`: `cancellation_note text`, `cancelled_by text`, `cancelled_at timestamptz`, all nullable.
-- A CHECK constraint: `status = 'cancelled'` requires all three non-null and non-blank; any other status requires all three null. Existing rows are unaffected because none are cancelled.
+- A CHECK constraint: `status = 'cancelled'` requires all three non-null and non-blank; any other status requires all three null. Existing rows are unaffected because none are cancelled: the LAB-11 seed has no cancelled order for exactly this reason. This task may add one seeded cancelled order (fixed id, with all three fields) so the status filter has one to show.
 
 **API**
 - `POST /api/orders/:id/cancel` with body `{ "note": string, "cancelledBy": string }`. Both required and trimmed: note 1 to 500 characters, name 1 to 100. Missing, blank, too long, wrong type or unknown extra fields: 400 `VALIDATION_ERROR` with field details.

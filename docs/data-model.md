@@ -18,7 +18,34 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
   }
+  patients {
+    uuid id PK
+    text first_name
+    text last_name
+    date date_of_birth
+  }
+  orders {
+    uuid id PK
+    uuid patient_id FK
+    text status "ORDER_STATUSES"
+    date estimated_ready_date "stored once"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  order_items {
+    uuid order_id PK, FK
+    uuid lab_test_id PK, FK
+    text test_code "copied"
+    text test_name "copied"
+    integer price_cents "copied, >= 0"
+    integer turnaround_days "copied, >= 1"
+  }
+  patients ||--o{ orders : "has"
+  orders ||--|{ order_items : "holds"
+  lab_tests ||--o{ order_items : "copied into"
 ```
+
+There is no total column anywhere: an order's total is always worked out from its items.
 
 ## Tables
 
@@ -74,6 +101,40 @@ Every check is named (`patients_contact_required` for `email is not null or phon
 - **Two places enforce the rules.** The shared schema gives the user a clear error per field; the database checks are the backstop for any row that does not come through the API (a script, direct SQL, a future bug).
 - **The date-of-birth check is loose on purpose.** "Not in the future" means not after the clinic's today, checked in the schema with `CLINIC_TIMEZONE`. The database's `current_date` is in UTC, which can be a day ahead of or behind the clinic, so its check is `date_of_birth <= current_date + 1`: it rejects only dates that are in the future everywhere, and never a date the schema accepts.
 - No unique constraint: two patients with the same details can both exist (LAB-10 warns instead of blocking).
+
+### `orders`
+
+One row per order (LAB-11, `db/migrations/0004_orders.sql`). Orders are never deleted: a cancelled order keeps its row (LAB-17).
+
+| Column | Type | Rules |
+|---|---|---|
+| `id` | `uuid` | Primary key, `gen_random_uuid()` by default. |
+| `patient_id` | `uuid` | Not null, references `patients`. A patient with orders cannot be deleted. |
+| `status` | `text` | Not null, `ordered` by default, one of `ordered`, `collected`, `completed`, `cancelled` (`orders_status_known`). |
+| `estimated_ready_date` | `date` | Not null. Worked out once by `estimateReadyDate` when the order is placed, then stored. The rule: the ready date is the Nth business day after the day the order was placed (in `CLINIC_TIMEZONE`), where N is the longest turnaround among the order's tests. Saturday and Sunday are not business days. The order day itself is never counted. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` by default. Placing an order (LAB-12) sets `created_at` from the same clock reading that gave the ready date. |
+
+The index `orders_created_at_id` on (`created_at desc`, `id desc`) serves the list, newest first.
+
+- **The statuses are written in two places only:** `ORDER_STATUSES` in `src/shared/orders.ts`, from which every schema and screen label derives, and the CHECK above. An integration test reads the CHECK's definition and asserts it lists exactly `ORDER_STATUSES`, in order. To add a status, follow "Adding an order status" in `AGENTS.md`.
+- **The total is derived, the ready date is stored.** The total is the sum of the items' frozen prices, so it can never disagree with them, and storing it would only add a copy that could. The ready date depends on the moment the order was placed and on the clinic's calendar; working it out again later would need that moment and the same rule version, and a change to the rule (holidays, say) must not move the date of an order already promised to a patient.
+- **"At least one item" is not a database rule.** A CHECK cannot look at other rows, and a trigger would be the only way. Placing an order (LAB-12) refuses an empty test list with a 422 before anything is written, and `estimateReadyDate` throws on an empty list, so the service cannot store an order without items. An order written by hand with no items still shows in the list, as 0 tests and $0.00.
+
+### `order_items`
+
+One row per test on an order (LAB-11). Each row is a snapshot: the test's code, name, price and turnaround are copied from `lab_tests` when the order is placed, so editing or deactivating a test later (LAB-07) never changes an order that already exists.
+
+| Column | Type | Rules |
+|---|---|---|
+| `order_id` | `uuid` | Not null, references `orders`. |
+| `lab_test_id` | `uuid` | Not null, references `lab_tests`. A test that has been ordered cannot be deleted (tests are deactivated instead). |
+| `test_code`, `test_name` | `text` | Not null. Copied from the test. |
+| `price_cents` | `integer` | Not null, `>= 0` (`order_items_price_cents_not_negative`). Copied from the test; the price the order was quoted. |
+| `turnaround_days` | `integer` | Not null, `>= 1` (`order_items_turnaround_days_positive`). Copied from the test. |
+
+The primary key (`order_items_pkey`) is (`order_id`, `lab_test_id`), so a test appears at most once on an order. The rows have no id of their own.
+
+Seed (`db/seeds/orders.ts`): 4 orders for seeded patients with fixed ids `5eed0011-0000-4000-8000-00000000000N`, statuses `ordered` (two), `collected` and `completed`, with 1, 3, 2 and 3 items. Each order has a fixed order time, one of them Friday 2026-10-30 at 12:00 in Denver. The seed reads each test from `lab_tests` and copies it onto the item, and stores the ready date `estimateReadyDate` gives for that fixed time in `CLINIC_TIMEZONE`, so it never depends on when the seed runs. No order is seeded as `cancelled`: LAB-17 adds the cancellation note, name and time with a CHECK that a cancelled order has all three, and a cancelled row seeded before those columns exist would break that migration.
 
 ## Rules for every table
 

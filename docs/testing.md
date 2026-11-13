@@ -15,6 +15,8 @@ Before any integration file runs, the integration project's global setup (`src/s
 
 The rule for settings: tests read `TEST_DATABASE_URL` from the environment first, then from `.env` (there is no fallback to `.env.example`). Locally that means `cp .env.example .env` once (or one `pnpm dev`, which creates it). When `CI` is set, nothing changes in where the setting comes from (CI has no `.env`, so the workflow must set `TEST_DATABASE_URL` in the job environment); the only difference is that the integration setup does not start Docker.
 
+The unit tests must pass in any process time zone, because calendar days never depend on it. To check, run them under another `TZ`, for example `TZ=Asia/Tokyo corepack pnpm test --project unit` and `TZ=America/Los_Angeles corepack pnpm test --project unit`.
+
 Test files run in file-path order (a small sequencer in `vitest.config.ts`), so the order is the same on every machine and every run. Every file passes in any order; the order matters only for the truncate check below, which the LAB-02 migration test would silently weaken if it ran between the two truncate files, because it drops the whole schema.
 
 ## In the automated checks (CI)
