@@ -5,6 +5,7 @@ import { Layout } from './Layout';
 import { NotFoundPage } from './NotFoundPage';
 import { OrdersPage } from './orders/OrdersPage';
 import { NewPatientPage } from './patients/NewPatientPage';
+import { PatientPage } from './patients/PatientPage';
 import { PatientsPage } from './patients/PatientsPage';
 import { StylesPage } from './styles/StylesPage';
 
@@ -17,6 +18,7 @@ export function App() {
         <Route index element={<OrdersPage />} />
         <Route path="patients" element={<PatientsPage />} />
         <Route path="patients/new" element={<NewPatientPage />} />
+        <Route path="patients/:id" element={<PatientPage />} />
         <Route path="catalog" element={<CatalogPage />} />
         {/* The style sample page: linked from nowhere, see AGENTS.md. */}
         <Route path="styles" element={<StylesPage />} />
