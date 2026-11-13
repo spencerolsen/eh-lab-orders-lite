@@ -59,13 +59,13 @@ One row per patient (`db/migrations/0003_patients.sql`).
 | `first_name`, `last_name` | `text` | Not null, not blank. |
 | `date_of_birth` | `date` | Not null, `date_of_birth <= current_date + 1`. |
 | `email` | `text` | Null when absent. Lower case (`email = lower(email)`). |
-| `phone` | `text` | Null when absent. Digits only (`phone ~ '^[0-9]+$'`). |
+| `phone` | `text` | Null when absent. A US number as exactly 10 digits, area code first (`phone ~ '^[0-9]{10}$'`). |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` by default. |
 
-Every check is named (`patients_contact_required` for `email is not null or phone is not null`, `patients_phone_digits`, `patients_email_lower_case`, `patients_first_name_not_blank`, `patients_last_name_not_blank`, `patients_date_of_birth_not_future`), so code can tell which one a violation broke (LAB-09 maps `patients_contact_required` to a 422).
+Every check is named (`patients_contact_required` for `email is not null or phone is not null`, `patients_phone_ten_digits`, `patients_email_lower_case`, `patients_first_name_not_blank`, `patients_last_name_not_blank`, `patients_date_of_birth_not_future`), so code can tell which one a violation broke (LAB-09 maps `patients_contact_required` to a 422).
 
 - **Date of birth is a `date`, read and written as a `YYYY-MM-DD` string.** It is a calendar day, not a moment. As a JavaScript `Date` it would be midnight UTC, which is the evening before anywhere in the Americas, so a birthday shown with local `Date` methods would move back a day.
-- **Phone is stored as digits and email in lower case**, so the same number or address typed differently (`(801) 555-0100` and `801.555.0100`, `Jane@Example.test` and `jane@example.test`) is stored the same. The duplicate warning (LAB-10) compares them as stored.
+- **Phone is stored as digits and email in lower case**, so the same number or address typed differently (`(801) 555-0100` and `801.555.0100`, `Jane@Example.test` and `jane@example.test`) is stored the same: a phone as its 10 digits (a leading US country code 1 is dropped), shown on screen as `(801) 555-0100` by `formatPhone` in `src/shared/phone.ts`. The duplicate warning (LAB-10) compares them as stored. Numbers outside the US are not supported (an owner decision).
 - **Two places enforce the rules.** The shared schema gives the user a clear error per field; the database checks are the backstop for any row that does not come through the API (a script, direct SQL, a future bug).
 - **The date-of-birth check is loose on purpose.** "Not in the future" means not after the clinic's today, checked in the schema with `CLINIC_TIMEZONE`. The database's `current_date` is in UTC, which can be a day ahead of or behind the clinic, so its check is `date_of_birth <= current_date + 1`: it rejects only dates that are in the future everywhere, and never a date the schema accepts.
 - No unique constraint: two patients with the same details can both exist (LAB-10 warns instead of blocking).

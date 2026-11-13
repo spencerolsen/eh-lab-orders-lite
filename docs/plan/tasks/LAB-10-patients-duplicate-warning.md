@@ -19,6 +19,7 @@ Duplicate records split a patient's history across two charts, so the app warns.
 
 **Rules**
 - A stored patient is a likely duplicate if any one holds: same email (lower-case compare, only when the new patient has an email); same phone (digits only, only when it has a phone); same first name, last name and date of birth (case-insensitive, exact). Last name alone never matches. No fuzzy matching.
+- The phone rule compares the stored 10 digits (LAB-08 stores a US number as exactly 10 digits, area code first, with any leading 1 dropped), so `+1 (801) 555-0100` and `801.555.0100` are the same phone.
 - One pure function `matchRules(candidate, existing)` returns which rules matched (`email`, `phone`, `name_dob`), with no database or framework import. A repository query fetches candidates in one SQL statement.
 
 **API**
