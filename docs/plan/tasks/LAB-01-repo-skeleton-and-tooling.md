@@ -52,7 +52,7 @@ It comes first because every later task assumes these rules are already enforced
 ## Tests
 
 - **Unit:** one trivial test (`smoke: the test runner runs`) that proves Vitest is wired up. LAB-03 and later tasks add real tests next to it.
-- **Rule tests:** `eslint-rules/import-boundary.test.js` runs the boundary rule through ESLint's `RuleTester`. It must report server to web, web to server, shared to either, `import type`, `export … from`, a dynamic `import()`, a backtick path with no `${}`, and a type written as `typeof import(…)`. It must stay silent for server or web importing shared, `react-dom/server`, and a folder named `server-utils`. (Added after review: the ticket first said the rule was checked by hand only.) LAB-05 makes `pnpm lint` and `pnpm test` run on every pull request.
+- **Rule tests:** `eslint-rules/import-boundary.test.js` runs the boundary rule through ESLint's `RuleTester`. It must report server to web, web to server, shared to either, `import type`, `export { … } from`, `export * from`, a dynamic `import()`, a backtick path with no `${}`, and a type written as `typeof import(…)`. It must stay silent for server or web importing shared, and for a top-level folder `src/server-utils/` imported from web (a name that only starts with `server` is not `src/server`). One more case shows that a package name such as `react-dom/server` is ignored; it documents the behaviour but cannot catch a regression, because package names are never resolved. (Added after review: the ticket first said the rule was checked by hand only.) LAB-05 makes `pnpm lint` and `pnpm test` run on every pull request.
 
 ## Docs to update
 

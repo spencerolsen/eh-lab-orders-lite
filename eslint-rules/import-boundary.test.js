@@ -32,15 +32,16 @@ ruleTester.run('import-boundary', importBoundary, {
       filename: file('web/orders/page.ts'),
       code: "import { m } from '../../shared/money';",
     },
-    // A package name that contains "server" is not a folder in src/.
+    // A package name that contains "server" is not a folder in src/. (Package
+    // names are never checked, so this case documents that; it cannot fail.)
     {
       filename: file('web/main.ts'),
       code: "import { renderToString } from 'react-dom/server';",
     },
-    // A folder whose name only starts with "server" is not src/server.
+    // A top-level folder whose name only starts with "server" is not src/server.
     {
       filename: file('web/orders/page.ts'),
-      code: "import { u } from '../server-utils/u';",
+      code: "import { u } from '../../server-utils/u';",
     },
   ],
   invalid: [
@@ -69,6 +70,11 @@ ruleTester.run('import-boundary', importBoundary, {
     {
       filename: file('web/orders/page.ts'),
       code: "import type { Row } from '../../server/db/types';",
+      errors: [{ messageId: 'crossed', data: { from: 'web', to: 'server' } }],
+    },
+    {
+      filename: file('web/orders/index.ts'),
+      code: "export { s } from '../../server/orders/service';",
       errors: [{ messageId: 'crossed', data: { from: 'web', to: 'server' } }],
     },
     {
