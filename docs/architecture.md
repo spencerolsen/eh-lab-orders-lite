@@ -72,7 +72,7 @@ The look is inspired by the palette of the company this exercise is for: a deep 
 | brand-strong `#003438` | accent `#dcff9f` | Current menu section, `collected` badge | 12.17 |
 | page `#fffaf2` | brand-strong `#003438` | Menu bar name and links | 13.05 |
 | accent `#dcff9f` | brand `#004a50` | Primary button, `completed` badge | 9.00 |
-| accent `#dcff9f` | brand-strong `#003438` | Hovered primary button | 12.17 |
+| accent `#dcff9f` | brand-strong `#003438` | Hovered primary button (its label is also underlined) | 12.17 |
 | brand `#004a50` | page `#fffaf2` | Links | 9.64 |
 | brand `#004a50` | surface `#fffdf9` | Secondary button | 9.86 |
 | brand `#004a50` | surface-tint `#ddf3ee` | Hovered secondary button | 8.65 |

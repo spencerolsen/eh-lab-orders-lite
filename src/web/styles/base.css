@@ -144,10 +144,13 @@ button,
   cursor: pointer;
 }
 
+/* Hover darkens the fill and underlines the label: the two teals alone are
+   too close to tell apart. Secondary and danger also change colour below. */
 button:hover:not(:disabled),
 .button:hover {
   border-color: var(--color-brand-strong);
   background: var(--color-brand-strong);
+  text-decoration: underline;
 }
 
 .button-secondary {
