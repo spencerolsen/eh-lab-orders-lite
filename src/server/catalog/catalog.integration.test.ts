@@ -52,6 +52,19 @@ async function insertRow(
   );
 }
 
+// Waits until `count` statements are waiting for a lock on lab_tests.
+async function waitForBlockedInserts(count: number): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const { rows } = await t.pool.query<{ n: number }>(
+      `select count(*)::int as n from pg_locks
+       where relation = 'lab_tests'::regclass and not granted`,
+    );
+    if (rows[0]?.n === count) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`${count} inserts never waited for the table lock`);
+}
+
 async function rowCount(): Promise<number> {
   const { rows } = await t.pool.query<{ n: number }>(
     'select count(*)::int as n from lab_tests',
@@ -146,7 +159,23 @@ describe('POST /api/lab-tests', () => {
   );
 
   it('lets only one of two simultaneous requests with the same code win', async () => {
-    const responses = await Promise.all([post(demo), post(demo)]);
+    // Force the two requests to overlap. A share lock on the table, held by
+    // a separate connection, lets selects through but makes every insert
+    // wait. Once both inserts are waiting, both requests have done anything
+    // they do before inserting (a check-then-insert would have found no row
+    // in both), and releasing the lock lets them race for the constraint.
+    const locker = await t.pool.connect();
+    let responses;
+    try {
+      await locker.query('begin');
+      await locker.query('lock table lab_tests in share mode');
+      const both = Promise.all([post(demo), post(demo)]);
+      await waitForBlockedInserts(2);
+      await locker.query('commit');
+      responses = await both;
+    } finally {
+      locker.release();
+    }
 
     expect(responses.map((r) => r.statusCode).sort()).toEqual([201, 409]);
     expect(await rowCount()).toBe(1);
