@@ -12,10 +12,13 @@ function renderForm(onSubmit = vi.fn(() => Promise.resolve())) {
 
 const field = (name: string) => screen.getByLabelText(name, { exact: false });
 
-// The error text under a field (its aria-describedby), or null.
+// The error text under a field (the error among its aria-describedby ids), or null.
 function errorUnder(name: string): string | null {
-  const id = field(name).getAttribute('aria-describedby');
-  return id ? (document.getElementById(id)?.textContent ?? null) : null;
+  const ids = field(name).getAttribute('aria-describedby')?.split(' ') ?? [];
+  const errorId = ids.find((id) => id.endsWith('-error'));
+  return errorId
+    ? (document.getElementById(errorId)?.textContent ?? null)
+    : null;
 }
 
 async function fill(values: Record<string, string>) {

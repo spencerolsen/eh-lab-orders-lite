@@ -1,4 +1,4 @@
-import { type FormEvent, useId, useState } from 'react';
+import { type FormEvent, type ReactNode, useId, useState } from 'react';
 
 import type { FieldProblem } from '../../shared/api-error';
 import { latestTodayAnywhere } from '../../shared/dates';
@@ -30,17 +30,27 @@ export const EMPTY_PATIENT: PatientFormValues = {
   phone: '',
 };
 
-const FIELDS: { name: Field; label: string; type: string; hint?: string }[] = [
+const FIELDS: { name: Field; label: string; type: string; help?: string }[] = [
   { name: 'firstName', label: 'First name', type: 'text' },
   { name: 'lastName', label: 'Last name', type: 'text' },
   {
     name: 'dateOfBirth',
     label: 'Date of birth',
     type: 'text',
-    hint: 'YYYY-MM-DD',
+    help: 'Year-month-day, for example 1984-03-09.',
   },
-  { name: 'email', label: 'Email', type: 'email' },
-  { name: 'phone', label: 'Phone', type: 'tel' },
+  {
+    name: 'email',
+    label: 'Email',
+    type: 'email',
+    help: 'An email or a phone number is required.',
+  },
+  {
+    name: 'phone',
+    label: 'Phone',
+    type: 'tel',
+    help: 'Spaces, dashes and parentheses are fine.',
+  },
 ];
 
 function isField(name: unknown): name is Field {
@@ -62,14 +72,17 @@ function toFieldErrors(problems: FieldProblem[]): FieldErrors {
 // each problem under its field, and clears it when that field is edited.
 // `onSubmit` gets the parsed values; if it throws, a 400's field problems go
 // under their fields and the message (with its reference) above the button.
+// `secondaryAction` (a Cancel link, say) sits next to the submit button.
 export function PatientForm({
   initialValues = EMPTY_PATIENT,
   submitLabel,
   onSubmit,
+  secondaryAction,
 }: {
   initialValues?: PatientFormValues;
   submitLabel: string;
   onSubmit: (body: CreatePatientBody) => Promise<unknown>;
+  secondaryAction?: ReactNode;
 }) {
   const id = useId();
   const [values, setValues] = useState(initialValues);
@@ -126,16 +139,22 @@ export function PatientForm({
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} noValidate>
-      {FIELDS.map(({ name, label, type, hint }) => {
+    <form
+      className="form card"
+      onSubmit={(event) => void submit(event)}
+      noValidate
+    >
+      {FIELDS.map(({ name, label, type, help }) => {
         const inputId = `${id}-${name}`;
+        const helpId = `${inputId}-help`;
+        const errorId = `${inputId}-error`;
         const error = errors[name];
+        const describedBy = [help && helpId, error && errorId]
+          .filter(Boolean)
+          .join(' ');
         return (
-          <div key={name}>
-            <label htmlFor={inputId}>
-              {label}
-              {hint && ` (${hint})`}
-            </label>
+          <div key={name} className="field">
+            <label htmlFor={inputId}>{label}</label>
             <input
               id={inputId}
               name={name}
@@ -143,10 +162,15 @@ export function PatientForm({
               value={values[name]}
               onChange={(event) => change(name, event.target.value)}
               aria-invalid={error ? true : undefined}
-              aria-describedby={error ? `${inputId}-error` : undefined}
+              aria-describedby={describedBy || undefined}
             />
+            {help && (
+              <p id={helpId} className="field-help">
+                {help}
+              </p>
+            )}
             {error && (
-              <p id={`${inputId}-error`}>
+              <p id={errorId} className="field-error">
                 {label} {error}
               </p>
             )}
@@ -154,9 +178,12 @@ export function PatientForm({
         );
       })}
       {submitError !== null && <ErrorMessage error={submitError} />}
-      <button type="submit" disabled={saving}>
-        {saving ? 'Saving…' : submitLabel}
-      </button>
+      <div className="form-actions">
+        <button type="submit" disabled={saving}>
+          {saving ? 'Saving…' : submitLabel}
+        </button>
+        {secondaryAction}
+      </div>
     </form>
   );
 }

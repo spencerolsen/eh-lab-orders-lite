@@ -12,10 +12,12 @@ import { patientName } from './PatientLabel';
 export function PatientsPage() {
   return (
     <>
-      <h1>Patients</h1>
-      <p>
-        <Link to="/patients/new">New patient</Link>
-      </p>
+      <div className="page-header">
+        <h1>Patients</h1>
+        <Link className="button" to="/patients/new">
+          New patient
+        </Link>
+      </div>
       <PatientList query={usePatients()} />
     </>
   );
@@ -30,7 +32,7 @@ function PatientList({ query }: { query: ReturnType<typeof usePatients> }) {
   }
   if (query.data.length === 0) return <EmptyState message="No patients yet." />;
   return (
-    <table>
+    <table className="table">
       <thead>
         <tr>
           <th scope="col">Name</th>

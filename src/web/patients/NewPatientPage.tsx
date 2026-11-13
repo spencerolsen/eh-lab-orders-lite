@@ -19,10 +19,15 @@ export function NewPatientPage() {
   return (
     <>
       <h1>New patient</h1>
-      <PatientForm submitLabel="Save patient" onSubmit={create.mutateAsync} />
-      <p>
-        <Link to="/patients">Back to patients</Link>
-      </p>
+      <PatientForm
+        submitLabel="Save patient"
+        onSubmit={create.mutateAsync}
+        secondaryAction={
+          <Link className="button button-secondary" to="/patients">
+            Cancel
+          </Link>
+        }
+      />
     </>
   );
 }

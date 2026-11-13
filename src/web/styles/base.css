@@ -259,7 +259,14 @@ textarea[aria-invalid='true'] {
   font-weight: 600;
 }
 
-.table tbody tr:last-child td {
+/* A row header in the body (<th scope="row">, such as a patient's name) keeps
+   the bold text but not the header tint, so the row reads as one line. */
+.table tbody th {
+  background: transparent;
+}
+
+.table tbody tr:last-child td,
+.table tbody tr:last-child th {
   border-bottom: none;
 }
 
