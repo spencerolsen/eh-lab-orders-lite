@@ -47,6 +47,8 @@ The lab test catalog (LAB-06, migration `0002_lab_tests.sql`). Tests are never d
 
 The request schema (`src/shared/lab-tests.ts`) checks the same rules and more (a code of 2 to 20 letters, digits or hyphens, a name of up to 100 characters), so a user gets a clear 400 before the database is reached. The database checks are the backstop for anything that writes rows another way. Because the schema upper-cases the code and the table only holds upper-case codes, the unique constraint makes codes unique regardless of letter case: `cbc` and `CBC` are the same code. A duplicate is found by that constraint, never by a select before the insert: two requests at once would both pass the select.
 
+**Code is immutable, unique, and tests are never deleted (LAB-07).** A test's code never changes after it is created. That rule is enforced by the API only: the update schema (`updateLabTestBody`) does not accept `code`, so `PATCH /api/lab-tests/:id` refuses it with a 400. A trigger blocking code changes was judged more machinery than the rule needs, because the API is the only writer. Uniqueness is enforced by the database (`lab_tests_code_key`). There is no delete: a test is deactivated (`is_active = false`) instead, because order items will point at it (LAB-11, LAB-12). An inactive test stays in the catalog list and keeps its orders; it is only not offered on new orders (LAB-12). There is no trigger for `updated_at`: the update's SQL sets `updated_at = now()` itself.
+
 Seed: 8 active tests with fixed ids (`db/seeds/lab-tests.ts`): A1C, CBC, CMP, CULT, LIPID, TSH, UA, VITD.
 
 ### `patients`
