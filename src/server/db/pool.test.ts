@@ -1,17 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+import { captureLogger } from '../testing/harness';
 import { closePool, createPool } from './pool';
 
 describe('createPool', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('logs a broken idle connection as one JSON line instead of crashing', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('logs a broken idle connection as one error line instead of crashing', async () => {
+    const capture = captureLogger('debug');
     // No query is run, so this never connects.
     const pool = createPool(
       'postgres://lab_orders:s3cret-pw@db.example.test:5433/lab_orders_test',
+      capture.logger,
     );
 
     const error = Object.assign(new Error('terminating connection'), {
@@ -19,15 +17,16 @@ describe('createPool', () => {
     });
     pool.emit('error', error);
 
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    const line = String(errorSpy.mock.calls[0]?.[0]);
-    expect(JSON.parse(line)).toEqual({
+    const lines = capture.lines();
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({
       level: 'error',
       event: 'db.pool_error',
       code: '57P01',
     });
-    expect(line).not.toContain('s3cret-pw');
-    expect(line).not.toContain('db.example.test');
+    expect(capture.text()).not.toContain('s3cret-pw');
+    expect(capture.text()).not.toContain('db.example.test');
+    expect(capture.text()).not.toContain('terminating connection');
     await closePool(pool);
   });
 });

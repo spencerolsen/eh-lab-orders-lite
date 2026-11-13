@@ -1,4 +1,4 @@
-// Runs against the test database (TEST_DATABASE_URL) with `pnpm test:integration`.
+// Runs against the test database (TEST_DATABASE_URL) in the integration project of `pnpm test`.
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,6 +15,7 @@ import {
 
 import { testDatabaseUrl } from './guards';
 import { migrate, resetSchema } from './migrate';
+import { captureLogger } from '../testing/harness';
 import { closePool, createPool } from './pool';
 
 const silent = () => {};
@@ -22,7 +23,7 @@ let pool: pg.Pool;
 let dir: string;
 
 beforeAll(() => {
-  pool = createPool(testDatabaseUrl(process.env));
+  pool = createPool(testDatabaseUrl(process.env), captureLogger().logger);
 });
 
 beforeEach(async () => {

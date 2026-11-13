@@ -31,7 +31,9 @@ export function testDatabaseUrl(
 ): string {
   const url = env.TEST_DATABASE_URL;
   if (!url) {
-    throw new Error('TEST_DATABASE_URL is not set');
+    throw new Error(
+      'TEST_DATABASE_URL is not set: run `cp .env.example .env` (or, in CI, set it in the environment)',
+    );
   }
   const name = databaseName(url);
   if (!name.endsWith('_test')) {
