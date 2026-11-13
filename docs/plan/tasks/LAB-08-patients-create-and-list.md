@@ -1,6 +1,6 @@
 # LAB-08: Patients: add and list patients
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-05 (Checks on every pull request)
 - **Unblocks:** LAB-09 (Patients: search by name and edit a patient), LAB-11 (Orders: see orders on the home page)

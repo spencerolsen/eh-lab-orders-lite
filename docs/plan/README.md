@@ -51,7 +51,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-05](tasks/LAB-05-continuous-integration.md) | Checks on every pull request | Groundwork | LAB-04 | Done |
 | [LAB-06](tasks/LAB-06-catalog-list-and-add.md) | Catalog: see and add lab tests | Vertical slice | LAB-05 | Done |
 | [LAB-07](tasks/LAB-07-catalog-edit-and-deactivate.md) | Catalog: edit and activate or deactivate tests | Vertical slice | LAB-06 | Not started |
-| [LAB-08](tasks/LAB-08-patients-create-and-list.md) | Patients: add and list patients | Vertical slice | LAB-05 | In progress |
+| [LAB-08](tasks/LAB-08-patients-create-and-list.md) | Patients: add and list patients | Vertical slice | LAB-05 | Done |
 | [LAB-09](tasks/LAB-09-patients-search-and-edit.md) | Patients: search by name and edit a patient | Vertical slice | LAB-08 | Not started |
 | [LAB-10](tasks/LAB-10-patients-duplicate-warning.md) | Patients: duplicate warning on create | Vertical slice | LAB-09 | Not started |
 | [LAB-11](tasks/LAB-11-orders-home-page.md) | Orders: see orders on the home page | Vertical slice | LAB-06, LAB-08 | Not started |
