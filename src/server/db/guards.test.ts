@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertResettable, databaseName, testDatabaseUrl } from './guards';
+import {
+  assertResettable,
+  checkDatabasePort,
+  databaseName,
+  testDatabaseUrl,
+} from './guards';
 
 const url = (name: string) =>
   `postgres://lab_orders:lab_orders@localhost:5433/${name}`;
@@ -52,5 +57,55 @@ describe('testDatabaseUrl', () => {
     expect(() =>
       testDatabaseUrl({ TEST_DATABASE_URL: url('lab_orders') }),
     ).toThrow(/_test/);
+  });
+});
+
+describe('checkDatabasePort', () => {
+  const at = (port: string, host = 'localhost') =>
+    `postgres://lab_orders:lab_orders@${host}:${port}/lab_orders`;
+
+  it('accepts the defaults: both URLs on 5433 and no DB_PORT', () => {
+    expect(() =>
+      checkDatabasePort({
+        DATABASE_URL: at('5433'),
+        TEST_DATABASE_URL: at('5433'),
+      }),
+    ).not.toThrow();
+  });
+
+  it('accepts a second copy with DB_PORT and both URLs changed', () => {
+    expect(() =>
+      checkDatabasePort({
+        DB_PORT: '5434',
+        DATABASE_URL: at('5434'),
+        TEST_DATABASE_URL: at('5434', '127.0.0.1'),
+      }),
+    ).not.toThrow();
+  });
+
+  it('names the URL whose port differs from DB_PORT', () => {
+    expect(() =>
+      checkDatabasePort({
+        DB_PORT: '5434',
+        DATABASE_URL: at('5434'),
+        TEST_DATABASE_URL: at('5433'),
+      }),
+    ).toThrow(
+      'TEST_DATABASE_URL uses port 5433, but the database container listens on DB_PORT 5434',
+    );
+  });
+
+  it('treats a local URL with no port as port 5432', () => {
+    expect(() =>
+      checkDatabasePort({
+        DATABASE_URL: 'postgres://lab_orders:lab_orders@localhost/lab_orders',
+      }),
+    ).toThrow('DATABASE_URL uses port 5432');
+  });
+
+  it('leaves a URL on another host alone', () => {
+    expect(() =>
+      checkDatabasePort({ DATABASE_URL: at('5432', 'db.example.test') }),
+    ).not.toThrow();
   });
 });

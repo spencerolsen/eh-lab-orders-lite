@@ -18,6 +18,7 @@ describe('parseConfig', () => {
       config: {
         DATABASE_URL: validUrl,
         PORT: 3000,
+        WEB_PORT: 5173,
         LOG_LEVEL: 'info',
         CLINIC_TIMEZONE: 'America/Denver',
       },
@@ -29,11 +30,13 @@ describe('parseConfig', () => {
     const result = parseConfig({
       DATABASE_URL: validUrl,
       PORT: '8080',
+      WEB_PORT: '5174',
       LOG_LEVEL: 'debug',
       CLINIC_TIMEZONE: 'Pacific/Auckland',
     });
     expect(result.ok && result.config).toMatchObject({
       PORT: 8080,
+      WEB_PORT: 5174,
       LOG_LEVEL: 'debug',
       CLINIC_TIMEZONE: 'Pacific/Auckland',
     });
@@ -51,6 +54,8 @@ describe('parseConfig', () => {
     ['PORT', { PORT: '0x50' }],
     ['PORT', { PORT: '3000.0' }],
     ['PORT', { PORT: '' }],
+    ['WEB_PORT', { WEB_PORT: 'abc' }],
+    ['WEB_PORT', { WEB_PORT: '70000' }],
     ['LOG_LEVEL', { LOG_LEVEL: 'verbose' }],
     ['CLINIC_TIMEZONE', { CLINIC_TIMEZONE: 'Mars/Base' }],
     ['CLINIC_TIMEZONE', { CLINIC_TIMEZONE: '' }],

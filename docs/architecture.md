@@ -102,7 +102,8 @@ Fastify writes a few lines of its own with no `event` name: `Server listening at
 |---|---|---|
 | `DATABASE_URL` | (required) | Postgres connection string for the app's database. |
 | `PORT` | `3000` | Port the API server listens on. |
+| `WEB_PORT` | `5173` | Port the web app (Vite) listens on. Only `pnpm dev` and `vite.config.ts` use it. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 | `CLINIC_TIMEZONE` | `America/Denver` | IANA time zone that decides which calendar day an order was placed on. |
 
-`TEST_DATABASE_URL` is not part of this config: only the test tooling reads it.
+`TEST_DATABASE_URL` is not part of this config: only the test tooling reads it. Two more settings in `.env` are read by Docker Compose, not by this config: `DB_PORT` (default `5433`, the database's host port) and `COMPOSE_PROJECT_NAME` (default `lab-orders-lite`, which names the container and the data volume). `DATABASE_URL` and `TEST_DATABASE_URL` carry the port too, so `pnpm dev` and `pnpm test` stop with one line when a URL on `localhost` uses a different port from `DB_PORT` (`checkDatabasePort` in `src/server/db/guards.ts`): otherwise a second copy of the project could silently use the first copy's database.

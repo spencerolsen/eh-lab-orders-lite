@@ -1,4 +1,7 @@
 # Local Postgres for development and tests. Start it with `pnpm db:up`.
+# Compose reads .env for COMPOSE_PROJECT_NAME (which overrides the name below)
+# and DB_PORT, so a second copy of the project gets its own container, volume
+# and port by changing its .env only (README, "Running a second copy").
 name: lab-orders-lite
 
 services:
@@ -9,8 +12,9 @@ services:
       POSTGRES_PASSWORD: lab_orders
       POSTGRES_DB: lab_orders
     ports:
-      # Host port 5433, so it does not clash with a local Postgres on 5432.
-      - '5433:5432'
+      # Host port DB_PORT (default 5433, so it does not clash with a local
+      # Postgres on 5432). DATABASE_URL and TEST_DATABASE_URL must use it too.
+      - '${DB_PORT:-5433}:5432'
     volumes:
       - db-data:/var/lib/postgresql/data
       # Scripts here run once, when the data volume is first created.

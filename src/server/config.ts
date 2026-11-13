@@ -28,6 +28,16 @@ function isKnownTimeZone(value: string): boolean {
 
 const PORT_RANGE = 'must be between 1 and 65535';
 
+// Digits only, so values such as 1e3, 0x50 or 3000.0 are refused.
+function portSetting(defaultPort: number) {
+  return z
+    .string()
+    .regex(/^\d+$/, 'must be a whole number')
+    .transform(Number)
+    .pipe(z.number().min(1, PORT_RANGE).max(65535, PORT_RANGE))
+    .default(defaultPort);
+}
+
 // Every reason below is fixed text: no reason ever repeats the value it was
 // given, because DATABASE_URL may hold a password.
 const configSchema = z.object({
@@ -37,13 +47,10 @@ const configSchema = z.object({
       isPostgresUrl,
       'must be a postgres:// or postgresql:// URL with a host and a database name',
     ),
-  // Digits only, so values such as 1e3, 0x50 or 3000.0 are refused.
-  PORT: z
-    .string()
-    .regex(/^\d+$/, 'must be a whole number')
-    .transform(Number)
-    .pipe(z.number().min(1, PORT_RANGE).max(65535, PORT_RANGE))
-    .default(3000),
+  PORT: portSetting(3000),
+  // The web app's port (Vite). Only `pnpm dev` and vite.config.ts use it; it
+  // is checked here so a malformed value stops `pnpm dev` with the config error.
+  WEB_PORT: portSetting(5173),
   LOG_LEVEL: z
     .enum(LOG_LEVELS, { error: `must be one of ${LOG_LEVELS.join(', ')}` })
     .default('info'),
