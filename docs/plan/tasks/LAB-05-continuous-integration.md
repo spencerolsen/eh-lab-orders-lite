@@ -1,6 +1,6 @@
 # LAB-05: Checks on every pull request
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Groundwork
 - **Depends on:** LAB-04 (Web foundation: app shell and navigation)
 - **Unblocks:** LAB-06 (Catalog: see and add lab tests), LAB-08 (Patients: add and list patients), LAB-23 (Submission readiness)

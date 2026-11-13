@@ -48,7 +48,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-02](tasks/LAB-02-database-and-config.md) | Database, migrations and config | Groundwork | LAB-01 | Done |
 | [LAB-03](tasks/LAB-03-api-foundation.md) | API foundation: server, logging, errors, health | Groundwork | LAB-02 | Done |
 | [LAB-04](tasks/LAB-04-web-foundation.md) | Web foundation: app shell and navigation | Groundwork | LAB-03 | Done |
-| [LAB-05](tasks/LAB-05-continuous-integration.md) | Checks on every pull request | Groundwork | LAB-04 | In progress |
+| [LAB-05](tasks/LAB-05-continuous-integration.md) | Checks on every pull request | Groundwork | LAB-04 | Done |
 | [LAB-06](tasks/LAB-06-catalog-list-and-add.md) | Catalog: see and add lab tests | Vertical slice | LAB-05 | Not started |
 | [LAB-07](tasks/LAB-07-catalog-edit-and-deactivate.md) | Catalog: edit and activate or deactivate tests | Vertical slice | LAB-06 | Not started |
 | [LAB-08](tasks/LAB-08-patients-create-and-list.md) | Patients: add and list patients | Vertical slice | LAB-05 | Not started |
