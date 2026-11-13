@@ -21,7 +21,7 @@ let shuttingDown = false;
 // Stops accepting connections, lets in-flight requests finish, closes the
 // pool and exits 0. If that takes longer than the cap, it exits 1.
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
-  if (shuttingDown) return;
+  if (shuttingDown) return; // a repeated signal changes nothing
   shuttingDown = true;
   logger.info({ event: 'app.shutting_down', signal }, 'Shutting down');
 
@@ -47,8 +47,11 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   }
 }
 
-process.once('SIGTERM', (signal) => void shutdown(signal));
-process.once('SIGINT', (signal) => void shutdown(signal));
+// `on`, not `once`: a repeated signal (a second Ctrl-C, or SIGTERM sent twice)
+// is ignored by the flag in shutdown() instead of killing the process and
+// cutting off in-flight requests. The 10-second cap still bounds the wait.
+process.on('SIGTERM', (signal) => void shutdown(signal));
+process.on('SIGINT', (signal) => void shutdown(signal));
 
 try {
   // 'localhost' listens on both 127.0.0.1 and ::1, whichever the caller uses.
