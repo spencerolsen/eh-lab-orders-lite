@@ -1,6 +1,6 @@
 # LAB-04: Web foundation: app shell and navigation
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Groundwork
 - **Depends on:** LAB-03 (API foundation: server, logging, errors, health)
 - **Unblocks:** LAB-05 (Checks on every pull request)
