@@ -1,10 +1,47 @@
+import { existsSync } from 'node:fs';
+import { BaseSequencer, type TestSpecification } from 'vitest/node';
 import { configDefaults, defineConfig } from 'vitest/config';
 
-// Unit tests: no database needed. Integration tests (*.integration.test.ts) run
-// with `pnpm test:integration`, see vitest.integration.config.ts.
+// The integration tests read TEST_DATABASE_URL from the environment (CI sets
+// it), else from .env, else from .env.example, whose defaults match the Docker
+// database, so `pnpm test` works on a fresh clone. Values already set win.
+const envFile = existsSync('.env') ? '.env' : '.env.example';
+if (existsSync(envFile)) process.loadEnvFile(envFile);
+
+// Test files run in file-path order, the same on every machine and every run.
+// (Vitest's default order depends on earlier runs.) The two harness files in
+// src/server/testing/truncate-*.integration.test.ts rely on it: they run one
+// after the other, with no schema reset between them.
+class FilePathOrder extends BaseSequencer {
+  override sort(files: TestSpecification[]): Promise<TestSpecification[]> {
+    return Promise.resolve(
+      [...files].sort((a, b) => a.moduleId.localeCompare(b.moduleId)),
+    );
+  }
+}
+
+// `pnpm test` runs both projects. One project alone: `pnpm test --project unit`.
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.{ts,tsx}', 'eslint-rules/**/*.test.js'],
-    exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
+    sequence: { sequencer: FilePathOrder },
+    projects: [
+      {
+        test: {
+          name: 'unit',
+          include: ['src/**/*.test.{ts,tsx}', 'eslint-rules/**/*.test.js'],
+          exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'integration',
+          include: ['src/**/*.integration.test.ts'],
+          globalSetup: ['src/server/testing/global-setup.ts'],
+          setupFiles: ['src/server/testing/setup.ts'],
+          // One test database, so the files run one at a time.
+          fileParallelism: false,
+        },
+      },
+    ],
   },
 });
