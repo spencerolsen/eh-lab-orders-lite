@@ -144,8 +144,9 @@ The statuses are written in exactly two places, and everything else derives from
 2. **`ORDER_STATUSES`** in `src/shared/orders.ts`, in the same order as the CHECK. `src/server/orders/schema.integration.test.ts` fails until the two agree.
 3. **The transition table** in `src/server/orders/domain/` (LAB-15): which moves lead into and out of the new status. Its unit tests cover every pair.
 4. **The labels:** `ORDER_STATUS_LABELS` in the same file (the type checker refuses a status without one) and a `.badge-<status>` tint in `src/web/styles/base.css`.
+5. **Docs and test expectations:** the status lists in `docs/api.md` (`GET /api/orders`), `docs/data-model.md` (`orders`) and the badge rows of the colour and contrast tables in `docs/architecture.md` (Visual theme); the hand-written expectations in `src/web/components/StatusBadge.test.tsx` and `src/web/styles/StylesPage.test.tsx` fail until updated, on purpose.
 
-Nothing else types a status out: schemas use `orderStatusSchema` and screens use `ORDER_STATUSES` and `ORDER_STATUS_LABELS`.
+No other source file types a status out: schemas use `orderStatusSchema`, and screens (the `/styles` badge row included) use `ORDER_STATUSES` and `ORDER_STATUS_LABELS`.
 
 ## Workflow
 

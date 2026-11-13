@@ -32,7 +32,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 - [ ] Every page (Orders, Patients, Catalog, "Page not found") has the teal menu bar, the cream page, serif headings and the footer, with no unstyled element. The current section is a lime pill.
 - [ ] http://localhost:5173/styles shows headings, text, each button with its disabled state, a form with a valid and an invalid field, a table, the four status badges, and the loading, empty and error components. It is not in the menu.
-- [ ] On `/styles`, each badge shows its word (ordered, collected, completed, cancelled) in its own tint, and the invalid "Code" field shows its error text (the browser's inspector shows `aria-invalid="true"`).
+- [ ] On `/styles`, each badge shows its label (Ordered, Collected, Completed, Cancelled) in its own tint, and the invalid "Code" field shows its error text (the browser's inspector shows `aria-invalid="true"`).
 - [ ] On `/styles`, Tab reaches every enabled link, field and button, from the menu bar to "Open a panel", each with a visible outline (lime in the menu bar, teal elsewhere). Hovering a button changes its look.
 - [ ] "Open a dialog" and "Open a panel" open over a dimmed page (the panel on the right, full height); Escape closes them.
 - [ ] In the browser's network panel, a reload of `/styles` requests nothing from another site and no font.

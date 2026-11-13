@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 
+import { ORDER_STATUSES } from '../../shared/orders';
 import { ApiError } from '../api/client';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -202,10 +203,9 @@ export function StylesPage() {
 
       <h2>Status badges</h2>
       <div className="form-actions">
-        <StatusBadge status="ordered" />
-        <StatusBadge status="collected" />
-        <StatusBadge status="completed" />
-        <StatusBadge status="cancelled" />
+        {ORDER_STATUSES.map((status) => (
+          <StatusBadge key={status} status={status} />
+        ))}
       </div>
 
       <h2>Loading, empty and error</h2>
