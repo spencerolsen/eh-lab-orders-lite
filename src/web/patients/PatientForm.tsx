@@ -1,7 +1,7 @@
 import { type FormEvent, useId, useState } from 'react';
 
 import type { FieldProblem } from '../../shared/api-error';
-import { today } from '../../shared/dates';
+import { latestTodayAnywhere } from '../../shared/dates';
 import {
   CONTACT_REQUIRED_REASONS,
   type CreatePatientBody,
@@ -57,12 +57,6 @@ function toFieldErrors(problems: FieldProblem[]): FieldErrors {
   return errors;
 }
 
-// The user's own calendar day. This check is advisory, for early feedback:
-// the server decides, with the clinic's time zone.
-function browserToday(): string {
-  return today(Intl.DateTimeFormat().resolvedOptions().timeZone, new Date());
-}
-
 // The patient form, for a new patient here and for editing one in LAB-09.
 // It checks the values with the same shared schema the server uses, shows
 // each problem under its field, and clears it when that field is edited.
@@ -101,7 +95,11 @@ export function PatientForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitError(null);
-    const parsed = createPatientBody(browserToday()).safeParse(values);
+    // The browser's "not in the future" check is advisory: it uses the latest
+    // day anywhere, so it never blocks a date the server (clinic time) accepts.
+    const parsed = createPatientBody(latestTodayAnywhere(new Date())).safeParse(
+      values,
+    );
     if (!parsed.success) {
       setErrors(
         toFieldErrors(

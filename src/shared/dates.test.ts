@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { formatDate, isAfterDay, isRealDate, today } from './dates';
+import {
+  formatDate,
+  isAfterDay,
+  isRealDate,
+  latestTodayAnywhere,
+  today,
+} from './dates';
 
 describe('isRealDate', () => {
   it.each([
@@ -50,6 +56,20 @@ describe('today', () => {
       '2026-01-15',
     );
   });
+});
+
+it('latestTodayAnywhere is the day in UTC+14, never behind any other zone', () => {
+  // 07:30 UTC on Jan 15: Jan 14 in Los Angeles, Jan 15 in Denver, and
+  // already 21:30 on Jan 15 in Kiritimati.
+  const now = new Date('2026-01-15T07:30:00Z');
+  expect(latestTodayAnywhere(now)).toBe('2026-01-15');
+  // 10:30 UTC: it is Jan 16 in Kiritimati, while Denver is still on Jan 15.
+  expect(latestTodayAnywhere(new Date('2026-01-15T10:30:00Z'))).toBe(
+    '2026-01-16',
+  );
+  for (const zone of ['UTC', 'Pacific/Auckland', 'Pacific/Pago_Pago']) {
+    expect(isAfterDay(today(zone, now), latestTodayAnywhere(now))).toBe(false);
+  }
 });
 
 describe('formatDate', () => {

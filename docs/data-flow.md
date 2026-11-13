@@ -53,7 +53,7 @@ sequenceDiagram
   participant L as Patients list
 
   F->>F: user types 1984-03-09 (a text field)
-  Note over F: createPatientBody(today(browser zone, new Date())): real date, not after today (advisory)
+  Note over F: createPatientBody(latestTodayAnywhere(new Date())): real date, not after the latest day anywhere (advisory)
   F->>A: { "dateOfBirth": "1984-03-09", ... }
   Note over A: createPatientBody(today(CLINIC_TIMEZONE, clock())): the check that decides
   A->>D: insert ... $3 = '1984-03-09' (a date column)
@@ -64,5 +64,5 @@ sequenceDiagram
   Note over L: formatDate splits the string: "Mar 9, 1984"
 ```
 
-- **"Today" is the clinic's.** The server asks `today(CLINIC_TIMEZONE, clock())`, so a date of birth of the clinic's today is accepted even when it is already tomorrow in UTC, and the clinic's tomorrow is refused. The browser runs the same check with its own time zone only to warn early; the server's answer wins.
+- **"Today" is the clinic's.** The server asks `today(CLINIC_TIMEZONE, clock())`, so a date of birth of the clinic's today is accepted even when it is already tomorrow in UTC, and the clinic's tomorrow is refused. The browser does not know the clinic's time zone, so it checks against the latest day anywhere on Earth (`latestTodayAnywhere`, UTC+14): it catches a date that is plainly in the future, never blocks one the clinic accepts, and the server's answer wins.
 - **A rejected value goes back as a field problem**, `{ field: "dateOfBirth", reason: "..." }` in `details`, and the form shows it under the date of birth. The value itself is never logged.

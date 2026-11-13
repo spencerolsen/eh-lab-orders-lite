@@ -68,6 +68,17 @@ export function today(timeZone: string, now: Date): string {
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
+// The time zone that reaches each new day first (UTC+14, all year).
+export const EARLIEST_TIME_ZONE = 'Pacific/Kiritimati';
+
+// The latest calendar day it is anywhere on Earth at `now`. The browser checks
+// "not in the future" against this, because it does not know the clinic's
+// time zone: it can never refuse a day the clinic's today allows, and the
+// server still decides with CLINIC_TIMEZONE.
+export function latestTodayAnywhere(now: Date): string {
+  return today(EARLIEST_TIME_ZONE, now);
+}
+
 // '1984-03-09' becomes 'Mar 9, 1984', by splitting the string: no Date is
 // built, so the result is the same in every time zone.
 export function formatDate(value: string): string {

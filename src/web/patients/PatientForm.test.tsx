@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '../api/client';
 import { PatientForm } from './PatientForm';
@@ -88,6 +88,49 @@ describe('PatientForm', () => {
     expect(
       await screen.findByRole('button', { name: 'Save patient' }),
     ).toHaveProperty('disabled', false);
+  });
+
+  describe('the browser date check is advisory', () => {
+    const originalTz = process.env.TZ;
+    afterEach(() => {
+      vi.useRealTimers();
+      process.env.TZ = originalTz;
+    });
+
+    it("never blocks the clinic's today when the browser's zone is behind the clinic", async () => {
+      // 07:30 UTC on Jan 15: 23:30 on Jan 14 in Los Angeles (the browser),
+      // 00:30 on Jan 15 in Denver (the clinic), so the server accepts Jan 15.
+      process.env.TZ = 'America/Los_Angeles';
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-01-15T07:30:00Z'));
+      const onSubmit = renderForm();
+      await fill({
+        'First name': 'Test',
+        'Last name': 'Patient',
+        'Date of birth': '2026-01-15',
+        Phone: '5550100',
+      });
+      await save();
+      expect(errorUnder('Date of birth')).toBeNull();
+      expect(onSubmit).toHaveBeenCalledOnce();
+    });
+
+    it('still flags a date in the future everywhere', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-01-15T07:30:00Z'));
+      const onSubmit = renderForm();
+      await fill({
+        'First name': 'Test',
+        'Last name': 'Patient',
+        'Date of birth': '2026-01-16',
+        Phone: '5550100',
+      });
+      await save();
+      expect(errorUnder('Date of birth')).toBe(
+        'Date of birth cannot be in the future',
+      );
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
   });
 
   it("puts a 400's field problems under their fields, with the message and reference", async () => {
