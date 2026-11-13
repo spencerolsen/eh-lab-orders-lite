@@ -8,6 +8,7 @@ export const ERROR_CODES = [
   'NOT_FOUND',
   'PAYLOAD_TOO_LARGE',
   'UNSUPPORTED_MEDIA_TYPE',
+  'SERVICE_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const;
 

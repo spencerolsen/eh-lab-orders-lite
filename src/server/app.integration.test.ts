@@ -226,6 +226,43 @@ describe('errors', () => {
   });
 });
 
+describe('shutdown', () => {
+  it('a request that arrives while closing gets 503 in the standard shape; a running one finishes', async () => {
+    let started!: () => void;
+    let release!: () => void;
+    const running = new Promise<void>((resolve) => (started = resolve));
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    t.app.get('/test/slow', async () => {
+      started();
+      await gate;
+      return { done: true };
+    });
+
+    const slow = t.inject({ method: 'GET', url: '/test/slow' });
+    await running;
+    const closed = t.app.close();
+
+    const late = await t.inject({
+      method: 'GET',
+      url: '/healthz',
+      headers: { 'x-request-id': 'late-1' },
+    });
+    expect(late.statusCode).toBe(503);
+    expect(late.headers['x-request-id']).toBe('late-1');
+    expect(late.json()).toEqual({
+      error: {
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'The server is restarting. Try again in a moment.',
+        requestId: 'late-1',
+      },
+    });
+
+    release();
+    expect((await slow).json()).toEqual({ done: true });
+    await closed;
+  });
+});
+
 describe('request ids and logging', () => {
   it('logs contain request id and no body or query string', async () => {
     const response = await t.inject({

@@ -7,7 +7,12 @@ import Fastify, {
 } from 'fastify';
 import type pg from 'pg';
 
-import { NotFoundError, toErrorResponse, ValidationError } from './errors';
+import {
+  AppError,
+  NotFoundError,
+  toErrorResponse,
+  ValidationError,
+} from './errors';
 import { healthRoutes } from './health/routes';
 import { pickRequestId } from './request-id';
 
@@ -47,6 +52,9 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       // incoming x-request-id header or newly generated.
       requestIdLogLabel: 'requestId',
     }),
+    // While shutting down, Fastify would answer new requests with its own 503
+    // body; the onRequest hook below answers them in the standard shape.
+    return503OnClosing: false,
     genReqId: (req) => pickRequestId(req.headers['x-request-id']),
     // Errors Fastify finds before routing (a malformed URL, for example).
     // Its default reply repeats the URL; this one uses the standard shape.
@@ -73,8 +81,22 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // other type (Fastify would otherwise hand it to the route as a string).
   app.removeContentTypeParser('text/plain');
 
+  // Set once app.close() starts (on SIGTERM or SIGINT): requests already
+  // running finish, and any that arrive after this get a 503.
+  let closing = false;
+  app.addHook('preClose', async () => {
+    closing = true;
+  });
+
   app.addHook('onRequest', async (request, reply) => {
     void reply.header('x-request-id', request.id);
+    if (closing) {
+      throw new AppError(
+        503,
+        'SERVICE_UNAVAILABLE',
+        'The server is restarting. Try again in a moment.',
+      );
+    }
   });
 
   app.addHook('onResponse', async (request, reply) => {

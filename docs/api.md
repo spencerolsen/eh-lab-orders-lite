@@ -39,6 +39,7 @@ Every failure, from any endpoint, has this shape:
 | 415 | The request body is not JSON. | A form-encoded or XML body. |
 | 422 | The input has the right shape but breaks a business rule, or an id inside the body does not exist. | An order for a patient id that does not exist, or a status move that is not allowed. |
 | 500 | Something unexpected broke on the server. The message is always "Something went wrong on our side"; the details are only in the server log, under the request id. | |
+| 503 | The server is shutting down and did not run the request (requests already running finish first). | A request that arrives during a restart. |
 
 ### Error codes
 
@@ -51,6 +52,7 @@ Every code the API can return. The list is defined once, as `ERROR_CODES` in `sr
 | `PAYLOAD_TOO_LARGE` | 413 | The request body is over 1 MiB. |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The request body is not JSON. |
 | `INTERNAL_ERROR` | 500 | An unexpected failure on the server. |
+| `SERVICE_UNAVAILABLE` | 503 | The server is shutting down; the request was not run. Try again. |
 
 ## Endpoints
 
