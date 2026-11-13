@@ -1,7 +1,14 @@
 // The harness and the integration setup must both go through the _test guard.
+import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import setup from './global-setup';
+
+// The integration setup starts Docker with spawnSync: replaced here, so the
+// test can see whether it was called and never starts a real container.
+vi.mock('node:child_process', () => ({
+  spawnSync: vi.fn(() => ({ status: 0 })),
+}));
 import { createTestPool } from './harness';
 
 // Port 1 refuses at once: if a guard were skipped, the error would be a
@@ -10,6 +17,7 @@ const DEV_DATABASE = 'postgres://lab_orders:lab_orders@127.0.0.1:1/lab_orders';
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.mocked(spawnSync).mockClear();
 });
 
 describe('the _test guard in the harness', () => {
@@ -22,11 +30,12 @@ describe('the _test guard in the harness', () => {
 
   it('the integration setup refuses it before starting anything', async () => {
     vi.stubEnv('TEST_DATABASE_URL', DEV_DATABASE);
-    // CI set, so a missing check could not start Docker either.
-    vi.stubEnv('CI', '1');
+    // CI not set, so the setup would start the container if it got that far.
+    vi.stubEnv('CI', '');
     await expect(setup()).rejects.toThrow(
       /must name a database ending in _test/,
     );
+    expect(spawnSync).not.toHaveBeenCalled();
   });
 
   it('says how to fix a missing TEST_DATABASE_URL', () => {
