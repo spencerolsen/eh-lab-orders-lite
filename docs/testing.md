@@ -52,6 +52,6 @@ Tests find elements the way a user does: by role and accessible name (`getByRole
 
 ## Checked by hand
 
-- **`pnpm dev`** (LAB-04): from a fresh clone with no `.env`; a second run; a malformed setting; Docker not running; Ctrl-C leaving no process behind; the proxy; the page with the API stopped; 360 px width and keyboard use. The steps are in `docs/acceptance-checklist.md`, Checkpoint 1.
+- **`pnpm dev`** (LAB-04): from a fresh clone with no `.env`; a second run; a malformed setting; Docker not running; Ctrl-C leaving no process behind; the proxy; the page with the API stopped; keyboard use. The steps are in `docs/acceptance-checklist.md`, Checkpoint 1.
 
 - **Shutdown** (LAB-03): start the server, send a slow request, send `SIGTERM` while it runs: the request finishes, `app.shutting_down` is logged and the process exits 0. Send the signal twice: the second one is ignored, with the same result. A request longer than 10 seconds is cut off and the process exits 1.

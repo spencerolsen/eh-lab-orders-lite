@@ -19,7 +19,7 @@ It comes right after the API foundation because the client must understand the e
 - Menu bar on every page with three links (Orders, Patients, Catalog); the current section is visually marked and has `aria-current="page"`. The menu bar reserves a place for the "New order" button, which LAB-20 fills in; it is not shown yet.
 - Each placeholder page has a heading and one line saying what will appear there.
 - Shared components in `src/web/components/`: `Loading` (text with `role="status"`), `EmptyState` (message and optional action), `ErrorMessage` (message plus request id, with a retry button when a retry function is given). An error boundary wraps the app and shows a fallback screen ("Something went wrong. Reload the page.") instead of a blank page, and writes the error to the browser console.
-- Plain CSS in `src/web/styles/base.css`: colour and spacing variables, readable default type, visible focus outlines, a layout that works from 360 px wide. No component library.
+- Plain CSS in `src/web/styles/base.css`: colour and spacing variables, readable default type, visible focus outlines. No component library. The app is for a desktop browser: it supports a window at least 1024 px wide, and has no mobile or narrow-screen layout and no responsive breakpoints (an owner decision).
 
 **API**
 - The Vite dev server proxies `/api` and `/healthz` to the API at `http://localhost:${PORT}`, so the browser talks to one origin and no CORS setup is needed.
@@ -45,7 +45,7 @@ It comes right after the API foundation because the client must understand the e
 - [ ] With the API stopped, the page shows "Can't reach the server. Try again.", not a blank page or a raw error.
 - [ ] An API response with status 422 shows the server's message and its request id.
 - [ ] A component that throws during render shows the fallback screen.
-- [ ] The layout has no horizontal scroll at 360 px width, and every link and button can be reached with the keyboard.
+- [ ] Every link and button can be reached with the keyboard, in order, with a visible focus outline.
 - [ ] `pnpm build` succeeds, and `pnpm lint`, `pnpm typecheck` and `pnpm test` pass.
 - [ ] The `docs/process.md` slice log entry and test log entry for this task were written in the same pull request.
 
@@ -70,6 +70,7 @@ It comes right after the API foundation because the client must understand the e
 - The "New order" modal: LAB-12. The button in the menu bar: LAB-20.
 - Serving the built web app from the API: future version; the reviewer runs the dev setup.
 - A component library, dark mode, translations: future version.
+- Mobile and narrow-screen layouts: not planned. The app is for a desktop browser window at least 1024 px wide (an owner decision, recorded in `docs/plan/README.md`).
 
 ## Notes from the build
 
@@ -87,6 +88,7 @@ Choices made while building that the requirements above did not dictate:
 - **Declarative routing (`<Routes>`), not a data router**, so the app's error boundary catches render errors (a data router shows its own error screen first).
 - **Test naming:** `*.test.ts` is unit (Node), `*.test.tsx` is component (jsdom), `*.integration.test.ts` is integration. The web code with no React in it (`apiFetch`, `describeError`, the retry rule) is unit tested.
 - **`eslint-plugin-react-hooks`** is added for the Rules of Hooks in `src/web`. No `jest-dom`: the tests use Testing Library's queries and plain `expect`.
+- **Desktop only (owner decision during the build):** the 360 px requirement and its acceptance check were dropped. `base.css` states the supported minimum (a 1024 px wide window) and has no wrapping or breakpoint rules for narrow screens.
 - **Versions:** React 19.3, TanStack Query 5.107, Vite 8.3 with `@vitejs/plugin-react` 6.3. React Router 7.18 and jsdom 29.1, not their newest majors (8 and 31), because those require Node 22.22 or later and the project supports Node `^22.13.0`.
 - **In development the API stops at once on Ctrl-C** rather than through its graceful shutdown: pnpm passes the signal on a second time and `tsx watch` then force-kills it. Nothing is left running; `pnpm start` keeps the graceful shutdown.
 

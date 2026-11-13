@@ -21,7 +21,7 @@ Each task that adds something a user can see adds its checks here, under the che
 - [ ] The menu bar shows Orders, Patients and Catalog on every page. Clicking each changes the URL and the page without a full reload; the current one is highlighted and has `aria-current="page"`.
 - [ ] http://localhost:5173/does-not-exist shows "Page not found" with a link back to the orders page.
 - [ ] The footer says "Server: connected". Stop only the API (Vite still running): reloading shows "Can't reach the server. Try again." with a "Try again" button, not a blank page.
-- [ ] At 360 px wide there is no horizontal scroll, and Tab reaches every link and button in order, each with a visible focus outline.
+- [ ] In a desktop browser window (at least 1024 px wide), Tab reaches every link and button in order, each with a visible focus outline, and Enter follows a focused link.
 
 ## Checkpoint 2
 

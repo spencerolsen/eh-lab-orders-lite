@@ -152,4 +152,4 @@ The first point at which the brief's core is met (patients, a catalog, an order 
 
 ## What is deliberately not in this plan
 
-Login and roles, editing an order after it is placed, public holidays and cut-off times, status and results per test, voiding a completed order, pasting a list of tests, AI features in the running app, tracing, metrics and alerting, and browser tests in the automated checks. Each is listed with its reason in the process log.
+Login and roles, editing an order after it is placed, public holidays and cut-off times, status and results per test, voiding a completed order, pasting a list of tests, AI features in the running app, tracing, metrics and alerting, browser tests in the automated checks, and mobile and narrow-screen layouts (desktop only). Each is listed with its reason in the process log.
