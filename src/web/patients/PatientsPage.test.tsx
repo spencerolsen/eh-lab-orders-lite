@@ -37,11 +37,14 @@ function fakeApi(patients: Patient[]) {
   const fetch = vi.fn((url: string, init?: RequestInit) => {
     if (url === '/healthz') return Promise.resolve(json(200, { status: 'ok' }));
     if (init?.method === 'POST') {
-      const created = {
+      const sent = JSON.parse(init.body as string) as Partial<Patient>;
+      const created: Patient = {
         id: 'new',
-        email: null,
-        phone: null,
-        ...JSON.parse(String(init.body)),
+        firstName: sent.firstName ?? '',
+        lastName: sent.lastName ?? '',
+        dateOfBirth: sent.dateOfBirth ?? '',
+        email: sent.email ?? null,
+        phone: sent.phone ?? null,
       };
       patients.push(created);
       return Promise.resolve(json(201, created));
@@ -120,7 +123,7 @@ it('New patient opens the form, and saving goes back to the refreshed list', asy
   ).toBeTruthy();
   expect(await screen.findByText('Sample Person')).toBeTruthy();
   const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST');
-  expect(JSON.parse(String(post?.[1]?.body))).toEqual({
+  expect(JSON.parse(post?.[1]?.body as string)).toEqual({
     firstName: 'Sample',
     lastName: 'Person',
     dateOfBirth: '1990-12-31',

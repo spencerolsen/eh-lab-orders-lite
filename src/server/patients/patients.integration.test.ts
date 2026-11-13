@@ -1,6 +1,8 @@
 // POST and GET /api/patients through the app, on the test database.
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import type { ErrorBody } from '../../shared/api-error';
+import type { Patient } from '../../shared/patients';
 import { startTestApp, type TestApp } from '../testing/harness';
 
 let t: TestApp;
@@ -21,13 +23,27 @@ const valid = {
   email: 'test.patient@example.test',
 };
 
-function post(body: unknown) {
+async function post(body: Record<string, unknown>) {
   return t.inject({ method: 'POST', url: '/api/patients', payload: body });
 }
 
+async function list(): Promise<Patient[]> {
+  const response = await t.inject({ method: 'GET', url: '/api/patients' });
+  expect(response.statusCode).toBe(200);
+  return response.json<Patient[]>();
+}
+
+type Row = {
+  first_name: string;
+  last_name: string;
+  date_of_birth: string;
+  email: string | null;
+  phone: string | null;
+};
+
 // The stored row, read with SQL, so the test sees what the database holds.
-async function storedRows() {
-  const { rows } = await t.pool.query(
+async function storedRows(): Promise<Row[]> {
+  const { rows } = await t.pool.query<Row>(
     'select first_name, last_name, date_of_birth, email, phone from patients',
   );
   return rows;
@@ -43,9 +59,9 @@ describe('POST /api/patients', () => {
       phone: '(801) 555-0100',
     });
     expect(response.statusCode).toBe(201);
-    const body = response.json();
+    const { id, ...body } = response.json<Patient>();
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
     expect(body).toEqual({
-      id: expect.any(String),
       firstName: 'Jane',
       lastName: 'Sample',
       dateOfBirth: '1984-03-09',
@@ -96,12 +112,10 @@ describe('POST /api/patients', () => {
   ])('rejects %j with 400 on %j', async (body, fields) => {
     const response = await post(body);
     expect(response.statusCode).toBe(400);
-    const { error } = response.json();
+    const { error } = response.json<ErrorBody>();
     expect(error.code).toBe('VALIDATION_ERROR');
     expect(error.requestId).toBe(response.headers['x-request-id']);
-    expect(error.details.map((d: { field: string }) => d.field)).toEqual(
-      fields,
-    );
+    expect(error.details?.map((d) => d.field)).toEqual(fields);
     expect(await storedRows()).toHaveLength(0);
   });
 
@@ -125,7 +139,7 @@ describe('the clinic time zone decides "today"', () => {
     ).toBe(201);
     const tomorrow = await post({ ...valid, dateOfBirth: '2026-01-15' });
     expect(tomorrow.statusCode).toBe(400);
-    expect(tomorrow.json().error.details).toEqual([
+    expect(tomorrow.json<ErrorBody>().error.details).toEqual([
       { field: 'dateOfBirth', reason: 'cannot be in the future' },
     ]);
   });
@@ -141,21 +155,16 @@ describe('GET /api/patients', () => {
     ]) {
       await post({ ...valid, firstName, lastName });
     }
-    const response = await t.inject({ method: 'GET', url: '/api/patients' });
-    expect(response.statusCode).toBe(200);
-    expect(
-      response
-        .json()
-        .map(
-          (p: { firstName: string; lastName: string }) =>
-            `${p.firstName} ${p.lastName}`,
-        ),
-    ).toEqual(['Demo example', 'Test Patient', 'Ann Sample', 'Zed Sample']);
+    expect((await list()).map((p) => `${p.firstName} ${p.lastName}`)).toEqual([
+      'Demo example',
+      'Test Patient',
+      'Ann Sample',
+      'Zed Sample',
+    ]);
   });
 
   it('returns an empty array when there are no patients', async () => {
-    const response = await t.inject({ method: 'GET', url: '/api/patients' });
-    expect(response.json()).toEqual([]);
+    expect(await list()).toEqual([]);
   });
 });
 
@@ -171,15 +180,13 @@ describe('a date of birth round-trips as the same string', () => {
     expect(new Date('2026-01-15T12:00:00Z').getTimezoneOffset()).toBe(480);
     for (const dateOfBirth of ['1984-03-09', '2000-01-01', '2020-02-29']) {
       const created = await post({ ...valid, dateOfBirth });
-      expect(created.json().dateOfBirth).toBe(dateOfBirth);
+      expect(created.json<Patient>().dateOfBirth).toBe(dateOfBirth);
     }
-    const listed = await t.inject({ method: 'GET', url: '/api/patients' });
-    expect(
-      listed
-        .json()
-        .map((p: { dateOfBirth: string }) => p.dateOfBirth)
-        .sort(),
-    ).toEqual(['1984-03-09', '2000-01-01', '2020-02-29']);
+    expect((await list()).map((p) => p.dateOfBirth).sort()).toEqual([
+      '1984-03-09',
+      '2000-01-01',
+      '2020-02-29',
+    ]);
   });
 });
 
@@ -254,7 +261,7 @@ describe('no patient detail reaches the log', () => {
   it('on success: patient.created once, at info, with the id only', async () => {
     const response = await post(markers);
     expect(response.statusCode).toBe(201);
-    await t.inject({ method: 'GET', url: '/api/patients' });
+    await list();
     expectNoMarkers();
     const created = t.logs().filter((line) => line.event === 'patient.created');
     expect(created).toHaveLength(1);
@@ -272,7 +279,7 @@ describe('no patient detail reaches the log', () => {
     });
     expect(fields).toEqual({
       event: 'patient.created',
-      patientId: response.json().id,
+      patientId: response.json<Patient>().id,
     });
   });
 

@@ -12,7 +12,7 @@ it('seeding twice leaves the same 6 patients', async () => {
     await client.query('truncate table patients');
     const read = async () =>
       (
-        await client.query(
+        await client.query<{ id: string }>(
           'select id, first_name, last_name, date_of_birth, email, phone, created_at from patients order by id',
         )
       ).rows;
