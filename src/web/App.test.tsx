@@ -24,7 +24,7 @@ it.each([
   { path: '/', heading: 'Orders' },
   { path: '/patients', heading: 'Patients' },
   { path: '/catalog', heading: 'Lab tests' },
-])('shows the $heading placeholder page at $path', ({ path, heading }) => {
+])('shows the $heading page at $path', ({ path, heading }) => {
   renderApp(path);
   expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
 });

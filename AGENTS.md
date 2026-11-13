@@ -69,7 +69,7 @@ The same checks run on GitHub Actions for every pull request and every push to `
 
 ## Conventions
 
-- **Money is in whole cents**, as integers (`price_cents`, `total_cents`). Never floats.
+- **Money is in whole cents**, as integers (`price_cents`, `total_cents`), everywhere except on screen. Never floats. The only conversions are in `src/shared/money.ts`: `parseDollarsToCents` (what the user typed, read as text) and `formatCents` (for display).
 - **Dates are `YYYY-MM-DD` strings** (a date of birth, a ready date). Never a JavaScript `Date` for a calendar day.
 - **Logs carry ids and counts only.** No names, dates of birth or other patient details in logs, and never request bodies, query strings, headers or SQL parameters. Levels follow the logging standard in `docs/architecture.md`.
 - **Each fixed list of values is defined once in `src/shared/`** (for example order statuses), and everything else (database checks, schemas, the screens) derives from it.
@@ -108,7 +108,7 @@ Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere i
 
 ## Adding a route
 
-1. Put it in `src/server/<feature>/routes.ts`, as a function that takes the app (or the `/api` scope) and the deps it needs, and register it in `buildApp` (`src/server/app.ts`) under the `/api` prefix.
+1. Put it in `src/server/<feature>/routes.ts`, as a function that takes the app and the deps it needs and writes the full path (`app.get('/api/lab-tests', ...)`), and call it from `buildApp` (`src/server/app.ts`), one line per feature. Do not wrap it in `app.register` with a `prefix`: an encapsulated plugin makes `app.close()` set the shutdown flag a few ticks late, and a request in that gap runs instead of getting the 503 (the shutdown test in `app.integration.test.ts` catches it).
 2. Parse every input explicitly: `const body = parse(createLabTestBody, request.body)`, and the same for `request.params` and `request.query`. Body schemas are `z.strictObject`, so unknown fields are a 400. Schemas live in `src/shared/`.
 3. Run SQL through the repository, giving it `withQueryLog(deps.pool, request.log)` (or the transaction's client), so query durations are logged with the request id.
 4. Throw a typed error from `src/server/errors.ts`; never build an error response by hand:
@@ -128,7 +128,7 @@ Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere i
 - A migration file contains no `begin`, `commit`, `rollback` or `abort`; the runner wraps it in a transaction. It refuses a file with a line that starts with `begin`, `commit` or `rollback` before running it, and stops with a message to run `pnpm db:reset` if a file ends the transaction any other way (an `abort`, or a `commit` in the middle of a line).
 - The runner also refuses a file not named `NNNN_description.sql` (lower case), two files with the same number, and a pending file that sorts before the newest applied one: give a new file the next free number.
 - **Run one migration runner at a time** (one `pnpm db:migrate`, `pnpm db:reset` or test run against a database). There is no lock, but a race cannot apply a file twice: the second runner fails with a duplicate-key error (on the primary key of `schema_migrations` on a migrated database, or, on a brand-new database, while creating `schema_migrations`), so nothing is applied twice and it exits with an error.
-- **Every task that adds a table extends `db/seed.ts`** with obviously fake rows. Each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so running the seed twice leaves the same rows.
+- **Every task that adds a table adds a seed** with obviously fake rows: a file in `db/seeds/` exporting one function that takes the database client and returns how many rows it inserted, and one line in the `SEEDS` list in `db/seed.ts`. Each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so running the seed twice leaves the same rows.
 - **Settings** are read once at startup by `loadConfig()` in `src/server/config.ts`, which exits with one JSON error line if any is missing or invalid. Add a new setting there and to `.env.example`.
 - Test tooling uses only `TEST_DATABASE_URL`, and refuses a database whose name does not end in `_test` (`src/server/db/guards.ts`).
 

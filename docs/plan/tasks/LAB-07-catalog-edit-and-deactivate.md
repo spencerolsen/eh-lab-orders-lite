@@ -16,6 +16,7 @@ It follows LAB-06 because it reuses that page, schema and repository. Tests are 
 
 **Data**
 - No new columns and no migration. `updated_at` is set on every change.
+- `lab_tests` has no trigger for `updated_at` (LAB-06): the update's SQL sets `updated_at = now()` itself.
 
 **API**
 - `PATCH /api/lab-tests/:id` with any subset of `{ name, priceCents, turnaroundDays, isActive }` returns 200 with the full updated test (same shape as LAB-06). Same field rules as create. An empty body `{}` returns 400 `VALIDATION_ERROR`.

@@ -13,6 +13,7 @@ import {
   toErrorResponse,
   ValidationError,
 } from './errors';
+import { catalogRoutes } from './catalog/routes';
 import { healthRoutes } from './health/routes';
 import { pickRequestId } from './request-id';
 
@@ -136,8 +137,11 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
 
   healthRoutes(app, deps.pool);
-  // Feature routes are registered under /api, for example (LAB-06):
-  // app.register((api) => catalogRoutes(api, deps), { prefix: '/api' });
+  // Feature routes. Each writes its full path (/api/...) and is added to this
+  // app directly, not through app.register with a prefix: a registered plugin
+  // makes app.close() reach the preClose hook above a few ticks later, and a
+  // request arriving in between would run instead of getting the 503.
+  catalogRoutes(app, deps.pool);
 
   return app;
 }

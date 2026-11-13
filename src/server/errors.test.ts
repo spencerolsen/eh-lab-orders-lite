@@ -15,8 +15,7 @@ import {
   ValidationError,
 } from './errors';
 
-// No 409 or 422 codes are registered yet (LAB-06 adds the first), so these
-// tests use made-up codes.
+// Made-up codes, so these tests do not depend on which feature codes exist.
 const CONFLICT_CODE = 'TEST_CONFLICT' as ErrorCode;
 const RULE_CODE = 'TEST_RULE' as ErrorCode;
 

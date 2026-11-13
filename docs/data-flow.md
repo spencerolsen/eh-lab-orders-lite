@@ -6,7 +6,7 @@ Kept up to date by each task that adds an action.
 
 ## An error, from the server to the screen
 
-The path of a failed request, here a `ConflictError` thrown by a route (a duplicate lab test code, LAB-06), and what the user reads.
+The path of a failed request, here a `ConflictError` thrown by the catalog repository (a duplicate lab test code, LAB-06), and what the user reads.
 
 ```mermaid
 sequenceDiagram
@@ -23,16 +23,18 @@ sequenceDiagram
   C->>V: POST /api/lab-tests
   V->>A: POST /api/lab-tests
   Note over A: onRequest: request id taken from x-request-id or a new UUID
-  A->>A: route throws ConflictError('DUPLICATE_TEST_CODE', 'This code already exists')
-  Note over A: error handler: toErrorResponse, warn line request.rejected with the request id
+  A->>A: insert hits the unique constraint (23505), repo throws ConflictError('DUPLICATE_TEST_CODE', 'This code already exists')
+  Note over A: route: warn line lab_test.duplicate_code; error handler: toErrorResponse, warn line request.rejected
   A-->>V: 409 { error: { code, message, requestId } }
   V-->>C: 409, same body
   Note over C: body matches errorBodySchema (src/shared)
   C-->>Q: throws ApiError(409, code, message, requestId)
   Q-->>P: error (a mutation is never retried)
-  P->>P: ErrorMessage: describeError(error)
-  P-->>U: "This code already exists. Reference: 3f2c..."
+  P->>P: the form puts error.message under the Code field
+  P-->>U: "This code already exists" under Code
 ```
+
+The add form shows a 409 `DUPLICATE_TEST_CODE` and a 400's `details` under their fields; any other failure is shown above its button by `ErrorMessage` with `describeError`, which ends with "Reference: <requestId>". The list on the page shows a failed load the same way, with a "Try again" button.
 
 - **Where the request id comes from:** the API picks it for every request (the caller's `x-request-id` when it is sane, otherwise a new UUID), puts it on every log line for the request and in the error body. The user quotes the reference; a developer finds the matching log lines with it.
 - **When the API is down:** the proxy answers `502` with no standard body, so `apiFetch` throws `ApiError` with code `SERVER_UNREACHABLE`; a query retries once, then the page shows "Can't reach the server. Try again." with no reference (there is no request id, because the API never saw the request).
