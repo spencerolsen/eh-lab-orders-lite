@@ -1,6 +1,6 @@
 # LAB-11: Orders: see orders on the home page
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-06 (Catalog: see and add lab tests), LAB-08 (Patients: add and list patients)
 - **Unblocks:** LAB-12 (Orders: place an order), LAB-14 (Orders: filter the list by status and patient), LAB-15 (Orders: order detail slide-out panel)
