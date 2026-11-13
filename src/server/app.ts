@@ -84,8 +84,9 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // Set once app.close() starts (on SIGTERM or SIGINT): requests already
   // running finish, and any that arrive after this get a 503.
   let closing = false;
-  app.addHook('preClose', async () => {
+  app.addHook('preClose', (done) => {
     closing = true;
+    done();
   });
 
   app.addHook('onRequest', async (request, reply) => {
