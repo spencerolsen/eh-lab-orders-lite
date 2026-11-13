@@ -83,6 +83,18 @@ It is done now, before the feature pages exist, so that every page built from LA
 - A final polish pass with real content: done near the end, after LAB-20.
 - Styling of pages that do not exist yet: each feature ticket applies the shared styles to its own page.
 
+## Notes from the build
+
+- **Status badge and LAB-11.** The shared list of order statuses does not exist yet. `StatusBadge` (`src/web/components/StatusBadge.tsx`) takes the status as a plain string, shows the word and adds the class `badge-<status>`. LAB-11 creates the list in `src/shared/` and connects the badge to it (types its prop with the shared status type).
+- **Colours chosen here:** muted text `#6b5a68` (a greyed plum, from the body text's hue), border `#e3d9cc` (a darker cream), danger `#a3221b` on `#fdeceb`.
+- **Focus outline:** teal (`--color-brand`) on light backgrounds and lime in the menu bar. The old orange outline is 2.62:1 on the teal menu bar, below 3:1, and adds a hue outside the palette.
+- **Badge tints come from the palette** (surface-tint, accent, brand, danger-surface), so no new colour was added; `cancelled` also has a border.
+- **Field outlines use the muted text colour**, so a field's edge is 6.29:1 against its surface; `--color-border` stays light for separators.
+- **Every `<button>` is primary by default**, with `button-secondary` and `button-danger` modifiers: the existing buttons (Try again, Reload the page, an empty state's action) needed no change.
+- **The fallback screen** is a card on the page; `ErrorBoundary`'s markup gained one wrapper `div`, and its test is unchanged.
+- **Extra helpers** for the page builders: `page-header`, `form`, `form-actions`, `card`, `stack`, `muted`, `button` (a link that looks like a button), `numeric` in a table.
+- **The `/styles` page opens a sample dialog and panel** with `showModal()`, so their surfaces can be seen; a test checks it renders every section, and a second test checks it is not in the menu.
+
 ## What to be able to explain
 
 1. Why are colours named by role (`--color-brand`) and not by hue (`--teal`)? What does that make easy to change?
