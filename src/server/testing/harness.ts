@@ -46,7 +46,8 @@ export type TestApp = {
 };
 
 // Builds the app on the test database (or on `pool`, when a test needs a
-// broken one), with a fixed clock and a capturing logger at debug level.
+// broken one), with a fixed clock (or `clock`), the clinic time zone
+// America/Denver (the default CLINIC_TIMEZONE) and a capturing logger at debug level.
 // A test may add its own routes to `app` before the first inject.
 export function startTestApp(
   options: { pool?: pg.Pool; clock?: () => Date } = {},
@@ -56,6 +57,7 @@ export function startTestApp(
   const app = buildApp({
     pool,
     clock: options.clock ?? (() => new Date('2026-01-15T17:00:00Z')),
+    clinicTimezone: 'America/Denver',
     logger: capture.logger,
   });
   return {

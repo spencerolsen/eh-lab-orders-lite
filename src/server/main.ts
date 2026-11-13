@@ -14,7 +14,12 @@ const logger = createLogger({
   pretty: process.env.NODE_ENV === 'development',
 });
 const pool = createPool(config.DATABASE_URL, logger);
-const app = buildApp({ pool, clock: () => new Date(), logger });
+const app = buildApp({
+  pool,
+  clock: () => new Date(),
+  clinicTimezone: config.CLINIC_TIMEZONE,
+  logger,
+});
 
 let shuttingDown = false;
 

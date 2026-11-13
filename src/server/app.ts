@@ -15,13 +15,17 @@ import {
 } from './errors';
 import { catalogRoutes } from './catalog/routes';
 import { healthRoutes } from './health/routes';
+import { patientRoutes } from './patients/routes';
 import { pickRequestId } from './request-id';
 
 // Everything the app needs from outside. Production passes the real pool,
-// () => new Date() and the pino logger (main.ts); tests pass their own.
+// () => new Date(), the clinic's time zone and the pino logger (main.ts);
+// tests pass their own.
 export type AppDeps = {
   pool: pg.Pool;
   clock: () => Date;
+  // CLINIC_TIMEZONE: the clinic's calendar day decides what "today" is.
+  clinicTimezone: string;
   logger: FastifyBaseLogger;
 };
 
@@ -142,6 +146,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // makes app.close() reach the preClose hook above a few ticks later, and a
   // request arriving in between would run instead of getting the 503.
   catalogRoutes(app, deps.pool);
+  patientRoutes(app, deps);
 
   return app;
 }

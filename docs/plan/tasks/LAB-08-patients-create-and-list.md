@@ -1,6 +1,6 @@
 # LAB-08: Patients: add and list patients
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-05 (Checks on every pull request)
 - **Unblocks:** LAB-09 (Patients: search by name and edit a patient), LAB-11 (Orders: see orders on the home page)
@@ -16,25 +16,25 @@ Patients come before orders because every order belongs to a patient. This slice
 
 **Data**
 - New plain SQL migration creating `patients`: `id uuid` primary key, `first_name text not null`, `last_name text not null`, `date_of_birth date not null`, `email text null`, `phone text null`, `created_at` and `updated_at` (`timestamptz`, default now).
-- Database checks: first and last name not blank; `email is not null or phone is not null`; `phone ~ '^[0-9]+$'` when present; `email = lower(email)` when present; `date_of_birth <= current_date + 1`. The last one is only a loose backstop: the database runs in UTC, which can be a day ahead of or behind the clinic, so the precise rule is enforced in code with the clinic timezone and the database check must never reject a date the code accepts. The real "not in the future" check is in the schema (below).
+- Database checks: first and last name not blank; `email is not null or phone is not null`; `phone ~ '^[0-9]{10}$'` when present (10 digits); `email = lower(email)` when present; `date_of_birth <= current_date + 1`. The last one is only a loose backstop: the database runs in UTC, which can be a day ahead of or behind the clinic, so the precise rule is enforced in code with the clinic timezone and the database check must never reject a date the code accepts. The real "not in the future" check is in the schema (below).
 - The pg date parser was configured in LAB-02 and is not touched here; this task only tests that date of birth round-trips as a string.
-- Seed (added to `pnpm db:seed`): exactly 6 obviously fake patients (for example "Test Patient", "Sample Person"; email domain `example.test`; phones such as `5550100`). Every seeded row has a fixed UUID and is inserted with `on conflict (id) do nothing`, so running the seed twice leaves the same rows. Never run by unit or integration tests (the e2e setup in LAB-21 loads the seed into lab_orders_e2e).
+- Seed (added to `pnpm db:seed`): exactly 6 obviously fake patients (for example "Test Patient", "Sample Person"; email domain `example.test`; phones such as `8015550100`, in the fictional 555-0100 to 555-0199 range). Every seeded row has a fixed UUID and is inserted with `on conflict (id) do nothing`, so running the seed twice leaves the same rows. Never run by unit or integration tests (the e2e setup in LAB-21 loads the seed into lab_orders_e2e).
 
 **API**
 - `POST /api/patients` body `{ firstName, lastName, dateOfBirth, email?, phone? }` returns 201 with `{ id, firstName, lastName, dateOfBirth, email, phone }`.
 - `GET /api/patients` returns 200 with an array of the same shape, sorted by last name, then first name.
-- Rules live in one strict Zod schema in `src/shared/`: names trimmed, 1 to 100 characters; `dateOfBirth` matches `YYYY-MM-DD`, is a real calendar date (`2020-02-30` rejected, `2020-02-29` accepted) and not after today, using pure `isRealDate` and a `today(timezone, now)` helper, where `now` is a `Date`, that returns the `YYYY-MM-DD` string of `now` in that timezone. The server calls `today(CLINIC_TIMEZONE, clock())` (the same setting the ready date uses, LAB-11, and the injected clock from LAB-03); the browser calls it with the browser's timezone and `new Date()`, as an advisory check only (it gives early feedback and the server decides); empty email or phone counts as absent; email must look like an email and is lower-cased; phone has non-digits stripped and must keep at least one digit; at least one of email or phone must be present.
+- Rules live in one strict Zod schema in `src/shared/`: names trimmed, 1 to 100 characters, no control characters (Postgres cannot store a NUL, which would otherwise be a 500); `dateOfBirth` matches `YYYY-MM-DD`, is a real calendar date (`2020-02-30` rejected, `2020-02-29` accepted) and not after today, using pure `isRealDate` and a `today(timezone, now)` helper, where `now` is a `Date`, that returns the `YYYY-MM-DD` string of `now` in that timezone. The server calls `today(CLINIC_TIMEZONE, clock())` (the same setting the ready date uses, LAB-11, and the injected clock from LAB-03); the browser checks against the latest day anywhere on Earth, `today('Pacific/Kiritimati', new Date())` (UTC+14), as an advisory check only (it gives early feedback and the server decides; changed in the build: with the browser's own timezone, a browser behind the clinic refused the clinic's today); empty email or phone counts as absent; email must look like an email and is lower-cased; phone may contain only digits, spaces, dashes, dots, parentheses and a leading `+`, has the formatting stripped, and must then be a US number with its area code: exactly 10 digits, or 11 starting with 1, whose leading 1 is dropped, so 10 digits are stored (changed before merging, an owner decision: the clinic's patients have US numbers, and a fixed length catches a missing area code; international numbers are not supported; a letter is refused rather than dropped, because a typo would otherwise store a different number). On screen a stored phone is shown as `(801) 555-0101` by one shared helper, `formatPhone`; the API sends and receives the digits; at least one of email or phone must be present.
 - Any failure returns 400 `VALIDATION_ERROR` with `details` per field, naming both `email` and `phone` for the "at least one" rule. Unknown extra fields return 400.
 - Code goes in `src/server/patients/{routes.ts,repo.ts}`; the route parses explicitly and calls the repo directly.
 
 **UI**
 - `src/web/patients/`: Patients page at `/patients` with a table (Name, Date of birth, Email, Phone), a New patient button, an empty state, and loading and error states that show the request id.
 - New patient form at `/patients/new`, built as a reusable `PatientForm` component (LAB-09 reuses it for edit). Errors appear under the field and clear on edit; the contact error appears under both email and phone. Submit is disabled while saving. On success, go to `/patients`.
-- Reusable `PatientLabel` component shows the name with date of birth ("Name (born Mar 9, 1984)"), used on list rows here and on later screens. A pure `formatDate` splits the `YYYY-MM-DD` string; it never builds a `Date`.
+- Reusable `PatientLabel` component shows the name with date of birth ("Name (born Mar 9, 1984)"), used on later screens (changed in the build: the list's table already has separate Name and Date of birth columns, so a label in the Name cell would repeat the date; the list shows the name only). A pure `formatDate` splits the `YYYY-MM-DD` string; it never builds a `Date`.
 - Server 400 details map to the same field slots as the client checks.
 
 **Logging**
-- `info` `patient.created` with `patientId`. `warn` for rejected input with the failed field names only, never values. Request bodies are never logged.
+- `info` `patient.created` with `patientId`. `warn` for rejected input with a count of the failed fields (`fieldCount`), never their names or values (changed in the build: the existing error handler logs the count only, because a field name can be a key the client chose, and so can hold patient details). Request bodies are never logged.
 
 ## Acceptance criteria
 
@@ -44,9 +44,9 @@ Patients come before orders because every order belongs to a patient. This slice
 - [ ] Supplying neither email nor phone shows an error under both; supplying only one is accepted.
 - [ ] `2020-02-30`, `1984-13-01`, tomorrow's date and `31/12/1990` are rejected with an error on date of birth; today's date and `2020-02-29` are accepted.
 - [ ] A phone typed as `(801) 555-0100` is stored as `8015550100`; an email typed as `Jane@Example.test` is stored as `jane@example.test`.
-- [ ] A phone of `abc` is rejected.
+- [ ] A phone of `abc`, or one without its area code (`555-0100`), is rejected; the list shows a stored phone as `(801) 555-0100`.
 - [ ] The same invalid bodies sent directly to `POST /api/patients` return 400 `VALIDATION_ERROR` with field details and a request id.
-- [ ] The database rejects a row with neither email nor phone, and a row whose phone contains letters (direct SQL).
+- [ ] The database rejects a row with neither email nor phone, and a row whose phone is not exactly 10 digits (direct SQL).
 - [ ] Two patients with identical details can both be created (no duplicate check yet).
 - [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 - [ ] With the injected clock set just before midnight in the clinic timezone (already the next day in UTC), the clinic's today is accepted and the clinic's tomorrow is rejected.
@@ -74,7 +74,7 @@ Patients come before orders because every order belongs to a patient. This slice
 - Search and edit: LAB-09. Duplicate warning: LAB-10.
 - The patient's order history: LAB-19.
 - Deleting a patient: future version (retention rules need the product owner).
-- International phone formats and email verification: future version.
+- International phone numbers (owner decision: US numbers only) and email verification: future version.
 
 ## What to be able to explain
 

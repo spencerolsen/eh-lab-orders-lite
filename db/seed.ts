@@ -11,9 +11,13 @@ import { loadConfig } from '../src/server/config';
 import { checkDatabasePort } from '../src/server/db/guards';
 import { exitWithError, withClient } from '../src/server/db/script';
 import { seedLabTests } from './seeds/lab-tests';
+import { seedPatients } from './seeds/patients';
 
 // In order: a table's rows come after the rows they point at.
-const SEEDS: Array<(client: pg.ClientBase) => Promise<number>> = [seedLabTests];
+const SEEDS: Array<(client: pg.ClientBase) => Promise<number>> = [
+  seedLabTests,
+  seedPatients,
+];
 
 try {
   const { DATABASE_URL } = loadConfig();
