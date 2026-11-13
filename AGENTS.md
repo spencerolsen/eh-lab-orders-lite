@@ -13,11 +13,17 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
   - `repo.ts`: the SQL queries for that feature, hand-written, with typed row mappers. Queries live here and nowhere else.
   - `domain/`: business rules as pure functions (no Fastify, no `pg`), unit tested on their own. Rules never live in routes or repositories.
   - `service.ts`: only where a feature needs a transaction or combines rules with several queries (for example placing an order). Simple features call the repository from the route.
-- `src/web/`: the browser app. Each feature gets its own folder, `src/web/<feature>/`.
+- `src/web/`: the browser app (React, Vite, React Router, TanStack Query). Each feature gets its own folder, `src/web/<feature>/`, with its page (for example `catalog/CatalogPage.tsx`).
+  - `main.tsx` mounts the app (error boundary, query client, router); `App.tsx` holds the routes; `Layout.tsx` and `MenuBar.tsx` are the frame around every page; `NotFoundPage.tsx` is the screen for unknown paths.
+  - `api/`: `client.ts` (`apiFetch` and `ApiError`, the only way to call the API), `errors.ts` (`describeError`, the sentence shown for a failed request), `query-client.ts` (TanStack Query defaults).
+  - `components/`: shared `Loading`, `EmptyState`, `ErrorMessage` and the `ErrorBoundary`. A page shows loading, empty and error states with these, never its own.
+  - `health/ServerStatus.tsx`: the footer line that says whether the API answers.
+  - `styles/base.css`: the only stylesheet, plain CSS with colour and spacing variables.
+  - `testing/`: the component test setup and `renderApp(path)`, which renders the whole app at a path with a fake `fetch`.
 - `src/shared/`: code used by both sides: request and response schemas, money and date helpers, and every fixed list of values.
 - `docs/`: architecture, API, data model, data flow, testing and the acceptance checklist. `docs/plan/` holds the build plan and one ticket per task.
 
-Tests sit next to the code they test: unit tests named `<name>.test.ts`, integration tests (database or HTTP through the app) named `<name>.integration.test.ts`. The smoke test is `src/shared/smoke.test.ts`. See `docs/testing.md`.
+Tests sit next to the code they test, and the file name decides how they run: unit tests `<name>.test.ts` (Node, no database), component tests `<name>.test.tsx` (React in jsdom with Testing Library), integration tests (database or HTTP through the app) `<name>.integration.test.ts`. The smoke test is `src/shared/smoke.test.ts`. See `docs/testing.md`.
 
 ## Import boundary
 
@@ -34,9 +40,12 @@ Tests sit next to the code they test: unit tests named `<name>.test.ts`, integra
 | `pnpm install` | Install dependencies (pnpm through Corepack; the version is pinned in `package.json`). |
 | `pnpm lint` | ESLint with the TypeScript rules and the import boundary. |
 | `pnpm typecheck` | The TypeScript compiler in strict mode, no output files. |
+| `pnpm dev` | The whole app with one command (`scripts/dev.ts`): creates `.env` from `.env.example` when missing, checks the settings and that Docker runs, then `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` together with prefixed output. Ctrl-C stops both. |
 | `pnpm dev:api` | Run the API server under `tsx watch` with readable development logs (`NODE_ENV=development`). |
+| `pnpm dev:web` | Run the Vite dev server on port 5173, proxying `/api` and `/healthz` to the API on `PORT`. |
+| `pnpm build` | Build the web app into `dist/web`. |
 | `pnpm start` | Run the API server under `tsx` with JSON logs. |
-| `pnpm test` | Unit and integration tests (Vitest projects `unit` and `integration`). The integration project starts the database container and waits until it is healthy, unless `CI` is set; the unit project needs neither Docker nor `.env`. Needs `.env` (or `TEST_DATABASE_URL` in the environment). One project alone: `pnpm test --project unit` or `--project integration`. |
+| `pnpm test` | Unit, component and integration tests (Vitest projects `unit`, `component` and `integration`). The integration project starts the database container and waits until it is healthy, unless `CI` is set, and needs `.env` (or `TEST_DATABASE_URL` in the environment); the unit and component projects need neither Docker nor `.env`. One project alone: `pnpm test --project unit`, `--project component` or `--project integration`. |
 | `pnpm format` | Format the code with Prettier. Markdown is not formatted. |
 | `pnpm format:check` | Check the formatting without changing files. |
 | `pnpm db:up` | Start Postgres in Docker (host port 5433) and wait until it is healthy. |
@@ -46,9 +55,9 @@ Tests sit next to the code they test: unit tests named `<name>.test.ts`, integra
 | `pnpm db:seed` | Insert the fake sample rows from `db/seed.ts`. |
 | `pnpm db:test:reset` | Drop, recreate and migrate the test database in `TEST_DATABASE_URL`. Refuses any database other than `lab_orders_test`. |
 
-The TypeScript scripts run under `tsx`, which loads `.env` with `--env-file-if-exists` (copy `.env.example` to `.env` first). Plain `node` cannot run them, because imports are extensionless.
+The TypeScript scripts run under `tsx`, which loads `.env` with `--env-file-if-exists` (`pnpm dev` creates `.env` from `.env.example`; otherwise copy it yourself). Plain `node` cannot run them, because imports are extensionless.
 
-Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. Later tasks add `pnpm dev` (LAB-04) and `pnpm test:e2e` (LAB-21).
+Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. LAB-21 adds `pnpm test:e2e`.
 
 ## Conventions
 
@@ -57,6 +66,13 @@ Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before op
 - **Logs carry ids and counts only.** No names, dates of birth or other patient details in logs, and never request bodies, query strings, headers or SQL parameters. Levels follow the logging standard in `docs/architecture.md`.
 - **Each fixed list of values is defined once in `src/shared/`** (for example order statuses), and everything else (database checks, schemas, the screens) derives from it.
 - Imports are relative (`../shared/money`).
+
+## Calling the API from a page
+
+- Call the API only through `apiFetch` (`src/web/api/client.ts`) inside a TanStack Query `useQuery` or `useMutation`, and check the returned body with the shared response schema (`schema.parse(await apiFetch(...))`). `apiFetch` throws an `ApiError` for every failure; never read a raw `Response` in a page.
+- Show the three states with the shared components: `Loading` while pending, `EmptyState` for an empty list, `ErrorMessage` (with `onRetry` for a query) for an error. `ErrorMessage` uses `describeError`, so the user sees the server's message for a 4xx, a generic one for a 5xx or when the server cannot be reached, and the request id as "Reference: <id>".
+- Field errors from a 400 are in `error.details` (an `ApiError`), one `{ field, reason }` per field.
+- The web code never imports `src/server`: a type both sides need (like the error body in `src/shared/api-error.ts`) goes in `src/shared`.
 
 ## Adding a route
 

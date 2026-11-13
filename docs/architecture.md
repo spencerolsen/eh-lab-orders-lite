@@ -2,7 +2,36 @@
 
 How the app is put together: the server, the web app, the database, and how they talk to each other.
 
-Later tasks fill in the web app.
+## How the pieces talk
+
+```mermaid
+flowchart LR
+  B[Browser] -->|pages, scripts| V[Vite dev server :5173]
+  B -->|/api/..., /healthz| V
+  V -->|proxy| A[API, Fastify :PORT]
+  A -->|SQL| D[(Postgres :5433)]
+```
+
+In development the browser talks only to Vite. Vite serves the web app and forwards `/api` and `/healthz` to the API at `http://localhost:${PORT}`, the same `PORT` setting the API listens on (`pnpm dev` checks the settings and passes the port to both). So the browser sees one origin: no CORS setup, and the web code calls relative paths such as `/api/lab-tests`. The proxy replaces what a reverse proxy or a server serving both would do in production; serving the built app from the API is out of scope for now (the reviewer runs the dev setup).
+
+`pnpm dev` (`scripts/dev.ts`) starts it all: `.env` from `.env.example` when missing, the settings check, a Docker check, `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` as two child processes with prefixed output. Each child runs in its own process group; Ctrl-C (or `SIGTERM`) sends `SIGTERM` to both groups, so pnpm, tsx and node all stop and no process is left behind; a second Ctrl-C sends `SIGKILL`. If either child exits, the other is stopped. Under `tsx watch` the API is stopped at once rather than through its graceful shutdown (pnpm passes the signal on a second time, and tsx then force-kills it); that is fine in development, and `pnpm start` keeps the graceful shutdown.
+
+## Web app
+
+A React app in `src/web/`, built by Vite (`index.html` at the root loads `src/web/main.tsx`; `pnpm build` writes `dist/web`).
+
+- **`main.tsx`** mounts, from the outside in: the error boundary, TanStack Query's `QueryClientProvider`, React Router's `BrowserRouter`, then `App`.
+- **`App.tsx`** holds the routes: `/` Orders (the home page), `/patients`, `/catalog`, and `*` for "Page not found". All sit inside `Layout`, so the menu bar and the footer are on every page. Routing is declarative (`<Routes>`), not a data router: a data router has its own error screen, which would catch render errors before the app's error boundary.
+- **`MenuBar.tsx`** uses `NavLink`, which gives the link of the current section `aria-current="page"`; the CSS styles that attribute, so the visual mark and what a screen reader hears cannot disagree. The "New order" button (LAB-20) goes at the end of the bar.
+- **`api/client.ts`**: `apiFetch(path, { method, body, signal })` calls `fetch`, sends a body as JSON, and returns the parsed JSON body (or `undefined` for an empty one). On any failure it throws an `ApiError` with `status`, `code`, `message`, `details` and `requestId`, taken from the standard error body (checked with the shared schema in `src/shared/api-error.ts`). When there is no standard body (the network failed, the proxy answered 502 because the API is down, an HTML page, an empty body) it throws an `ApiError` with code `SERVER_UNREACHABLE`, the message "Can't reach the server. Try again." and no request id. A request cancelled through its `signal` ends with the abort, not an `ApiError`.
+- **`api/errors.ts`**: `describeError(error)` gives the sentence to show: the server's message for a 4xx (the API writes those for the user), a generic message for a 5xx, "Can't reach the server. Try again." when unreachable, a generic message for anything that is not an `ApiError`; and it ends with "Reference: <requestId>" whenever there is one.
+- **`api/query-client.ts`**: TanStack Query defaults: a query is retried once when the server could not be reached, never on a 4xx or 5xx; no refetch on window focus; a mutation is never retried.
+- **`components/`**: `Loading` (text with `role="status"`), `EmptyState` (message and optional action), `ErrorMessage` (`describeError` text in a `role="alert"` box, with a "Try again" button when given `onRetry`), and `ErrorBoundary`. Every page shows loading, empty and error the same way, with the same wording and the same accessibility, and each new page gets them for free.
+- **`ErrorBoundary`** catches an error thrown while rendering any component below it, writes it to the browser console and shows "Something went wrong. Reload the page." with a reload button, instead of a blank page. It does not catch a failed request (TanStack Query catches that and hands it to the page, which shows `ErrorMessage`), nor errors in event handlers, timers or other async code: React only sends render and lifecycle errors to a boundary.
+- **`health/ServerStatus.tsx`** is a line in the footer that calls `GET /healthz` through `apiFetch` and TanStack Query: "Server: connected", or the error with a retry button. It is there so the proxy, the client and the error states are used for real before any feature page exists. A `503` from `/healthz` (database down) has no standard error body, so it also shows "Can't reach the server". A later task may keep it or remove it; nothing depends on it.
+- **`styles/base.css`**: plain CSS, no component library: colour and spacing variables, system fonts, a visible focus outline on everything focusable, and a layout that works from 360 px wide (the menu bar wraps).
+
+TypeScript uses one `tsconfig.json` for both sides, with `DOM` in `lib` and the Node and `vite/client` types: Node types are visible in web code, the accepted cost of a single config. ESLint gives `src/web` browser globals and everything else Node globals; in TypeScript files the type checker is what catches an unknown global (typescript-eslint turns `no-undef` off there), so the split matters mostly for the plain JavaScript files.
 
 ## Server
 

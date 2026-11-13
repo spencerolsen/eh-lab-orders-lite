@@ -10,33 +10,37 @@ This is an early stub. The full README is written in LAB-22.
 - pnpm, through Corepack (`corepack enable`); the version is pinned in `package.json`
 - Docker, for the Postgres database
 
-## Commands
+## Running the app
 
 ```sh
 pnpm install
-pnpm lint
-pnpm typecheck
-pnpm test              # unit and integration tests; needs .env (cp .env.example .env), starts the database container itself
-pnpm format:check
+pnpm dev
 ```
 
-## Running the API
+Then open http://localhost:5173. `pnpm dev` does everything else, in order:
+
+1. If there is no `.env`, copies `.env.example` to `.env` and prints one line saying so (the defaults work with the Docker database). Then it checks every setting and stops with the config error if one is missing or malformed.
+2. Checks that Docker is running; if not, prints one line and exits with an error.
+3. Starts Postgres in Docker and waits until it is healthy (`pnpm db:up`), applies pending migrations (`pnpm db:migrate`) and runs the seed (`pnpm db:seed`). The seed runs every time: every row has a fixed key and is inserted with `on conflict do nothing`, so a second run inserts 0 rows.
+4. Runs the API (http://localhost:3000, restarting when a server file changes) and the web app (Vite, http://localhost:5173) together, each output line prefixed `[api]` or `[web]`. Ctrl-C stops both.
+
+The browser talks only to Vite, which forwards `/api` and `/healthz` to the API on the `PORT` setting. One side alone, for debugging: `pnpm dev:api` or `pnpm dev:web`. `pnpm build` builds the web app into `dist/web`. `pnpm start` runs the API without watching, with JSON log lines.
+
+## Checks
 
 ```sh
-cp .env.example .env     # once; the defaults work with the Docker database
-pnpm db:up
-pnpm dev:api             # the API on http://localhost:3000, restarting on changes
-curl http://localhost:3000/healthz
+pnpm lint
+pnpm typecheck
+pnpm test              # unit, component and integration tests; needs .env (pnpm dev creates it), starts the database container itself
+pnpm format:check
 ```
-
-`pnpm start` runs it without watching, with JSON log lines. The web app and the one-command `pnpm dev` arrive with LAB-04.
 
 ## Database
 
 Postgres 16 runs in Docker on host port 5433 (so it does not clash with a local Postgres on 5432). It holds two databases: `lab_orders` for development and `lab_orders_test` for tests.
 
 ```sh
-cp .env.example .env     # settings; the defaults work with the Docker database
+cp .env.example .env     # settings (pnpm dev does this for you when .env is missing)
 pnpm db:up               # start Postgres and wait until it is healthy
 pnpm db:migrate          # apply pending migrations
 pnpm db:seed             # insert the fake sample data

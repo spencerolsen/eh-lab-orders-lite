@@ -71,6 +71,25 @@ It comes right after the API foundation because the client must understand the e
 - Serving the built web app from the API: future version; the reviewer runs the dev setup.
 - A component library, dark mode, translations: future version.
 
+## Notes from the build
+
+Choices made while building that the requirements above did not dictate:
+
+- **Something on screen uses the API now.** A line in the footer (`src/web/health/ServerStatus.tsx`) calls `GET /healthz` through `apiFetch` and TanStack Query and shows "Server: connected", or the error with a "Try again" button. So the proxy, the client, the loading state and the error states run for real before any feature page exists, and the acceptance checks for "API stopped" and "422 with its request id" have something to look at (the 422 is checked by a component test with a fake `fetch`, and by hand in the browser by replacing `fetch` on the page, because no endpoint returns a 422 yet). Later tasks may keep it or remove it; nothing depends on it. A 503 from `/healthz` (database down) has no standard error body, so it also shows "Can't reach the server".
+- **The error shape is defined once, in `src/shared/api-error.ts`**, as a Zod schema. The server's `ErrorBody` type is built from it (with its code narrowed to `ERROR_CODES`), a unit test checks that `toErrorResponse` builds bodies the schema accepts, and `apiFetch` checks failed responses against it. The web never imports the server's error classes.
+- **`apiFetch` returns `unknown`**: a page checks the body with the shared response schema (`schema.parse(await apiFetch(...))`), as the health line does with `healthOkSchema` in `src/shared/health.ts`.
+- **Client-only error code `SERVER_UNREACHABLE`**, with status 0 when no response arrived at all. It is never sent by the API, so it is not in `ERROR_CODES`.
+- **`describeError`** shows the server's message for any 4xx (the API writes all of them for the user), not only 400, 409 and 422; adds a full stop before "Reference:" when the message has none; and gives a generic message for anything that is not an `ApiError`.
+- **Retry rule:** a query retries once only for `SERVER_UNREACHABLE`; never on a 4xx or 5xx; a mutation never retries.
+- **`pnpm dev` starts the two processes itself** (`scripts/dev.ts`, with `child_process`) instead of using a package such as `concurrently`: it is a few lines, and what Ctrl-C does stays visible in one file. Each child runs in its own process group so stopping it reaches pnpm, tsx and node. It runs the package scripts by name (`db:up`, `db:migrate`, `db:seed`, `dev:api`, `dev:web`) with the same pnpm, so there is one definition of each step. Docker is checked with `docker info`.
+- **One port setting:** `pnpm dev` checks the settings, then puts the checked `PORT` in the environment of both the API and Vite; `vite.config.ts` reads `PORT` from the environment or `.env`, else 3000 (the API's default). It does not import `src/server/config.ts`, because Vite warns that an extensionless import in its config will stop working.
+- **Vite's port is fixed at 5173** (`strictPort`), so the address in the README is always right.
+- **Declarative routing (`<Routes>`), not a data router**, so the app's error boundary catches render errors (a data router shows its own error screen first).
+- **Test naming:** `*.test.ts` is unit (Node), `*.test.tsx` is component (jsdom), `*.integration.test.ts` is integration. The web code with no React in it (`apiFetch`, `describeError`, the retry rule) is unit tested.
+- **`eslint-plugin-react-hooks`** is added for the Rules of Hooks in `src/web`. No `jest-dom`: the tests use Testing Library's queries and plain `expect`.
+- **Versions:** React 19.3, TanStack Query 5.107, Vite 8.3 with `@vitejs/plugin-react` 6.3. React Router 7.18 and jsdom 29.1, not their newest majors (8 and 31), because those require Node 22.22 or later and the project supports Node `^22.13.0`.
+- **In development the API stops at once on Ctrl-C** rather than through its graceful shutdown: pnpm passes the signal on a second time and `tsx watch` then force-kills it. Nothing is left running; `pnpm start` keeps the graceful shutdown.
+
 ## What to be able to explain
 
 1. Why does the browser talk only to Vite, and what does the proxy replace?
