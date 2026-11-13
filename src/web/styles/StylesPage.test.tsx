@@ -23,8 +23,8 @@ it('the styles page renders every shared style without throwing', () => {
       screen.getByRole('heading', { level: 2, name: section }),
     ).toBeTruthy();
   }
-  for (const status of ['ordered', 'collected', 'completed', 'cancelled']) {
-    expect(screen.getAllByText(status).length).toBeGreaterThan(0);
+  for (const label of ['Ordered', 'Collected', 'Completed', 'Cancelled']) {
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
   }
   // The invalid field is marked by aria-invalid and its message, not colour.
   const code = screen.getByLabelText('Code');
