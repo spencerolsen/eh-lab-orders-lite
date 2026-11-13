@@ -140,6 +140,42 @@ describe('migrate', () => {
     expect(await recordedFiles()).toEqual([]);
   });
 
+  it('migrate reports a file that commits its own work mid-line', async () => {
+    // Not at the start of a line, so the line check lets it through.
+    await write(
+      '0001_trailing_commit.sql',
+      'create table committed_early (id int); commit;\nselect 1/0;',
+    );
+
+    await expect(runMigrate()).rejects.toThrow(
+      /0001_trailing_commit.sql ended the runner's transaction itself/,
+    );
+    // The part before the commit stays: that is why the message says to reset.
+    expect(await tableExists('committed_early')).toBe(true);
+    expect(await recordedFiles()).toEqual([]);
+  });
+
+  it('migrate reports a file that aborts the transaction', async () => {
+    await write('0001_abort.sql', 'create table aborted (id int);\nabort;');
+
+    await expect(runMigrate()).rejects.toThrow(
+      /0001_abort.sql ended the runner's transaction itself/,
+    );
+    expect(await tableExists('aborted')).toBe(false);
+    expect(await recordedFiles()).toEqual([]);
+  });
+
+  it('migrate refuses two files with the same number', async () => {
+    await write('0001_first.sql', 'create table first_table (id int);');
+    await write('0001_second.sql', 'create table second_table (id int);');
+
+    await expect(runMigrate()).rejects.toThrow(
+      /0001_first.sql and 0001_second.sql share the number 0001/,
+    );
+    expect(await tableExists('first_table')).toBe(false);
+    expect(await recordedFiles()).toEqual([]);
+  });
+
   it('migrate refuses a file that is not named NNNN_description.sql', async () => {
     await write('10_unpadded.sql', 'create table unpadded (id int);');
 
