@@ -15,6 +15,7 @@ export const ERROR_CODES = [
   'SERVICE_UNAVAILABLE',
   'INTERNAL_ERROR',
   'DUPLICATE_TEST_CODE',
+  'CONTACT_REQUIRED',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -64,8 +65,8 @@ export class ConflictError extends AppError {
 // 422: the input has the right shape but breaks a business rule, or an id
 // inside the request body does not exist.
 export class BusinessRuleError extends AppError {
-  constructor(code: ErrorCode, message: string) {
-    super(422, code, message);
+  constructor(code: ErrorCode, message: string, details?: FieldProblem[]) {
+    super(422, code, message, details);
   }
 }
 

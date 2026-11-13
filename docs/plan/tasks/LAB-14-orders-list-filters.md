@@ -26,7 +26,7 @@ LAB-11 returns every order in one response, which is fine for a seed but not for
 - A `patientId` that matches no patient returns an empty list, not an error: it is a filter, not a resource in the path.
 
 **UI**
-- Above the table: a status select ("All statuses" plus one option per entry of `ORDER_STATUSES`, with the shared labels) and a patient filter using the LAB-09 name search (`GET /api/patients?q=`) and the `PatientLabel` component, with a clear button.
+- Above the table: a status select ("All statuses" plus one option per entry of `ORDER_STATUSES`, with the shared labels) and a patient filter using the LAB-09 name search (`GET /api/patients?q=`) and the `PatientLabel` component, with a clear button. Reuse `usePatientSearch(q)` and `useDebouncedValue(text)` from `src/web/patients/usePatientSearch.ts`, not a copy.
 - The chosen status and patient id are kept in the URL (`?status=collected&patientId=...`). Opening that URL shows the same view; the back button steps through filter changes. Changing a filter resets to the first page.
 - "Load more" appears only when `hasMore` is true, appends the next page, and disables itself while loading.
 - No match shows "No orders match these filters" with a "Clear filters" button. "No orders yet" shows only when no filter is set. A failed request shows a plain message with the request id.

@@ -32,7 +32,7 @@ This is the first write in the main workflow. It adds the order-creation transac
 
 **UI**
 - A "Place new order" button on the Orders page (label and accessible name "Place new order") opens a native `dialog`. The menu-bar button added in LAB-20 is a different control named "New order", and the patient-page button added in LAB-20 is named "New order for this patient"; the three names are deliberate, so tests and tickets can tell them apart.
-- Step one: patient name search (the LAB-09 search and the shared `PatientLabel`, so each match shows name and date of birth). Picking one shows the chosen patient with a Change button.
+- Step one: patient name search (the LAB-09 search and the shared `PatientLabel`, so each match shows name and date of birth). Picking one shows the chosen patient with a Change button. Reuse `usePatientSearch(q)` and `useDebouncedValue(text)` from `src/web/patients/usePatientSearch.ts` (the 300 ms wait and the query), not a copy.
 - Step two: the quick-add box over the active tests already loaded from the catalog. Up to 8 suggestions. Arrow Up and Down move the highlight, Enter adds the highlighted test and clears the box, Escape closes the suggestion list, a click also adds. Enter with nothing highlighted does nothing and never submits. Quick-add is disabled with the hint "Choose a patient first" until a patient is selected.
 - Chosen tests show code, name, price, turnaround and a Remove button. The modal's submit button has the label and accessible name "Submit order" and is disabled until a patient and at least one test are chosen.
 - On success the modal closes and the list refreshes. A server error shows a plain message with the request id and keeps the modal open.

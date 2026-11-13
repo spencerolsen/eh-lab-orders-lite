@@ -2,11 +2,18 @@ import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { createPatientBody } from '../../shared/patients';
 import { ApiError } from '../api/client';
 import { PatientForm } from './PatientForm';
 
 function renderForm(onSubmit = vi.fn(() => Promise.resolve())) {
-  render(<PatientForm submitLabel="Save patient" onSubmit={onSubmit} />);
+  render(
+    <PatientForm
+      schema={createPatientBody}
+      submitLabel="Save patient"
+      onSubmit={onSubmit}
+    />,
+  );
   return onSubmit;
 }
 

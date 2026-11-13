@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router';
 
+import { createPatientBody } from '../../shared/patients';
 import { createPatient, PATIENTS_KEY } from './api';
 import { PatientForm } from './PatientForm';
 
@@ -20,6 +21,7 @@ export function NewPatientPage() {
     <>
       <h1>New patient</h1>
       <PatientForm
+        schema={createPatientBody}
         submitLabel="Save patient"
         onSubmit={create.mutateAsync}
         secondaryAction={

@@ -1,12 +1,10 @@
 import { type FormEvent, type ReactNode, useId, useState } from 'react';
 
+import type { z } from 'zod';
+
 import type { FieldProblem } from '../../shared/api-error';
 import { latestTodayAnywhere } from '../../shared/dates';
-import {
-  CONTACT_REQUIRED_REASONS,
-  type CreatePatientBody,
-  createPatientBody,
-} from '../../shared/patients';
+import { CONTACT_REQUIRED_REASONS } from '../../shared/patients';
 import { ApiError } from '../api/client';
 import { ErrorMessage } from '../components/ErrorMessage';
 
@@ -67,21 +65,31 @@ function toFieldErrors(problems: FieldProblem[]): FieldErrors {
   return errors;
 }
 
-// The patient form, for a new patient here and for editing one in LAB-09.
-// It checks the values with the same shared schema the server uses, shows
-// each problem under its field, and clears it when that field is edited.
-// `onSubmit` gets the parsed values; if it throws, a 400's field problems go
-// under their fields and the message (with its reference) above the button.
-// `secondaryAction` (a Cancel link, say) sits next to the submit button.
-export function PatientForm({
+// The patient form, for a new patient (NewPatientPage) and for editing one
+// (PatientPage). It checks the values with `schema`, the same shared schema
+// the server parses with: createPatientBody for a new patient,
+// updatePatientBody for an edit. Both are factories of today's date; the form
+// passes the latest day anywhere (see submit). It shows each problem under its
+// field and clears it when that field is edited.
+// `onSubmit` gets the parsed values; if it throws an ApiError with `details`
+// (a 400, or the 422 CONTACT_REQUIRED of an edit), each problem goes under its
+// field, and the message (with its reference) above the button.
+// `initialValues` fills the fields (toFormValues turns a stored patient into
+// them); `onChange` is called on every edit; `secondaryAction` (a Cancel
+// link, say) sits next to the submit button.
+export function PatientForm<Body>({
+  schema,
   initialValues = EMPTY_PATIENT,
   submitLabel,
   onSubmit,
+  onChange,
   secondaryAction,
 }: {
+  schema: (today: string) => z.ZodType<Body>;
   initialValues?: PatientFormValues;
   submitLabel: string;
-  onSubmit: (body: CreatePatientBody) => Promise<unknown>;
+  onSubmit: (body: Body) => Promise<unknown>;
+  onChange?: () => void;
   secondaryAction?: ReactNode;
 }) {
   const id = useId();
@@ -91,6 +99,7 @@ export function PatientForm({
   const [saving, setSaving] = useState(false);
 
   function change(field: Field, value: string) {
+    onChange?.();
     setValues((current) => ({ ...current, [field]: value }));
     setErrors((current) => {
       const next = { ...current, [field]: undefined };
@@ -110,9 +119,7 @@ export function PatientForm({
     setSubmitError(null);
     // The browser's "not in the future" check is advisory: it uses the latest
     // day anywhere, so it never blocks a date the server (clinic time) accepts.
-    const parsed = createPatientBody(latestTodayAnywhere(new Date())).safeParse(
-      values,
-    );
+    const parsed = schema(latestTodayAnywhere(new Date())).safeParse(values);
     if (!parsed.success) {
       setErrors(
         toFieldErrors(

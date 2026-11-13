@@ -1,6 +1,6 @@
 # LAB-09: Patients: search by name and edit a patient
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-08 (Patients: add and list patients)
 - **Unblocks:** LAB-10 (Patients: duplicate warning on create), LAB-12 (Orders: place an order), LAB-14 (Orders: filter the list by status and patient)
@@ -33,6 +33,12 @@ Search and the single-patient endpoint come before placing an order because LAB-
 
 **Logging**
 - `info` `patient.updated` with `patientId` and the names of changed fields, never values. `debug` `patient.search` with `resultCount` and `hasQuery` only, never the text. `warn` on 422 and validation failures.
+
+**Decided while building** (the rest of this ticket is unchanged)
+- Search definition: `q` is trimmed; empty or blank means every patient. It matches case-insensitively anywhere in `first_name || ' ' || last_name` (one condition: a first or last name alone is part of it), so last name first (`smith jane`) does not match. Results are in the list's order and capped at 50 (`SEARCH_RESULT_LIMIT`); a search that returns 50 shows "Showing the first 50 matches. Type more of the name to narrow the search." The unfiltered list is not capped. A `q` with a control character, `q` sent twice, and any other query parameter are 400 `VALIDATION_ERROR`.
+- Edit: email or phone sent as empty text clears it, like `null` (the same "empty means absent" rule as create). Sending both as `null` is also 422 `CONTACT_REQUIRED`, from the database check: edits have one contact rule, in one place. A body of only unknown fields reports those fields, not "empty body" as well.
+- The form diffs normalized values: the patient page sends the fields whose parsed value differs from the stored one, so a phone retyped as `801.555.0101` is no change; with nothing changed it sends nothing and says "No changes to save."
+- The search box writes the URL with `replace`, so Back leaves the page rather than stepping through searches; Enter searches at once.
 
 ## Acceptance criteria
 

@@ -71,6 +71,19 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] With the API stopped, Patients shows "Can't reach the server. Try again." with a Try again button.
 - [ ] While doing all of the above, the API's log (the `pnpm dev` output) shows `patient.created` with an id only, and no name, date of birth, email or phone on any line.
 
+### Patients: search and edit (LAB-09)
+
+- [ ] After `pnpm db:seed`, typing `sample` in "Search by name" shows Another Sample and Sample Person; `SAMPLE`, `Sa` and `sample per` find them the same way (`sample per` only Sample Person). No request is sent until typing pauses (one request in the network tab, not one per key), and Enter searches at once.
+- [ ] Searching `zzz` shows "No patients match" and no table; clearing the box shows every patient again.
+- [ ] Searching `%` or `_` shows "No patients match".
+- [ ] After a search the address is `/patients?q=...`; reloading the page keeps the text in the box and the same rows. Clicking Patients in the menu clears the search.
+- [ ] Clicking a name, or the row's Edit button (in an Actions column, styled like the catalog's row actions), opens `/patients/<id>`, headed with the name and date of birth, with the stored values in the form (phone as `(801) 555-0101`, an absent email empty).
+- [ ] Change the phone and Save changes: "Saved" appears, the page stays, and the Patients list shows the new phone. Save again without changing anything: "No changes to save." and no request.
+- [ ] Clear both email and phone and save: the contact error appears under both fields with a reference, nothing is saved (reload shows the old values).
+- [ ] Edit the date of birth to `2020-02-30` or a date after today: an error under date of birth and no request. An accepted date (`2020-02-29`) shows as "Feb 29, 2020" in the heading and the list, with no day shift.
+- [ ] `/patients/00000000-0000-4000-8000-000000000000` and `/patients/abc` show "Patient not found" with a Back to patients button.
+- [ ] While doing all of the above, the API's log (with `LOG_LEVEL=debug`) shows `patient.updated` with an id and field names, `patient.search` with `hasQuery` and `resultCount`, request lines with the route `/api/patients` or `/api/patients/:id`, and never the search text, a name, a date of birth, an email or a phone.
+
 ## Checkpoint 2
 
 **Runs:** once LAB-13 to LAB-17 have all merged.
