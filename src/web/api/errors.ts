@@ -20,5 +20,9 @@ export function describeError(error: unknown): string {
   else if (error.status >= 500) text = SERVER_ERROR_MESSAGE;
   else text = error.message;
 
-  return error.requestId ? `${text} Reference: ${error.requestId}` : text;
+  if (!error.requestId) return text;
+  // The API's messages have no closing full stop ("The request is not valid"),
+  // so one is added before the reference to keep two sentences.
+  const sentence = /[.!?]$/.test(text) ? text : `${text}.`;
+  return `${sentence} Reference: ${error.requestId}`;
 }

@@ -39,6 +39,8 @@ it('shows the server message and request id of a 422, without retrying', async (
   });
   renderApp('/');
   const alert = await screen.findByRole('alert');
-  expect(alert.textContent).toContain('That is not allowed Reference: req-422');
+  expect(alert.textContent).toContain(
+    'That is not allowed. Reference: req-422',
+  );
   expect(fetch).toHaveBeenCalledOnce();
 });

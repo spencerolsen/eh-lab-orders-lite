@@ -15,7 +15,7 @@ const error = new ApiError(
 it('ErrorMessage shows a retry button only when given a retry function', async () => {
   const { unmount } = render(<ErrorMessage error={error} />);
   expect(screen.getByRole('alert').textContent).toBe(
-    'This code already exists Reference: req-9',
+    'This code already exists. Reference: req-9',
   );
   expect(screen.queryByRole('button')).toBeNull();
   unmount();

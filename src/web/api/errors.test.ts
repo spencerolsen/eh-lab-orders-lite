@@ -16,7 +16,7 @@ describe('describeError', () => {
       'req-7',
     );
     expect(describeError(error)).toBe(
-      'This order cannot be placed Reference: req-7',
+      'This order cannot be placed. Reference: req-7',
     );
   });
 
@@ -27,7 +27,7 @@ describe('describeError', () => {
       'The server says why',
       'req-1',
     );
-    expect(describeError(error)).toBe('The server says why Reference: req-1');
+    expect(describeError(error)).toBe('The server says why. Reference: req-1');
   });
 
   it.each([500, 503])(
