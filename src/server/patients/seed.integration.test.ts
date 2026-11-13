@@ -9,7 +9,7 @@ it('seeding twice leaves the same 6 patients', async () => {
   const pool = createTestPool();
   const client = await pool.connect();
   try {
-    await client.query('truncate table patients');
+    await client.query('truncate table patients cascade');
     const read = async () =>
       (
         await client.query<{ id: string }>(

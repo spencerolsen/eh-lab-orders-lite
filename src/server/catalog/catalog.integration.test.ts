@@ -13,7 +13,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-  await t.pool.query('truncate lab_tests');
+  await t.pool.query('truncate lab_tests cascade');
 });
 
 afterAll(async () => {

@@ -15,6 +15,7 @@ import {
 } from './errors';
 import { catalogRoutes } from './catalog/routes';
 import { healthRoutes } from './health/routes';
+import { orderRoutes } from './orders/routes';
 import { patientRoutes } from './patients/routes';
 import { pickRequestId } from './request-id';
 
@@ -147,6 +148,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // request arriving in between would run instead of getting the 503.
   catalogRoutes(app, deps.pool);
   patientRoutes(app, deps);
+  orderRoutes(app, deps);
 
   return app;
 }
