@@ -29,8 +29,8 @@ Then open http://localhost:5173. `corepack pnpm dev` does everything else, in or
 
 1. If there is no `.env`, copies `.env.example` to `.env` and prints one line saying so (the defaults work with the Docker database). Then it checks every setting and stops with the config error if one is missing or malformed.
 2. Checks that Docker is running; if not, prints one line and exits with an error.
-3. Starts Postgres in Docker and waits until it is healthy (the `db:up` script), applies pending migrations (`db:migrate`) and runs the seed (`db:seed`). The seed runs every time: every row has a fixed key and is inserted with `on conflict do nothing`, so a second run inserts 0 rows.
-4. Checks that ports 3000 (the API, from `PORT`) and 5173 (Vite) are free; if one is taken, prints one line naming it and exits with an error.
+3. Checks that ports 3000 (the API, from `PORT`) and 5173 (Vite) are free; if one is taken, prints one line naming it and exits with an error.
+4. Starts Postgres in Docker and waits until it is healthy (the `db:up` script), applies pending migrations (`db:migrate`) and runs the seed (`db:seed`). The seed runs every time: every row has a fixed key and is inserted with `on conflict do nothing`, so a second run inserts 0 rows.
 5. Runs the API (http://localhost:3000, restarting when a server file changes) and the web app (Vite, http://localhost:5173) together, each output line prefixed `[api]` or `[web]`. Ctrl-C stops both.
 
 The browser talks only to Vite, which forwards `/api` and `/healthz` to the API on the `PORT` setting. One side alone, for debugging: `corepack pnpm dev:api` or `corepack pnpm dev:web`. `corepack pnpm build` builds the web app into `dist/web`. `corepack pnpm start` runs the API without watching, with JSON log lines.
