@@ -24,10 +24,14 @@ function say(line: string): void {
 }
 
 // pnpm sets npm_execpath to its own entry point when it runs a script, so the
-// steps below run with the same pnpm, even when it came through Corepack.
+// steps below run with the same pnpm, whether it was started as `pnpm dev` or
+// as `corepack pnpm dev` (with no `pnpm` command on the PATH). Run directly
+// (`tsx scripts/dev.ts`), it goes through Corepack, which needs no PATH entry.
 function pnpmCommand(args: string[]): [string, string[]] {
   const pnpm = process.env.npm_execpath;
-  return pnpm ? [process.execPath, [pnpm, ...args]] : ['pnpm', args];
+  return pnpm
+    ? [process.execPath, [pnpm, ...args]]
+    : ['corepack', ['pnpm', ...args]];
 }
 
 // Runs one step to the end, with its output shown as is; stops on a failure.

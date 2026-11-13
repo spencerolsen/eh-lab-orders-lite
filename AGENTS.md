@@ -37,7 +37,7 @@ Tests sit next to the code they test, and the file name decides how they run: un
 
 | Command | What it does |
 |---|---|
-| `pnpm install` | Install dependencies (pnpm through Corepack; the version is pinned in `package.json`). |
+| `pnpm install` | Install dependencies. pnpm comes through Corepack, which ships with Node: run `corepack enable` once per machine so `pnpm` is a command, or write `corepack pnpm <command>` instead. Either way the version pinned in `package.json` is used. |
 | `pnpm lint` | ESLint with the TypeScript rules and the import boundary. |
 | `pnpm typecheck` | The TypeScript compiler in strict mode, no output files. |
 | `pnpm dev` | The whole app with one command (`scripts/dev.ts`): creates `.env` from `.env.example` when missing, checks the settings and that Docker runs, then `db:up`, `db:migrate`, `db:seed`, then `dev:api` and `dev:web` together with prefixed output. Ctrl-C stops both. |

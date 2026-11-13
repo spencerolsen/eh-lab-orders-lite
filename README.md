@@ -7,8 +7,15 @@ This is an early stub. The full README is written in LAB-22.
 ## Prerequisites
 
 - Node 22 (the exact major version is in `.nvmrc`)
-- pnpm, through Corepack (`corepack enable`); the version is pinned in `package.json`
 - Docker, for the Postgres database
+
+pnpm comes with Node through Corepack; you do not install it separately. Once per machine, make the `pnpm` command available:
+
+```sh
+corepack enable
+```
+
+Corepack then runs the pnpm version pinned in `package.json` (`packageManager`). Without enabling it, put `corepack` in front of each command instead: `corepack pnpm install`, `corepack pnpm dev`, and so on.
 
 ## Running the app
 
