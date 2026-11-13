@@ -34,6 +34,35 @@ describe('GET /healthz', () => {
     );
   });
 
+  it('healthz logs the error code only, never the host or the message', async () => {
+    // A port with nothing listening: pg's error message names the host and
+    // port ("connect ECONNREFUSED 127.0.0.1:<port>").
+    const probe = net.createServer();
+    await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
+    const { port } = probe.address() as net.AddressInfo;
+    await new Promise((resolve) => probe.close(resolve));
+
+    t = startTestApp({
+      pool: createPool(
+        `postgres://nobody:nothing@127.0.0.1:${port}/never_test`,
+        captureLogger().logger,
+      ),
+    });
+    const response = await t.inject({ method: 'GET', url: '/healthz' });
+
+    expect(response.statusCode).toBe(503);
+    expect(t.logs()).toContainEqual(
+      expect.objectContaining({
+        level: 'error',
+        event: 'health.db_unavailable',
+        code: 'ECONNREFUSED',
+      }),
+    );
+    for (const text of ['127.0.0.1', String(port), 'nobody', 'never_test']) {
+      expect(t.logText()).not.toContain(text);
+    }
+  });
+
   it('healthz returns 503 within 3 seconds when the database never answers', async () => {
     // A server that accepts connections and then says nothing, like a
     // database host that is up at the network level but not answering.
