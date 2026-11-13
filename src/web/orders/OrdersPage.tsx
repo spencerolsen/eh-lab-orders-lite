@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
 
 import { formatDate, formatDateTime } from '../../shared/dates';
 import { formatCents } from '../../shared/money';
@@ -52,7 +53,10 @@ function OrderList({ query }: { query: ReturnType<typeof useOrders> }) {
         {items.map((order) => (
           <tr key={order.id}>
             <td>
-              <PatientLabel patient={order.patient} />
+              {/* The patient page, as a name links on the Patients list. */}
+              <Link to={`/patients/${order.patient.id}`}>
+                <PatientLabel patient={order.patient} />
+              </Link>
             </td>
             <td className="numeric">{order.testCount}</td>
             <td className="numeric">{formatCents(order.totalCents)}</td>

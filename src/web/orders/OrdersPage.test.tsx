@@ -99,6 +99,17 @@ it('shows each order as a row, in the order the server sent them', async () => {
   expect(badge.className).toBe('badge badge-collected');
 });
 
+it('links each patient to their patient page', async () => {
+  fakeApi(list([FRIDAY_NOON]));
+  renderApp('/');
+  const link = await screen.findByRole('link', {
+    name: 'Sample Person (born Dec 31, 1990)',
+  });
+  expect(link.getAttribute('href')).toBe(
+    '/patients/5eed0008-0000-4000-8000-000000000002',
+  );
+});
+
 it('shows the clinic’s created time and names its time zone, whatever the browser’s zone', async () => {
   // createdAt alone, read in this browser, would not be 12:00 unless the
   // browser were in Denver; the page shows createdAtClinic as sent.

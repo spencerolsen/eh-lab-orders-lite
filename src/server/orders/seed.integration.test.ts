@@ -61,6 +61,33 @@ it('seeding twice leaves the same 4 orders and the same items', async () => {
   expect(first.items).toHaveLength(9);
 });
 
+it('orders only active tests', async () => {
+  const { rows } = await t.pool.query<{ inactive: number }>(
+    `select count(*)::int as inactive
+     from order_items i join lab_tests t on t.id = i.lab_test_id
+     where not t.is_active`,
+  );
+  expect(rows[0]?.inactive).toBe(0);
+});
+
+it('refuses to seed an order for a test that has been deactivated', async () => {
+  const client = await t.pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(
+      `update lab_tests set is_active = false where code = 'CULT'`,
+    );
+    await client.query('delete from order_items');
+    await client.query('delete from orders');
+    await expect(seedOrders(client, options)).rejects.toThrow(
+      'names a test that is missing or inactive',
+    );
+  } finally {
+    await client.query('rollback');
+    client.release();
+  }
+});
+
 it('copies every item from the catalog row of its test', async () => {
   const { rows } = await t.pool.query<{ mismatches: number }>(
     `select count(*)::int as mismatches

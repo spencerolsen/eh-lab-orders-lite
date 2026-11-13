@@ -156,7 +156,7 @@ describe('GET /api/orders', () => {
     expect([order?.testCount, order?.totalCents]).toEqual([0, 0]);
   });
 
-  it('uses the prices frozen on the items, not the catalog’s current prices', async () => {
+  it('uses the items frozen when the order was placed, even after the test is edited and deactivated', async () => {
     await insertOrder(t.pool, {
       id: '40000000-0000-4000-8000-000000000001',
       createdAt: '2026-11-10T16:00:00Z',
@@ -164,11 +164,11 @@ describe('GET /api/orders', () => {
     });
     await t.pool.query(
       `update lab_tests set price_cents = 9999, turnaround_days = 9,
-         code = 'CBC2', name = 'Renamed' where id = $1`,
+         code = 'CBC2', name = 'Renamed', is_active = false where id = $1`,
       [TEST_CBC],
     );
     const [order] = (await list()).items;
-    expect(order?.totalCents).toBe(2500);
+    expect([order?.testCount, order?.totalCents]).toEqual([1, 2500]);
     const { rows } = await t.pool.query(
       'select test_code, price_cents, turnaround_days from order_items',
     );

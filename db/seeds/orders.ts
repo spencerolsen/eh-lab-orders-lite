@@ -78,11 +78,14 @@ export async function seedOrders(
   for (const order of SEED_ORDERS) {
     const { rows: tests } = await client.query<CatalogRow>(
       `select id, code, name, price_cents, turnaround_days
-       from lab_tests where code = any($1) order by code`,
+       from lab_tests where code = any($1) and is_active order by code`,
       [order.testCodes],
     );
     if (tests.length !== order.testCodes.length) {
-      throw new Error(`Seed order ${order.id} names a test that is missing`);
+      // Only an active test can be ordered (LAB-07), so the seed refuses one too.
+      throw new Error(
+        `Seed order ${order.id} names a test that is missing or inactive`,
+      );
     }
     const orderedAt = new Date(order.orderedAt);
     const readyDate = estimateReadyDate(
