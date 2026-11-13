@@ -14,6 +14,7 @@ export const ERROR_CODES = [
   'UNSUPPORTED_MEDIA_TYPE',
   'SERVICE_UNAVAILABLE',
   'INTERNAL_ERROR',
+  'DUPLICATE_TEST_CODE',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

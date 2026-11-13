@@ -55,6 +55,7 @@ Every code the API can return. The list is defined once, as `ERROR_CODES` in `sr
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The request body is not JSON. |
 | `INTERNAL_ERROR` | 500 | An unexpected failure on the server. |
 | `SERVICE_UNAVAILABLE` | 503 | The server is shutting down; the request was not run. Try again. |
+| `DUPLICATE_TEST_CODE` | 409 | A lab test with this code already exists (codes are compared after upper-casing). |
 
 ## Endpoints
 
