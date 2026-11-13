@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { afterAll, describe, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { importBoundary } from './import-boundary.js';
 
@@ -16,6 +16,22 @@ RuleTester.itOnly = it.only;
 
 const src = path.resolve(import.meta.dirname, '..', 'src');
 const file = (relative) => path.join(src, relative);
+
+// typescript-eslint calls process.emitWarning when a rule reads a deprecated
+// AST property (TSImportType.argument, for example). The last test below fails
+// if the rule did, so the test output stays free of deprecation warnings.
+// (Vitest's worker does not pass the 'warning' event on, so the call itself is
+// recorded.)
+const deprecations = [];
+const emitWarning = process.emitWarning.bind(process);
+process.emitWarning = (warning, ...rest) => {
+  const type = typeof rest[0] === 'string' ? rest[0] : rest[0]?.type;
+  if (type === 'DeprecationWarning') deprecations.push(String(warning));
+  emitWarning(warning, ...rest);
+};
+afterAll(() => {
+  process.emitWarning = emitWarning;
+});
 
 const ruleTester = new RuleTester({
   languageOptions: { parser: tseslint.parser },
@@ -98,4 +114,8 @@ ruleTester.run('import-boundary', importBoundary, {
       errors: [{ messageId: 'crossed', data: { from: 'web', to: 'server' } }],
     },
   ],
+});
+
+it('reads no deprecated AST property while checking', () => {
+  expect(deprecations).toEqual([]);
 });

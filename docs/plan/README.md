@@ -38,7 +38,7 @@ The decisions these tasks implement are in the process log (`docs/process.md` on
 | [LAB-01](tasks/LAB-01-repo-skeleton-and-tooling.md) | Repo skeleton and tooling | Groundwork | — | Done |
 | [LAB-02](tasks/LAB-02-database-and-config.md) | Database, migrations and config | Groundwork | LAB-01 | Done |
 | [LAB-03](tasks/LAB-03-api-foundation.md) | API foundation: server, logging, errors, health | Groundwork | LAB-02 | Done |
-| [LAB-04](tasks/LAB-04-web-foundation.md) | Web foundation: app shell and navigation | Groundwork | LAB-03 | Not started |
+| [LAB-04](tasks/LAB-04-web-foundation.md) | Web foundation: app shell and navigation | Groundwork | LAB-03 | Done |
 | [LAB-05](tasks/LAB-05-continuous-integration.md) | Checks on every pull request | Groundwork | LAB-04 | Not started |
 | [LAB-06](tasks/LAB-06-catalog-list-and-add.md) | Catalog: see and add lab tests | Vertical slice | LAB-05 | Not started |
 | [LAB-07](tasks/LAB-07-catalog-edit-and-deactivate.md) | Catalog: edit and activate or deactivate tests | Vertical slice | LAB-06 | Not started |
@@ -152,4 +152,4 @@ The first point at which the brief's core is met (patients, a catalog, an order 
 
 ## What is deliberately not in this plan
 
-Login and roles, editing an order after it is placed, public holidays and cut-off times, status and results per test, voiding a completed order, pasting a list of tests, AI features in the running app, tracing, metrics and alerting, and browser tests in the automated checks. Each is listed with its reason in the process log.
+Login and roles, editing an order after it is placed, public holidays and cut-off times, status and results per test, voiding a completed order, pasting a list of tests, AI features in the running app, tracing, metrics and alerting, browser tests in the automated checks, and mobile and narrow-screen layouts (desktop only). Each is listed with its reason in the process log.

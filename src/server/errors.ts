@@ -1,5 +1,9 @@
 // The typed application errors, the error-code registry, and the one function
 // that turns any thrown value into a status code and the standard error body.
+import type {
+  ErrorBody as SharedErrorBody,
+  FieldProblem,
+} from '../shared/api-error';
 
 // Every error code the API can return, in upper snake case. Later tasks add
 // their own codes here and to the error-code table in docs/api.md.
@@ -14,17 +18,11 @@ export const ERROR_CODES = [
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
-// One problem with one field of the input, for example
-// { field: 'priceCents', reason: 'must be at least 0' }.
-export type FieldProblem = { field: string; reason: string };
-
+// The standard error body, defined once in src/shared/api-error.ts, with the
+// code narrowed to the codes registered here.
+export type { FieldProblem };
 export type ErrorBody = {
-  error: {
-    code: ErrorCode;
-    message: string;
-    details?: FieldProblem[];
-    requestId: string;
-  };
+  error: SharedErrorBody['error'] & { code: ErrorCode };
 };
 
 // The base class: an error the API expects and reports to the caller as is.

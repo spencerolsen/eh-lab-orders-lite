@@ -1,6 +1,6 @@
 # LAB-04: Web foundation: app shell and navigation
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Groundwork
 - **Depends on:** LAB-03 (API foundation: server, logging, errors, health)
 - **Unblocks:** LAB-05 (Checks on every pull request)
@@ -19,7 +19,7 @@ It comes right after the API foundation because the client must understand the e
 - Menu bar on every page with three links (Orders, Patients, Catalog); the current section is visually marked and has `aria-current="page"`. The menu bar reserves a place for the "New order" button, which LAB-20 fills in; it is not shown yet.
 - Each placeholder page has a heading and one line saying what will appear there.
 - Shared components in `src/web/components/`: `Loading` (text with `role="status"`), `EmptyState` (message and optional action), `ErrorMessage` (message plus request id, with a retry button when a retry function is given). An error boundary wraps the app and shows a fallback screen ("Something went wrong. Reload the page.") instead of a blank page, and writes the error to the browser console.
-- Plain CSS in `src/web/styles/base.css`: colour and spacing variables, readable default type, visible focus outlines, a layout that works from 360 px wide. No component library.
+- Plain CSS in `src/web/styles/base.css`: colour and spacing variables, readable default type, visible focus outlines. No component library. The app is for a desktop browser: it supports a window at least 1024 px wide, and has no mobile or narrow-screen layout and no responsive breakpoints (an owner decision).
 
 **API**
 - The Vite dev server proxies `/api` and `/healthz` to the API at `http://localhost:${PORT}`, so the browser talks to one origin and no CORS setup is needed.
@@ -45,7 +45,7 @@ It comes right after the API foundation because the client must understand the e
 - [ ] With the API stopped, the page shows "Can't reach the server. Try again.", not a blank page or a raw error.
 - [ ] An API response with status 422 shows the server's message and its request id.
 - [ ] A component that throws during render shows the fallback screen.
-- [ ] The layout has no horizontal scroll at 360 px width, and every link and button can be reached with the keyboard.
+- [ ] Every link and button can be reached with the keyboard, in order, with a visible focus outline.
 - [ ] `pnpm build` succeeds, and `pnpm lint`, `pnpm typecheck` and `pnpm test` pass.
 - [ ] The `docs/process.md` slice log entry and test log entry for this task were written in the same pull request.
 
@@ -70,6 +70,30 @@ It comes right after the API foundation because the client must understand the e
 - The "New order" modal: LAB-12. The button in the menu bar: LAB-20.
 - Serving the built web app from the API: future version; the reviewer runs the dev setup.
 - A component library, dark mode, translations: future version.
+- Mobile and narrow-screen layouts: not planned. The app is for a desktop browser window at least 1024 px wide (an owner decision, recorded in `docs/plan/README.md`).
+
+## Notes from the build
+
+Choices made while building that the requirements above did not dictate:
+
+- **Something on screen uses the API now.** A line in the footer (`src/web/health/ServerStatus.tsx`) calls `GET /healthz` through `apiFetch` and TanStack Query and shows "Server: connected", or the error with a "Try again" button. So the proxy, the client, the loading state and the error states run for real before any feature page exists, and the acceptance checks for "API stopped" and "422 with its request id" have something to look at (the 422 is checked by a component test with a fake `fetch`, and by hand in the browser by replacing `fetch` on the page, because no endpoint returns a 422 yet). Later tasks may keep it or remove it; nothing depends on it. A 503 from `/healthz` (database down) has no standard error body, so it also shows "Can't reach the server".
+- **The error shape is defined once, in `src/shared/api-error.ts`**, as a Zod schema. The server's `ErrorBody` type is built from it (with its code narrowed to `ERROR_CODES`), a unit test checks that `toErrorResponse` builds bodies the schema accepts, and `apiFetch` checks failed responses against it. The web never imports the server's error classes.
+- **`apiFetch` returns `unknown`**: a page checks the body with the shared response schema (`schema.parse(await apiFetch(...))`), as the health line does with `healthOkSchema` in `src/shared/health.ts`.
+- **Client-only error code `SERVER_UNREACHABLE`**, with status 0 when no response arrived at all. It is never sent by the API, so it is not in `ERROR_CODES`.
+- **`describeError`** shows the server's message for any 4xx (the API writes all of them for the user), not only 400, 409 and 422; adds a full stop before "Reference:" when the message has none; and gives a generic message for anything that is not an `ApiError`.
+- **Retry rule:** a query retries once only for `SERVER_UNREACHABLE`; never on a 4xx or 5xx; a mutation never retries.
+- **`pnpm dev` starts the two processes itself** (`scripts/dev.ts`, with `child_process`) instead of using a package such as `concurrently`: it is a few lines, and what Ctrl-C does stays visible in one file. Each child runs in its own process group. The first Ctrl-C sends `SIGTERM` to each child pnpm process, which passes it on, so the API shuts down gracefully; a second Ctrl-C sends `SIGKILL` to each whole group, so nothing can be left behind. It runs the package scripts by name (`db:up`, `db:migrate`, `db:seed`, `dev:api`, `dev:web`) with the same pnpm, so there is one definition of each step. Docker is checked with `docker info`, and both ports are checked (on 127.0.0.1 and ::1) before anything starts, because when port 3000 was taken the API failed while `tsx watch` and Vite kept running. Colour is forced in the children only when the output is a terminal.
+- **One port setting:** `pnpm dev` checks the settings, then puts the checked `PORT` in the environment of both the API and Vite; `vite.config.ts` reads `PORT` from the environment or `.env`, else 3000 (the API's default). It does not import `src/server/config.ts`, because Vite warns that an extensionless import in its config will stop working.
+- **Vite's port is fixed at 5173** (`strictPort`), so the address in the README is always right.
+- **Declarative routing (`<Routes>`), not a data router**, so the app's error boundary catches render errors (a data router shows its own error screen first).
+- **Test naming:** `*.test.ts` is unit (Node), `*.test.tsx` is component (jsdom), `*.integration.test.ts` is integration. The web code with no React in it (`apiFetch`, `describeError`, the retry rule) is unit tested.
+- **`eslint-plugin-react-hooks`** is added for the Rules of Hooks in `src/web`. No `jest-dom`: the tests use Testing Library's queries and plain `expect`.
+- **pnpm through Corepack:** on a machine with no `pnpm` on the PATH, `pnpm install` fails with "command not found", and `corepack enable` fails with a permission error when Node came from the nodejs.org installer (it writes to `/usr/local/bin`). So the README and the other docs show `corepack pnpm <command>`, which always works, and mention `corepack enable` (with `sudo` for that installer) as an optional convenience. `pnpm dev` runs its steps with the pnpm that started it, so `corepack pnpm dev` works with no `pnpm` command at all.
+- **esbuild's install script is skipped on purpose** (`pnpm.ignoredBuiltDependencies` in `package.json`, reason in `AGENTS.md`), so a fresh `pnpm install` prints no "Ignored build scripts" warning. tsx, Vite and Vitest use esbuild's JavaScript API, which finds the binary in the optional platform package; the script would only download that package if it were missing.
+- **The import-boundary rule reads `TSImportType.source`**, not the deprecated `argument`, so tests and lint print no deprecation warning. The rule's test file records every `DeprecationWarning` passed to `process.emitWarning` while the rule runs and fails if there is one, so the warning cannot come back unnoticed.
+- **Desktop only (owner decision during the build):** the 360 px requirement and its acceptance check were dropped. `base.css` states the supported minimum (a 1024 px wide window) and has no wrapping or breakpoint rules for narrow screens.
+- **Versions:** React 19.3, TanStack Query 5.107, Vite 8.3 with `@vitejs/plugin-react` 6.3. React Router 7.18 and jsdom 29.1, not their newest majors (8 and 31), because those require Node 22.22 or later and the project supports Node `^22.13.0`.
+- **Ctrl-C and the API's graceful shutdown:** an earlier version sent the first `SIGTERM` to each child's whole process group, so the API process got it directly as well as through `tsx watch`, and tsx then force-killed it (`Previous process hasn't exited yet. Force killing...`). The first signal now goes to the child pnpm process only, and the API logs `app.shutting_down` and exits on its own; the group-wide `SIGKILL` is kept for a second Ctrl-C. Checked with `ps` and `lsof`: nothing left running or listening.
 
 ## What to be able to explain
 
