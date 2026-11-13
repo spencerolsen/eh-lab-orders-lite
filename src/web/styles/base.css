@@ -1,38 +1,53 @@
 /* The app's only stylesheet: plain CSS, no component library.
    Desktop only: designed for a browser window at least 1024 px wide, with no
-   mobile or narrow-screen layout and no breakpoints (an owner decision). */
+   mobile or narrow-screen layout and no breakpoints (an owner decision).
+
+   Every colour is a custom property below, named by its role, so a page
+   never writes a colour value. The contrast of each text and background pair
+   is in docs/architecture.md. /styles shows every shared style. */
 
 :root {
-  --color-text: #1f2328;
-  --color-muted: #59636e;
-  --color-background: #ffffff;
-  --color-surface: #f6f8fa;
-  --color-border: #d1d9e0;
-  --color-accent: #0b5cad;
-  --color-accent-text: #ffffff;
-  --color-error: #b42318;
-  --color-error-surface: #fef3f2;
-  --color-focus: #e8590c;
+  /* Colours, by role. */
+  --color-brand-strong: #003438; /* menu bar, headings */
+  --color-brand: #004a50; /* primary buttons, links, focus outline */
+  --color-accent: #dcff9f; /* current section, text on primary buttons */
+  --color-surface-tint: #ddf3ee; /* table header, row hover, quiet badges */
+  --color-page: #fffaf2; /* page background */
+  --color-surface: #fffdf9; /* cards, tables, dialogs, fields */
+  --color-text: #451f41; /* body text */
+  --color-text-muted: #6b5a68; /* help text, footer, field outlines */
+  --color-border: #e3d9cc; /* separators (decorative) */
+  --color-danger: #a3221b; /* error text, danger buttons */
+  --color-danger-surface: #fdeceb; /* error box, cancelled badge */
+  /* The focus outline: brand on light backgrounds, accent on the menu bar. */
+  --color-focus: var(--color-brand);
+  --color-focus-on-brand: var(--color-accent);
 
+  /* Type: system fonts only, nothing is downloaded. */
+  --font-heading: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  --font-body:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+
+  /* Spacing steps. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 1rem;
   --space-4: 1.5rem;
   --space-5: 2rem;
 
-  --radius: 6px;
+  /* Corners: controls (fields), cards (tables, boxes, dialogs), pill. */
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+
   --page-width: 72rem;
 
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-body);
   font-size: 100%;
   line-height: 1.5;
   color: var(--color-text);
-  background: var(--color-background);
+  background: var(--color-page);
 }
 
 *,
@@ -43,6 +58,7 @@
 
 body {
   margin: 0;
+  background: var(--color-page);
 }
 
 #root {
@@ -51,24 +67,58 @@ body {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 1.75rem;
+/* Headings */
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 700;
   line-height: 1.2;
+  color: var(--color-brand-strong);
+}
+
+h1 {
+  font-size: 2rem;
   margin: 0 0 var(--space-3);
 }
 
-a {
-  color: var(--color-accent);
+h2 {
+  font-size: 1.5rem;
+  margin: var(--space-5) 0 var(--space-3);
 }
 
-button {
-  font: inherit;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius);
-  background: var(--color-accent);
-  color: var(--color-accent-text);
-  cursor: pointer;
+h3 {
+  font-size: 1.125rem;
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+/* A page's heading row: the h1 on the left, its actions on the right. */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+a {
+  color: var(--color-brand);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+/* Children in a column with a gap between them. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 /* A visible outline for whatever has keyboard focus. */
@@ -77,17 +127,241 @@ button {
   outline-offset: 2px;
 }
 
-/* The menu bar: the name, then the section links in one row. */
-.menu-bar {
+/* Buttons: every button is primary unless it says otherwise. */
+
+button,
+.button {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--color-brand);
+  border-radius: var(--radius-pill);
+  background: var(--color-brand);
+  color: var(--color-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled),
+.button:hover {
+  border-color: var(--color-brand-strong);
+  background: var(--color-brand-strong);
+}
+
+.button-secondary {
+  background: var(--color-surface);
+  color: var(--color-brand);
+}
+
+.button-secondary:hover:not(:disabled) {
+  border-color: var(--color-brand);
+  background: var(--color-surface-tint);
+}
+
+.button-danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-surface);
+}
+
+.button-danger:hover:not(:disabled) {
+  border-color: var(--color-danger);
+  background: var(--color-danger-surface);
+  color: var(--color-danger);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Form fields: label above, the field, help text, then the error. */
+
+.form {
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 32rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-text-muted);
+  border-radius: var(--radius-control);
   background: var(--color-surface);
 }
 
+input[aria-invalid='true'],
+select[aria-invalid='true'],
+textarea[aria-invalid='true'] {
+  border: 2px solid var(--color-danger);
+}
+
+.field-help {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.field-error {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+/* Tables */
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+  background: var(--color-surface-tint);
+  color: var(--color-brand-strong);
+  font-weight: 600;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--color-surface-tint);
+}
+
+/* Numbers (prices, counts) line up on the right. */
+.table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status badges: a pill with the status word; the tint is extra. */
+
+.badge {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.badge-ordered {
+  background: var(--color-surface-tint);
+  color: var(--color-brand-strong);
+}
+
+.badge-collected {
+  background: var(--color-accent);
+  color: var(--color-brand-strong);
+}
+
+.badge-completed {
+  background: var(--color-brand);
+  color: var(--color-accent);
+}
+
+.badge-cancelled {
+  border-color: var(--color-danger);
+  background: var(--color-danger-surface);
+  color: var(--color-danger);
+}
+
+/* Surfaces: a card, a centred dialog and a slide-out panel. The dialogs are
+   the native <dialog> element, opened with showModal() (LAB-12, LAB-15). */
+
+.card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+dialog {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: var(--space-4);
+}
+
+dialog::backdrop {
+  background: color-mix(in srgb, var(--color-brand-strong) 45%, transparent);
+}
+
+dialog h2 {
+  margin-top: 0;
+}
+
+.dialog {
+  width: 32rem;
+  border-radius: var(--radius-card);
+}
+
+/* The panel fills the right-hand side of the window, full height. */
+.panel {
+  width: 28rem;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  margin: 0 0 0 auto;
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+}
+
+/* The menu bar: the name, then the section links in one row. */
+
+.menu-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-brand-strong);
+  color: var(--color-page);
+}
+
+.menu-bar :focus-visible {
+  outline-color: var(--color-focus-on-brand);
+}
+
 .brand {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
   font-weight: 700;
 }
 
@@ -101,9 +375,9 @@ button {
 
 .menu-bar a {
   display: inline-block;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius);
-  color: var(--color-text);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-page);
   text-decoration: none;
 }
 
@@ -111,25 +385,27 @@ button {
   text-decoration: underline;
 }
 
-/* The current section. */
+/* The current section: a lime pill. */
 .menu-bar a[aria-current='page'] {
   background: var(--color-accent);
-  color: var(--color-accent-text);
+  color: var(--color-brand-strong);
   font-weight: 600;
 }
+
+/* The page and the footer. */
 
 .page {
   flex: 1;
   width: 100%;
   max-width: var(--page-width);
   margin: 0 auto;
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-5) var(--space-4);
 }
 
 .footer {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--color-border);
-  color: var(--color-muted);
+  color: var(--color-text-muted);
   font-size: 0.875rem;
 }
 
@@ -137,16 +413,27 @@ button {
   margin: 0;
 }
 
+/* Loading, empty and error states (src/web/components/). */
+
 .loading,
 .server-status {
-  color: var(--color-muted);
+  color: var(--color-text-muted);
 }
 
 .empty-state {
-  padding: var(--space-4);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius);
+  padding: var(--space-5);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
   text-align: center;
+}
+
+.empty-state p {
+  margin: 0 0 var(--space-3);
+}
+
+.empty-state p:last-child {
+  margin: 0;
 }
 
 .error-message {
@@ -154,12 +441,18 @@ button {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-error);
-  border-radius: var(--radius);
-  background: var(--color-error-surface);
-  color: var(--color-error);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-card);
+  background: var(--color-danger-surface);
+  color: var(--color-danger);
 }
 
 .error-message p {
   margin: 0;
+}
+
+/* The fallback screen after a crash (ErrorBoundary): a card on the page. */
+.crash-screen {
+  max-width: 32rem;
+  margin-top: var(--space-5);
 }
