@@ -1,0 +1,9 @@
+# Markdown is written by hand and kept as written (including the plan in docs/plan/).
+*.md
+
+# Generated or installed files.
+pnpm-lock.yaml
+dist
+coverage
+playwright-report
+test-results
