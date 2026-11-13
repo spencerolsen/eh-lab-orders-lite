@@ -12,7 +12,9 @@ Each task that adds something a user can see adds its checks here, under the che
 
 ### App start and menu (LAB-04)
 
-- [ ] From a fresh clone with no `.env`: `pnpm install`, then `pnpm dev`. It prints that it copied `.env.example` to `.env`, starts the database, migrates, seeds, and http://localhost:5173 shows the Orders page. No other command is needed.
+Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unless `corepack enable` was run (see the README).
+
+- [ ] From a fresh clone with no `.env` and no `pnpm` on the PATH: `corepack pnpm install`, then `corepack pnpm dev`. It prints that it copied `.env.example` to `.env`, starts the database, migrates, seeds, and http://localhost:5173 shows the Orders page. No other command is needed.
 - [ ] Stop with Ctrl-C: both the API and Vite stop, and nothing is left listening on ports 3000 and 5173.
 - [ ] Run `pnpm dev` again: the seed reports 0 rows inserted.
 - [ ] Put `PORT=abc` in `.env` and run `pnpm dev`: it stops with the `config.invalid` line before starting anything. Put it back.

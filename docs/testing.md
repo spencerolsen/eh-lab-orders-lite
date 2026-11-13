@@ -5,10 +5,10 @@ The kinds of test in this repo, what each one covers, and how to run them.
 ## Running the tests
 
 ```sh
-pnpm test                          # unit, component and integration tests together
-pnpm test --project unit           # unit tests only (no database, Docker or .env needed)
-pnpm test --project component      # component tests only (no database, Docker or .env needed)
-pnpm test --project integration    # integration tests only
+corepack pnpm test                          # unit, component and integration tests together
+corepack pnpm test --project unit           # unit tests only (no database, Docker or .env needed)
+corepack pnpm test --project component      # component tests only (no database, Docker or .env needed)
+corepack pnpm test --project integration    # integration tests only
 ```
 
 Before any integration file runs, the integration project's global setup (`src/server/testing/global-setup.ts`) starts the Postgres container and waits until it is healthy (`docker compose up -d --wait db`, the same as `pnpm db:up`). So on a fresh clone, after `cp .env.example .env`, `pnpm test` is the first command needed. When the `CI` environment variable is set it skips that step and uses the database the CI workflow provides (LAB-05). The unit and component projects have no global setup, so `pnpm test --project unit` and `--project component` work with Docker stopped.
