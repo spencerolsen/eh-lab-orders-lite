@@ -14,7 +14,7 @@ Before any integration file runs, the integration project's global setup (`src/s
 
 The rule for settings: tests read `TEST_DATABASE_URL` from the environment first, then from `.env` (there is no fallback to `.env.example`). Locally that means `cp .env.example .env` once. When `CI` is set, nothing changes in where the setting comes from (CI has no `.env`, so the workflow must set `TEST_DATABASE_URL` in the job environment); the only difference is that the integration setup does not start Docker.
 
-Test files run in file-path order (a small sequencer in `vitest.config.ts`), so the order is the same on every machine and every run.
+Test files run in file-path order (a small sequencer in `vitest.config.ts`), so the order is the same on every machine and every run. Every file passes in any order; the order matters only for the truncate check below, which the LAB-02 migration test would silently weaken if it ran between the two truncate files, because it drops the whole schema.
 
 ## Kinds of test
 
@@ -31,10 +31,10 @@ The suffix decides the project: Vitest's `unit` project takes every `*.test.ts` 
 
 `src/server/testing/` holds the harness:
 
-- **`TEST_DATABASE_URL` only.** The harness reads no other setting, and goes through `testDatabaseUrl` in `src/server/db/guards.ts`, which refuses a database whose name does not end in `_test`. So a test can never empty the development database, whatever `DATABASE_URL` says. The setting comes from the environment (CI sets it), else from `.env`. If it is missing, the run stops with `TEST_DATABASE_URL is not set: run \`cp .env.example .env\``.
+- **`TEST_DATABASE_URL` only.** The harness reads no other setting, and goes through `testDatabaseUrl` in `src/server/db/guards.ts`, which refuses a database whose name does not end in `_test`. So a test can never empty the development database, whatever `DATABASE_URL` says. The setting comes from the environment (CI sets it), else from `.env`. If it is missing, the run stops with a message that says to run `cp .env.example .env`.
 - **Migrations once per run.** `global-setup.ts` runs before any integration file: it checks the setting (before starting anything), starts the container unless `CI` is set, and applies pending migrations. `testing/harness.test.ts` checks that both it and `createTestPool` refuse a database not ending in `_test`.
 - **Truncate, not a transaction.** `setup.ts` runs before each integration test file and truncates every table except `schema_migrations` (`truncateAllTables` in `harness.ts`). A transaction rolled back after each test would be faster, but code under test (placing an order, for example) uses its own transactions, and a test wrapped in one would not see what really gets committed. Truncating means each file starts empty while running the real code.
-- **One file at a time.** The integration project sets `fileParallelism: false`: there is one test database, and two files running at once would truncate each other's rows. The two files `testing/truncate-first.integration.test.ts` and `truncate-second` each insert a row into the same table and check that they start with it empty.
+- **One file at a time.** The integration project sets `fileParallelism: false`: there is one test database, and two files running at once would truncate each other's rows. The two files `testing/truncate-first.integration.test.ts` and `truncate-second` each insert a row into the same table and check that they start with it empty. In file-path order they run after `db/db.integration.test.ts`, so no schema reset falls between them.
 - **`startTestApp()`** builds the app with `buildApp` on a test-database pool, a fixed clock (`2026-01-15T17:00:00Z`) and a logger that captures every line at `debug`. It returns `inject` (Fastify's in-process request), the pool, `logs()` (the parsed lines), `logText()` (the raw text, for checking that something never appears) and `close()`. A test can add its own routes to `app` before the first request, for example one that throws.
 - **`captureLogger()`** gives a logger that keeps its lines in memory, for unit tests of code that logs.
 

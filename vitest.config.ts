@@ -7,10 +7,12 @@ import { configDefaults, defineConfig } from 'vitest/config';
 // with no .env file, provides it.
 if (existsSync('.env')) process.loadEnvFile('.env');
 
-// Test files run in file-path order, the same on every machine and every run.
-// (Vitest's default order depends on earlier runs.) The two harness files in
-// src/server/testing/truncate-*.integration.test.ts rely on it: they run one
-// after the other, with no schema reset between them.
+// Test files run in file-path order, the same on every machine and every run
+// (Vitest's default order depends on earlier runs). Every file passes in any
+// order, but the check that tables are truncated between files does not: the
+// LAB-02 migration test (db/) drops the whole schema, and if it ran between
+// testing/truncate-first and truncate-second, the second would find no table
+// and pass even with truncation broken. In path order db/ always runs first.
 class FilePathOrder extends BaseSequencer {
   override sort(files: TestSpecification[]): Promise<TestSpecification[]> {
     return Promise.resolve(
