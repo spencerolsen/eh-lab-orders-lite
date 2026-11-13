@@ -1,6 +1,6 @@
 # LAB-01: Repo skeleton and tooling
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Groundwork
 - **Depends on:** nothing
 - **Unblocks:** LAB-02 (Database, migrations and config)
