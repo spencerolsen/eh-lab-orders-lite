@@ -28,12 +28,26 @@ class FilePathOrder extends BaseSequencer {
 //   <name>.test.ts              unit (Node, no database)
 //   <name>.test.tsx             component (jsdom and Testing Library)
 //   <name>.integration.test.ts  integration (the test database)
-// The unit and component files, run twice: once in the process's own time
-// zone, and once more (the "-west" projects) in Pacific/Honolulu, UTC-10. A
-// calendar day handled through a JavaScript Date read in local time is right
-// in UTC and wrong west of it, so a run that is only ever in UTC (as CI is)
-// would not see that bug. Every machine runs both.
+// The tests that work out or show a calendar day (a ready date, a date of
+// birth) run a second time, in the "dates-west" projects, with the process in
+// Pacific/Honolulu (UTC-10). A calendar day handled through a JavaScript Date
+// read in local time is right in UTC and a day early west of it, so a run that
+// is only ever in UTC (as CI's is) would not see that bug. Every machine runs
+// both. A new test file that checks a calendar day is added to this list.
 const WEST_OF_UTC = { TZ: 'Pacific/Honolulu' };
+const CALENDAR_DAY_UNIT_TESTS = [
+  'src/shared/dates.test.ts',
+  'src/shared/patients.test.ts',
+  'src/server/orders/domain/ready-date.test.ts',
+  'src/web/patients/form-values.test.ts',
+];
+const CALENDAR_DAY_COMPONENT_TESTS = [
+  'src/web/orders/OrdersPage.test.tsx',
+  'src/web/patients/PatientForm.test.tsx',
+  'src/web/patients/PatientLabel.test.tsx',
+  'src/web/patients/PatientPage.test.tsx',
+  'src/web/patients/PatientsPage.test.tsx',
+];
 const unitFiles = {
   include: ['src/**/*.test.ts', 'eslint-rules/**/*.test.js'],
   exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
@@ -49,11 +63,22 @@ export default defineConfig({
     sequence: { sequencer: FilePathOrder },
     projects: [
       { test: { name: 'unit', ...unitFiles } },
-      { test: { name: 'unit-west', ...unitFiles, env: WEST_OF_UTC } },
+      {
+        test: {
+          name: 'dates-west-unit',
+          include: CALENDAR_DAY_UNIT_TESTS,
+          env: WEST_OF_UTC,
+        },
+      },
       { plugins: [react()], test: { name: 'component', ...componentFiles } },
       {
         plugins: [react()],
-        test: { name: 'component-west', ...componentFiles, env: WEST_OF_UTC },
+        test: {
+          name: 'dates-west-component',
+          ...componentFiles,
+          include: CALENDAR_DAY_COMPONENT_TESTS,
+          env: WEST_OF_UTC,
+        },
       },
       {
         test: {
