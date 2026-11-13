@@ -28,6 +28,8 @@ Every failure, from any endpoint, has this shape:
 - `details` is only present for validation errors: one entry per field, with the field's path (`address.city`) and a short reason. An unknown field is reported under its own name with the reason `is not an allowed field`.
 - `requestId` is the request id above.
 
+The one exception is a request the HTTP layer cannot parse at all, such as headers over 16 KB or a body shorter than its `content-length`: Node and Fastify answer it with a plain 400 or 431 and no request id, before the app sees it.
+
 ### Status codes
 
 | Status | Meaning | Example in this app |
