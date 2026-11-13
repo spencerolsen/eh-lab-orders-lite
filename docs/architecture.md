@@ -29,7 +29,64 @@ A React app in `src/web/`, built by Vite (`index.html` at the root loads `src/we
 - **`components/`**: `Loading` (text with `role="status"`), `EmptyState` (message and optional action), `ErrorMessage` (`describeError` text in a `role="alert"` box, with a "Try again" button when given `onRetry`), and `ErrorBoundary`. Every page shows loading, empty and error the same way, with the same wording and the same accessibility, and each new page gets them for free.
 - **`ErrorBoundary`** catches an error thrown while rendering any component below it, writes it to the browser console and shows "Something went wrong. Reload the page." with a reload button, instead of a blank page. It does not catch a failed request (TanStack Query catches that and hands it to the page, which shows `ErrorMessage`), nor errors in event handlers, timers or other async code: React only sends render and lifecycle errors to a boundary.
 - **`health/ServerStatus.tsx`** is a line in the footer that calls `GET /healthz` through `apiFetch` and TanStack Query: "Server: connected", or the error with a retry button. It is there so the proxy, the client and the error states are used for real before any feature page exists. A `503` from `/healthz` (database down) has no standard error body, so it also shows "Can't reach the server". A later task may keep it or remove it; nothing depends on it.
-- **`styles/base.css`**: plain CSS, no component library: colour and spacing variables, system fonts, and a visible focus outline on everything focusable. The app is for a desktop browser window at least 1024 px wide; there is no mobile or narrow-screen layout (an owner decision).
+- **`styles/base.css`**: plain CSS, no component library: the theme (below), the shared classes every page uses, and a visible focus outline on everything focusable. The app is for a desktop browser window at least 1024 px wide; there is no mobile or narrow-screen layout and no breakpoints (an owner decision).
+- **`styles/StylesPage.tsx`** is `/styles`, a page linked from nowhere in the menu that shows every shared style at once: the reference for building a page and the place to check the theme by eye.
+- **`components/StatusBadge.tsx`** shows an order status as a tinted pill with the status word.
+
+### Visual theme
+
+The look is inspired by the palette of the company this exercise is for: a deep teal menu bar, a lime accent and a warm cream page. The app keeps its own name and uses no logo, no copied image or icon, and no font file.
+
+**Colours** are CSS custom properties on `:root` in `src/web/styles/base.css`, named by role, not by hue, so a page never writes a colour value and a colour can change in one place. No hex value appears anywhere else under `src/web/`.
+
+| Property | Value | Used for |
+|---|---|---|
+| `--color-brand-strong` | `#003438` | Menu bar, headings, table header text |
+| `--color-brand` | `#004a50` | Primary buttons, links, the focus outline |
+| `--color-accent` | `#dcff9f` | Current menu section, text on primary buttons |
+| `--color-surface-tint` | `#ddf3ee` | Table header, row hover, the `ordered` badge |
+| `--color-page` | `#fffaf2` | Page background, menu bar text |
+| `--color-surface` | `#fffdf9` | Cards, tables, dialogs, fields |
+| `--color-text` | `#451f41` | Body text |
+| `--color-text-muted` | `#6b5a68` | Help text, footer, field outlines (chosen in LAB-24) |
+| `--color-border` | `#e3d9cc` | Separators, decorative only (chosen in LAB-24) |
+| `--color-danger` | `#a3221b` | Error text, danger buttons (chosen in LAB-24) |
+| `--color-danger-surface` | `#fdeceb` | Error box, `cancelled` badge (chosen in LAB-24) |
+| `--color-focus` | `var(--color-brand)` | Focus outline on light backgrounds |
+| `--color-focus-on-brand` | `var(--color-accent)` | Focus outline in the menu bar |
+
+**Type:** a system serif stack for headings and the brand name (`--font-heading`: Georgia, Iowan Old Style, Times New Roman), the system sans-serif stack for everything else (`--font-body`). Nothing is downloaded: the company's own typefaces are licensed and not used. **Spacing** is `--space-1` to `--space-5` (0.25 to 2 rem); **corners** are `--radius-control` (6 px, fields), `--radius-card` (12 px, cards, tables, dialogs) and `--radius-pill` (buttons, badges, menu links).
+
+**Contrast.** Every pair the styles use, computed with the WCAG 2 relative-luminance formula. The rule: at least 4.5:1 for text, 3:1 for the focus outline and a field's outline against what is around them.
+
+| Foreground | Background | Where | Ratio |
+|---|---|---|---|
+| text `#451f41` | page `#fffaf2` | Body text | 13.25 |
+| text `#451f41` | surface `#fffdf9` | Text in cards, tables, dialogs, fields | 13.55 |
+| text `#451f41` | surface-tint `#ddf3ee` | A hovered table row | 11.89 |
+| text-muted `#6b5a68` | page `#fffaf2` | Footer, loading text | 6.15 |
+| text-muted `#6b5a68` | surface `#fffdf9` | Help text in a card | 6.29 |
+| brand-strong `#003438` | page `#fffaf2` | Headings | 13.05 |
+| brand-strong `#003438` | surface `#fffdf9` | Headings in a card or dialog | 13.35 |
+| brand-strong `#003438` | surface-tint `#ddf3ee` | Table header, `ordered` badge | 11.71 |
+| brand-strong `#003438` | accent `#dcff9f` | Current menu section, `collected` badge | 12.17 |
+| page `#fffaf2` | brand-strong `#003438` | Menu bar name and links | 13.05 |
+| accent `#dcff9f` | brand `#004a50` | Primary button, `completed` badge | 9.00 |
+| accent `#dcff9f` | brand-strong `#003438` | Hovered primary button | 12.17 |
+| brand `#004a50` | page `#fffaf2` | Links | 9.64 |
+| brand `#004a50` | surface `#fffdf9` | Secondary button | 9.86 |
+| brand `#004a50` | surface-tint `#ddf3ee` | Hovered secondary button | 8.65 |
+| danger `#a3221b` | danger-surface `#fdeceb` | Error box, `cancelled` badge, hovered danger button | 6.56 |
+| danger `#a3221b` | surface `#fffdf9` | A field's error message in a card | 7.38 |
+| danger `#a3221b` | page `#fffaf2` | A field's error message on the page | 7.21 |
+| surface `#fffdf9` | danger `#a3221b` | Danger button | 7.38 |
+| focus outline, brand `#004a50` | page / surface / surface-tint / danger-surface | Focus anywhere outside the menu bar | 9.64 / 9.86 / 8.65 / 8.77 |
+| focus outline, accent `#dcff9f` | brand-strong `#003438` | Focus in the menu bar | 12.17 |
+| field outline, text-muted `#6b5a68` | surface `#fffdf9` | The border of an input or select | 6.29 |
+
+Pairs deliberately not used: **lime on cream** (accent on page 1.07, on surface 1.10). The accent is never text or an outline on a light background; it is only a background under dark text, or text and outline on the teals. The focus outline was orange before this theme; orange on the teal menu bar is 2.62, so the outline is teal on light backgrounds and lime in the menu bar. `--color-border` on the page is 1.34: it is used only for separators, never as the only edge of a control. A disabled button is drawn at half opacity; WCAG exempts disabled controls from the contrast rule.
+
+**Status badges** (`ordered`, `collected`, `completed`, `cancelled`) each have their own tint from the palette (surface-tint, accent, brand, danger-surface) and always show the status word, so colour is never the only signal.
 
 TypeScript uses one `tsconfig.json` for both sides, with `DOM` in `lib` and the Node and `vite/client` types: Node types are visible in web code, the accepted cost of a single config. ESLint gives `src/web` browser globals and everything else Node globals; in TypeScript files the type checker is what catches an unknown global (typescript-eslint turns `no-undef` off there), so the split matters mostly for the plain JavaScript files.
 
