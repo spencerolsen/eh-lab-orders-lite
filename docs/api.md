@@ -2,7 +2,7 @@
 
 Every endpoint the server offers, with its request and response bodies, status codes and error codes.
 
-Feature endpoints live under `/api` (the first ones arrive with LAB-06). `/healthz` sits outside it. Request and response bodies are JSON.
+Feature endpoints live under `/api`. `/healthz` sits outside it. Request and response bodies are JSON.
 
 ## Request id
 
@@ -69,3 +69,34 @@ Checks that the server is running and the database answers. It runs `select 1` a
 | 503 | `{ "status": "unavailable" }` (the database did not answer in time; the server logs `health.db_unavailable` at `error`) |
 
 It reports nothing else: no versions and no connection details.
+
+### `GET /api/lab-tests`
+
+Every lab test, active and inactive, sorted by code.
+
+| Status | Body |
+|---|---|
+| 200 | An array of `{ "id": "<uuid>", "code": "CBC", "name": "Complete Blood Count", "priceCents": 2500, "turnaroundDays": 1, "isActive": true }` |
+
+`priceCents` is whole cents; `turnaroundDays` is business days.
+
+### `POST /api/lab-tests`
+
+Adds a lab test. A new test is always active.
+
+Body (all fields required, no others allowed):
+
+| Field | Rule |
+|---|---|
+| `code` | Text, trimmed and upper-cased, then 2 to 20 letters, digits or hyphens (`demo-09` is stored as `DEMO-09`). |
+| `name` | Text, trimmed, 1 to 100 characters. |
+| `priceCents` | Whole number of cents, 0 or more. |
+| `turnaroundDays` | Whole number of business days, 1 or more. |
+
+| Status | Body |
+|---|---|
+| 201 | The new test, in the same shape as one item of `GET /api/lab-tests`. |
+| 400 `VALIDATION_ERROR` | A field is missing, has the wrong type or breaks its rule, or there is an unknown field; `details` has one entry per field, for example `{ "field": "priceCents", "reason": "Must be a whole number of cents, 0 or more" }`. |
+| 409 `DUPLICATE_TEST_CODE` | A test with this code already exists (`cbc` and `CBC` are the same code). Message: "This code already exists". No row is added. |
+
+Logged: `lab_test.created` at `info` with `labTestId`; `lab_test.duplicate_code` at `warn`, without the code.

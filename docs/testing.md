@@ -55,6 +55,7 @@ Tests find elements the way a user does: by role and accessible name (`getByRole
 - **One file at a time.** The integration project sets `fileParallelism: false`: there is one test database, and two files running at once would truncate each other's rows. The two files `testing/truncate-first.integration.test.ts` and `truncate-second` each insert a row into the same table and check that they start with it empty. In file-path order they run after `db/db.integration.test.ts`, so no schema reset falls between them.
 - **`startTestApp()`** builds the app with `buildApp` on a test-database pool, a fixed clock (`2026-01-15T17:00:00Z`) and a logger that captures every line at `debug`. It returns `inject` (Fastify's in-process request), the pool, `logs()` (the parsed lines), `logText()` (the raw text, for checking that something never appears) and `close()`. A test can add its own routes to `app` before the first request, for example one that throws.
 - **`captureLogger()`** gives a logger that keeps its lines in memory, for unit tests of code that logs.
+- **Seeds.** No test runs `pnpm db:seed`, which only ever targets the development database, and no test relies on seeded rows. A seed function is tested by calling it twice on the test database (`src/server/catalog/seed.integration.test.ts`): the first run inserts its rows, the second inserts none.
 
 ## Checked by hand
 
