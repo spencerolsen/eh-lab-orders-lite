@@ -23,7 +23,7 @@ function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
-function daysInMonth(year: number, month: number): number {
+export function daysInMonth(year: number, month: number): number {
   if (month === 2) return isLeapYear(year) ? 29 : 28;
   return [4, 6, 9, 11].includes(month) ? 30 : 31;
 }
@@ -88,4 +88,33 @@ export function formatDate(value: string): string {
     number,
   ];
   return `${MONTH_NAMES[month - 1] ?? '?'} ${day}, ${year}`;
+}
+
+// The wall-clock date and time of the moment `now` in `timeZone`, as
+// 'YYYY-MM-DD HH:mm' (24-hour). The server uses it to send an order's created
+// time in the clinic's time zone, so the browser never converts it with its
+// own.
+export function clinicDateTime(timeZone: string, now: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const part = (type: string) =>
+    parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
+}
+
+// '2026-10-30 12:00' becomes 'Oct 30, 2026, 12:00 pm', by splitting the
+// string, so the result is the same in every time zone.
+export function formatDateTime(value: string): string {
+  const [date = '', time = ''] = value.split(' ');
+  const [hour, minute] = time.split(':').map(Number) as [number, number];
+  const suffix = hour < 12 ? 'am' : 'pm';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${formatDate(date)}, ${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
 }
