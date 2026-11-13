@@ -77,6 +77,7 @@ it('shows each order as a row, in the order the server sent them', async () => {
       'Ready by',
       'Status',
       'Created (America/Denver)',
+      'Details',
     ],
     [
       'Sample Person (born Dec 31, 1990)',
@@ -85,6 +86,7 @@ it('shows each order as a row, in the order the server sent them', async () => {
       'Nov 3, 2026',
       'Collected',
       'Oct 30, 2026, 12:00 pm',
+      'View',
     ],
     [
       'Demo Example (born Dec 31, 1990)',
@@ -93,6 +95,7 @@ it('shows each order as a row, in the order the server sent them', async () => {
       'Oct 28, 2026',
       'Completed',
       'Oct 26, 2026, 10:00 am',
+      'View',
     ],
   ]);
   const badge = within(screen.getAllByRole('row')[1]!).getByText('Collected');

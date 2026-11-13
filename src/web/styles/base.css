@@ -360,6 +360,36 @@ dialog h2 {
   border-radius: var(--radius-card) 0 0 var(--radius-card);
 }
 
+/* The panel slides in from the right when it opens. */
+.panel[open] {
+  animation: panel-in 150ms ease-out;
+}
+
+@keyframes panel-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+/* Label and value pairs (the order panel): the label above, muted. */
+.details {
+  margin: 0;
+}
+
+.details dt {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.details dd {
+  margin: 0 0 var(--space-3);
+}
+
+/* A table row that opens something when clicked. */
+.table tr.clickable {
+  cursor: pointer;
+}
+
 /* The menu bar: the name, then the section links in one row. */
 
 .menu-bar {
