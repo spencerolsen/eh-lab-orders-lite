@@ -42,6 +42,7 @@ const CALENDAR_DAY_UNIT_TESTS = [
   'src/web/patients/form-values.test.ts',
 ];
 const CALENDAR_DAY_COMPONENT_TESTS = [
+  'src/web/orders/OrderDetailPanel.test.tsx',
   'src/web/orders/OrdersPage.test.tsx',
   'src/web/patients/PatientForm.test.tsx',
   'src/web/patients/PatientLabel.test.tsx',

@@ -1,6 +1,6 @@
 # LAB-15: Orders: order detail slide-out panel
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Vertical slice
 - **Depends on:** LAB-11 (Orders: see orders on the home page)
 - **Unblocks:** LAB-16 (Orders: mark an order collected or completed), LAB-19 (Patient page: order history)

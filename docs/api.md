@@ -261,3 +261,55 @@ Every order, newest first (`created_at` descending, then `id` descending, so ord
 | 400 | `VALIDATION_ERROR` for any query parameter. |
 
 Logged: only the request line. Nothing about the patients is logged.
+
+### `GET /api/orders/:id`
+
+One order with its patient and the tests it holds (LAB-15). Read-only.
+
+```json
+{
+  "id": "5eed0011-0000-4000-8000-000000000003",
+  "status": "collected",
+  "patient": {
+    "id": "5eed0008-0000-4000-8000-000000000002",
+    "firstName": "Sample",
+    "lastName": "Person",
+    "dateOfBirth": "1990-12-31",
+    "email": "sample@example.test",
+    "phone": null
+  },
+  "items": [
+    {
+      "labTestId": "5eed0003-0000-4000-8000-000000000001",
+      "testCode": "CBC",
+      "testName": "Complete Blood Count",
+      "priceCents": 2500,
+      "turnaroundDays": 1
+    }
+  ],
+  "totalCents": 2500,
+  "estimatedReadyDate": "2026-11-03",
+  "createdAt": "2026-10-30T18:00:00.000Z",
+  "createdAtClinic": "2026-10-30 12:00",
+  "clinicTimezone": "America/Denver",
+  "allowedNextStatuses": ["completed"],
+  "canCancel": true
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `patient` | The patient's id, names, date of birth (`YYYY-MM-DD`), and email and phone (each `null` when not given). |
+| `items` | The order's tests, read from the `order_items` columns (code, name, price and turnaround as they were when the order was placed), never from the catalog. Each item has the shape in `src/shared/order-items.ts`, the one definition LAB-12 and LAB-13 reuse. Sorted by code. |
+| `totalCents` | The sum of the items' `priceCents`, worked out by `calculateTotal`; never stored. |
+| `createdAtClinic`, `clinicTimezone` | As in the list: the clinic's wall clock and the zone it is in, for the label "Created (America/Denver)". |
+| `allowedNextStatuses` | The forward moves the status transition table allows from the current status: `["collected"]` for `ordered`, `["completed"]` for `collected`, `[]` for `completed` and `cancelled`. |
+| `canCancel` | `true` when the table allows `cancelled` from the current status (`ordered` and `collected`). |
+
+| Status | Body |
+|---|---|
+| 200 | The order above. |
+| 400 | `VALIDATION_ERROR`: `:id` is not a uuid. |
+| 404 | `NOT_FOUND`: no order has that id. |
+
+Logged: `debug` `order.loaded` with the order id and item count; `warn` `order.not_found` with the order id. Nothing about the patient.
