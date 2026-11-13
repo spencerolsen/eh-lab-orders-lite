@@ -75,7 +75,11 @@ it('lists the patients with their date of birth as typed', async () => {
 it('shows the empty state when there are no patients', async () => {
   fakeApi([]);
   renderApp('/patients');
-  expect(await screen.findByText('No patients yet.')).toBeTruthy();
+  expect(
+    await screen.findByText(
+      'No patients yet. Add the first one with New patient.',
+    ),
+  ).toBeTruthy();
   expect(screen.queryByRole('table')).toBeNull();
 });
 

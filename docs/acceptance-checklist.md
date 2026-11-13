@@ -50,7 +50,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 ### Patients: add and list (LAB-08)
 
-- [ ] After `pnpm db:seed`, Patients lists exactly 6 patients, sorted by last name (Example, Patient, Person, Record, Sample, Tester). With the table empty (`truncate patients` in `psql`), the page shows "No patients yet."
+- [ ] After `pnpm db:seed`, Patients lists exactly 6 patients, sorted by last name (Example, Patient, Person, Record, Sample, Tester). With the table empty (`truncate patients` in `psql`), the page shows "No patients yet. Add the first one with New patient."
 - [ ] New patient, fill every field, Save patient: the list opens and shows the patient, with the date of birth exactly as typed (`1984-03-09` shows "Mar 9, 1984").
 - [ ] Save with first name, last name or date of birth empty: an error appears under that field, and goes away when the field is edited.
 - [ ] Save with neither email nor phone: an error appears under both; typing in either clears both. Only an email, or only a phone, saves.

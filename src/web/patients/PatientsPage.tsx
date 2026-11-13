@@ -30,7 +30,10 @@ function PatientList({ query }: { query: ReturnType<typeof usePatients> }) {
       <ErrorMessage error={query.error} onRetry={() => void query.refetch()} />
     );
   }
-  if (query.data.length === 0) return <EmptyState message="No patients yet." />;
+  if (query.data.length === 0)
+    return (
+      <EmptyState message="No patients yet. Add the first one with New patient." />
+    );
   return (
     <table className="table">
       <thead>
@@ -44,7 +47,7 @@ function PatientList({ query }: { query: ReturnType<typeof usePatients> }) {
       <tbody>
         {query.data.map((patient) => (
           <tr key={patient.id}>
-            <th scope="row">{patientName(patient)}</th>
+            <td>{patientName(patient)}</td>
             <td>{formatDate(patient.dateOfBirth)}</td>
             <td>{patient.email ?? ''}</td>
             <td>{patient.phone ?? ''}</td>
