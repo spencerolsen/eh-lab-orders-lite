@@ -1,5 +1,7 @@
 # Lab Orders Lite
 
+[![CI](https://github.com/spencerolsen/eh-lab-orders-lite/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/spencerolsen/eh-lab-orders-lite/actions/workflows/ci.yml)
+
 A small clinic app: keep a list of patients and a catalog of lab tests, place orders for a patient, and see each order's total and the date its results should be ready.
 
 This is an early stub. The full README is written in LAB-22.

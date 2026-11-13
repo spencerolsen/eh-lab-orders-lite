@@ -1,0 +1,88 @@
+# The checks on every pull request and every push to main (LAB-05).
+# Each step is named, so a failure points to the check that failed.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer run on the same branch (or pull request) cancels the older one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only: the job only reads the code. No secrets are used.
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Postgres 16, published on the runner's port 5432. The job runs on the
+    # runner itself (not in a container), so it reaches the service on
+    # localhost:5432. Port 5433 belongs to the local Docker Compose setup.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: lab_orders
+          POSTGRES_PASSWORD: lab_orders
+          POSTGRES_DB: lab_orders
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U lab_orders -d lab_orders"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    # There is no .env in CI, so every setting the checks need is set here.
+    # CI=true (set by GitHub) makes the integration setup skip starting Docker
+    # Compose and use the service above.
+    env:
+      DATABASE_URL: postgres://lab_orders:lab_orders@localhost:5432/lab_orders
+      TEST_DATABASE_URL: postgres://lab_orders:lab_orders@localhost:5432/lab_orders_test
+      LOG_LEVEL: error
+      CLINIC_TIMEZONE: America/Denver
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      # No version input: the action takes it from packageManager in package.json.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Build the web app
+        run: pnpm build
+
+      # The name must be exactly lab_orders_test: the _test guard requires the
+      # suffix, and db:test:reset only resets lab_orders and lab_orders_test.
+      # createdb runs inside the service container, so the step does not
+      # depend on a Postgres client being installed on the runner.
+      - name: Create the test database
+        run: docker exec ${{ job.services.postgres.id }} createdb -U lab_orders lab_orders_test
+
+      - name: Test (unit, component and integration)
+        run: pnpm test
