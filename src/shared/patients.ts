@@ -25,12 +25,15 @@ const requiredText = z.string({
 });
 
 // Control characters (a NUL, a tab, a line break) are refused: Postgres text
-// cannot hold a NUL, and none of them belongs in a name.
+// cannot hold a NUL, and none of them belongs in a name or a search.
+const NO_CONTROL_CHARACTERS = /^[^\p{Cc}]*$/u;
+const CONTROL_CHARACTERS_REASON = 'must not contain control characters';
+
 const nameField = requiredText
   .trim()
   .min(1, 'is required')
   .max(NAME_MAX_LENGTH, `must be ${NAME_MAX_LENGTH} characters or fewer`)
-  .regex(/^[^\p{Cc}]*$/u, 'must not contain control characters');
+  .regex(NO_CONTROL_CHARACTERS, CONTROL_CHARACTERS_REASON);
 
 // Why a date of birth is not acceptable, or undefined when it is. `today` is
 // the clinic's calendar day on the server, and in the browser the latest day
@@ -111,6 +114,59 @@ export function createPatientBody(today: string) {
 }
 
 export type CreatePatientBody = z.output<ReturnType<typeof createPatientBody>>;
+
+// An email or phone field for an update: absent means "leave it as it is";
+// null or empty text means "remove it", and comes out as null.
+function clearable<T extends z.ZodType<string | undefined>>(field: T) {
+  return field.transform((value) => value ?? null).optional();
+}
+
+// The body of PATCH /api/patients/:id: any of the create fields, each checked
+// by the same rule as on create. Unknown fields and an empty body are refused.
+// The contact rule is not here: whether a patient still has an email or a
+// phone depends on the stored row, so the database's patients_contact_required
+// check decides it, and the route turns a violation into 422 CONTACT_REQUIRED.
+export function updatePatientBody(today: string) {
+  const fields = patientFields(today);
+  return z
+    .strictObject({
+      firstName: fields.firstName.optional(),
+      lastName: fields.lastName.optional(),
+      dateOfBirth: fields.dateOfBirth.optional(),
+      email: clearable(fields.email),
+      phone: clearable(fields.phone),
+    })
+    .refine((value) => Object.keys(value).length > 0, {
+      message: 'must include at least one field to change',
+      // Only when nothing else is wrong: a body with just an unknown field is
+      // reported once, for that field.
+      when: (payload) => payload.issues.length === 0,
+    });
+}
+
+export type UpdatePatientBody = z.output<ReturnType<typeof updatePatientBody>>;
+
+// The path of GET and PATCH /api/patients/:id.
+export const patientIdParams = z.strictObject({
+  id: z.uuid({ error: 'must be a uuid' }),
+});
+
+// The search text of GET /api/patients?q=, after trimming, is at most this long.
+export const SEARCH_MAX_LENGTH = 100;
+// A search returns at most this many patients (the list has no paging); the
+// Patients page says so when a search reaches it.
+export const SEARCH_RESULT_LIMIT = 50;
+
+// The query string of GET /api/patients. `q` is trimmed; missing or empty
+// means "every patient". Unknown parameters are refused.
+export const patientListQuery = z.strictObject({
+  q: z
+    .string({ error: 'must be text' })
+    .trim()
+    .max(SEARCH_MAX_LENGTH, `must be ${SEARCH_MAX_LENGTH} characters or fewer`)
+    .regex(NO_CONTROL_CHARACTERS, CONTROL_CHARACTERS_REASON)
+    .optional(),
+});
 
 // A patient as the API returns it. Email and phone are null when absent.
 export const patientSchema = z.object({

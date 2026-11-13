@@ -5,6 +5,9 @@ import {
   createPatientBody,
   dateOfBirthProblem,
   normalizeEmail,
+  patientIdParams,
+  patientListQuery,
+  updatePatientBody,
 } from './patients';
 import { PHONE_CHARACTERS_REASON, PHONE_LENGTH_REASON } from './phone';
 
@@ -140,5 +143,106 @@ describe('dateOfBirthProblem', () => {
     expect(problems({ ...valid, dateOfBirth: '2026-01-15' })).toEqual({
       dateOfBirth: 'cannot be in the future',
     });
+  });
+});
+
+describe('the update schema', () => {
+  const update = updatePatientBody(TODAY);
+  const reasons = (input: unknown) => {
+    const result = update.safeParse(input);
+    return result.success
+      ? {}
+      : Object.fromEntries(
+          result.error.issues.map((i) => [i.path.join('.'), i.message]),
+        );
+  };
+
+  it('takes any one field alone, and leaves out the fields not sent', () => {
+    expect(update.parse({ lastName: ' Sample ' })).toEqual({
+      lastName: 'Sample',
+    });
+    expect(Object.keys(update.parse({ dateOfBirth: '2020-02-29' }))).toEqual([
+      'dateOfBirth',
+    ]);
+  });
+
+  it('normalizes email and phone as create does', () => {
+    expect(
+      update.parse({ email: ' Jane@Example.test', phone: '+1 801.555.0100' }),
+    ).toEqual({ email: 'jane@example.test', phone: '8015550100' });
+  });
+
+  it('turns a null or empty email or phone into null, which removes it', () => {
+    expect(update.parse({ email: null })).toEqual({ email: null });
+    expect(update.parse({ phone: '  ' })).toEqual({ phone: null });
+  });
+
+  it('applies the create rules to each field sent', () => {
+    expect(
+      reasons({
+        firstName: ' ',
+        lastName: null,
+        dateOfBirth: '2020-02-30',
+        email: 'not-an-email',
+        phone: '555-0100',
+      }),
+    ).toEqual({
+      firstName: 'is required',
+      lastName: 'must be text',
+      dateOfBirth: 'must be a real calendar date',
+      email: 'must be an email address',
+      phone: 'must be a 10-digit number, including the area code',
+    });
+    expect(reasons({ dateOfBirth: '2026-01-15' })).toEqual({
+      dateOfBirth: 'cannot be in the future',
+    });
+  });
+
+  it('refuses an empty body and unknown fields', () => {
+    expect(reasons({})).toEqual({
+      '': 'must include at least one field to change',
+    });
+    expect(update.safeParse({ phone: null, id: 'x' }).success).toBe(false);
+  });
+
+  it('has no contact rule of its own: clearing both is left to the database', () => {
+    expect(update.parse({ email: null, phone: null })).toEqual({
+      email: null,
+      phone: null,
+    });
+  });
+});
+
+describe('the patient id in the path', () => {
+  it('must be a uuid', () => {
+    expect(
+      patientIdParams.safeParse({ id: '0b5e2d1c-4c1f-4a3e-9d55-2f8a7c6b1e90' })
+        .success,
+    ).toBe(true);
+    expect(patientIdParams.safeParse({ id: 'abc' }).success).toBe(false);
+  });
+});
+
+describe('the search query', () => {
+  it('trims q and treats a missing q as no search', () => {
+    expect(patientListQuery.parse({ q: '  jane sm ' })).toEqual({
+      q: 'jane sm',
+    });
+    expect(patientListQuery.parse({})).toEqual({});
+  });
+
+  it('allows 100 characters after trimming, and not 101', () => {
+    expect(
+      patientListQuery.safeParse({ q: ` ${'a'.repeat(100)} ` }).success,
+    ).toBe(true);
+    expect(patientListQuery.safeParse({ q: 'a'.repeat(101) }).success).toBe(
+      false,
+    );
+  });
+
+  it('refuses control characters, a repeated q and unknown parameters', () => {
+    expect(patientListQuery.safeParse({ q: 'a\u0000' }).success).toBe(false);
+    expect(patientListQuery.safeParse({ q: ['a', 'b'] }).success).toBe(false);
+    expect(patientListQuery.safeParse({ name: 'a' }).success).toBe(false);
   });
 });
