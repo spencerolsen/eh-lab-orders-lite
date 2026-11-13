@@ -15,13 +15,13 @@ LAB-11 returns every order in one response, which is fine for a seed but not for
 ## Requirements
 
 **Data**
-- Migration adds indexes: (`created_at` desc, `id` desc) for the unfiltered list; (`status`, `created_at` desc, `id` desc); (`patient_id`, `created_at` desc, `id` desc). Index names state their columns. No new columns.
+- Migration adds indexes: (`created_at` desc, `id` desc) for the unfiltered list (already there: LAB-11 created it as `orders_created_at_id`, so only the next two are new); (`status`, `created_at` desc, `id` desc); (`patient_id`, `created_at` desc, `id` desc). Index names state their columns. No new columns.
 
 **API**
 - `GET /api/orders` accepts: `status` (one of the values of `ORDER_STATUSES` from LAB-11; the schema is built from that list, not from a second typed list), `patientId` (uuid), `limit` (integer 1 to 100, default 25), `offset` (integer >= 0, default 0). Query schemas live in `src/shared/` and are parsed explicitly in the route.
 - Filters combine with AND. Order is newest first with `id` as tie-breaker so paging is stable.
 - The repository asks for `limit + 1` rows; if it gets `limit + 1`, `hasMore` is true and the extra row is dropped. There is no COUNT query.
-- Response: `{ items, hasMore }`. Each item keeps the LAB-11 row shape. LAB-11 already returns `{ items, hasMore: false }`; this task only adds the `status`, `patientId`, `limit` and `offset` parameters and real `hasMore` paging.
+- Response: `{ items, hasMore, clinicTimezone }`. Each item keeps the LAB-11 row shape. LAB-11 already returns `{ items, hasMore: false, clinicTimezone }` (keep `clinicTimezone`: the page labels the created-time column with it); this task only adds the `status`, `patientId`, `limit` and `offset` parameters and real `hasMore` paging.
 - 400 `VALIDATION_ERROR` for an invalid `status`, a `patientId` that is not a uuid, a `limit` or `offset` out of range or not an integer, or an unknown query parameter.
 - A `patientId` that matches no patient returns an empty list, not an error: it is a filter, not a resource in the path.
 

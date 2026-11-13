@@ -39,6 +39,7 @@ This is the first write in the main workflow. It adds the order-creation transac
 - No total or ready date in the modal yet.
 
 **Logging**
+- `debug` `order.ready_date_estimated` with the item count, the longest turnaround and the ready date (moved here from LAB-11, because this is the first server code that calls `estimateReadyDate`).
 - `info` `order.created` with order id, patient id and item count. `warn` on each 422. No names, dates of birth or search text.
 
 ## Acceptance criteria

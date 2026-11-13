@@ -32,7 +32,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 - [ ] Every page (Orders, Patients, Catalog, "Page not found") has the teal menu bar, the cream page, serif headings and the footer, with no unstyled element. The current section is a lime pill.
 - [ ] http://localhost:5173/styles shows headings, text, each button with its disabled state, a form with a valid and an invalid field, a table, the four status badges, and the loading, empty and error components. It is not in the menu.
-- [ ] On `/styles`, each badge shows its word (ordered, collected, completed, cancelled) in its own tint, and the invalid "Code" field shows its error text (the browser's inspector shows `aria-invalid="true"`).
+- [ ] On `/styles`, each badge shows its label (Ordered, Collected, Completed, Cancelled) in its own tint, and the invalid "Code" field shows its error text (the browser's inspector shows `aria-invalid="true"`).
 - [ ] On `/styles`, Tab reaches every enabled link, field and button, from the menu bar to "Open a panel", each with a visible outline (lime in the menu bar, teal elsewhere). Hovering a button changes its look.
 - [ ] "Open a dialog" and "Open a panel" open over a dimmed page (the panel on the right, full height); Escape closes them.
 - [ ] In the browser's network panel, a reload of `/styles` requests nothing from another site and no font.
@@ -83,6 +83,16 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Edit the date of birth to `2020-02-30` or a date after today: an error under date of birth and no request. An accepted date (`2020-02-29`) shows as "Feb 29, 2020" in the heading and the list, with no day shift.
 - [ ] `/patients/00000000-0000-4000-8000-000000000000` and `/patients/abc` show "Patient not found" with a Back to patients button.
 - [ ] While doing all of the above, the API's log (with `LOG_LEVEL=debug`) shows `patient.updated` with an id and field names, `patient.search` with `hasQuery` and `resultCount`, request lines with the route `/api/patients` or `/api/patients/:id`, and never the search text, a name, a date of birth, an email or a phone.
+
+### Orders: the home page (LAB-11)
+
+- [ ] After `pnpm dev` on an empty database (`docker compose down -v` first), the home page lists exactly 4 orders, newest first: Test Patient (1 test, $52.50, ready Nov 13, 2026 (placed on a Saturday, so Monday is business day 1), Ordered, Nov 7, 2026, 11:00 am), Fake Tester (3 tests, $132.00, Nov 9, 2026, Collected), Sample Person (2 tests, $56.00, Nov 3, 2026, Ordered, Oct 30, 2026, 12:00 pm), Demo Example (3 tests, $122.50, Oct 28, 2026, Completed).
+- [ ] Each patient is shown with the date of birth ("Sample Person (born Dec 31, 1990)") as a link to that patient's page, the Tests and Total columns are right-aligned, and each status is a tinted badge with its label.
+- [ ] The last column is headed "Created (America/Denver)". Change the computer's time zone (or start the browser with another `TZ`) and reload: the Friday order still shows 12:00 pm.
+- [ ] `docker compose exec db psql -U lab_orders -d lab_orders -c "\d orders"` shows no total column; `select sum(price_cents) from order_items where order_id = '5eed0011-0000-4000-8000-000000000002'` gives 13200, the $132.00 on screen.
+- [ ] Run `pnpm db:seed` a second time: it reports 0 rows inserted, and the page still shows the same 4 orders.
+- [ ] With no orders (`truncate orders, order_items` in `psql`), the page shows "No orders yet". Stop the API and reload: "Can't reach the server. Try again." with a Try again button.
+- [ ] The API's log for the page load has the request line and nothing with a patient's name or date of birth.
 
 ## Checkpoint 2
 

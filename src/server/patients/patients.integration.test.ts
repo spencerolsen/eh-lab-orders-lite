@@ -9,7 +9,7 @@ let t: TestApp;
 
 beforeEach(async () => {
   t = startTestApp();
-  await t.pool.query('truncate table patients');
+  await t.pool.query('truncate table patients cascade');
 });
 
 afterEach(async () => {

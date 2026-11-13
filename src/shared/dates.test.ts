@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  clinicDateTime,
   formatDate,
+  formatDateTime,
   isAfterDay,
   isRealDate,
   latestTodayAnywhere,
@@ -89,5 +91,31 @@ describe('formatDate', () => {
       expect(formatDate('1984-03-09')).toBe('Mar 9, 1984');
       expect(formatDate('2000-01-01')).toBe('Jan 1, 2000');
     }
+  });
+});
+
+describe('clinicDateTime', () => {
+  it('gives the wall clock of the moment in the time zone', () => {
+    const moment = new Date('2026-10-30T18:00:00Z');
+    expect(clinicDateTime('America/Denver', moment)).toBe('2026-10-30 12:00');
+    expect(clinicDateTime('UTC', moment)).toBe('2026-10-30 18:00');
+    expect(clinicDateTime('Asia/Tokyo', moment)).toBe('2026-10-31 03:00');
+  });
+
+  it('writes midnight as 00:00, not 24:00', () => {
+    expect(
+      clinicDateTime('America/Denver', new Date('2026-11-14T07:00:00Z')),
+    ).toBe('2026-11-14 00:00');
+  });
+});
+
+describe('formatDateTime', () => {
+  it.each([
+    ['2026-10-30 12:00', 'Oct 30, 2026, 12:00 pm'],
+    ['2026-10-30 00:05', 'Oct 30, 2026, 12:05 am'],
+    ['2026-11-13 23:30', 'Nov 13, 2026, 11:30 pm'],
+    ['2026-01-02 09:07', 'Jan 2, 2026, 9:07 am'],
+  ])('%s is shown as %s', (value, expected) => {
+    expect(formatDateTime(value)).toBe(expected);
   });
 });

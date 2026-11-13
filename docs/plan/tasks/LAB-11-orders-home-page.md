@@ -1,6 +1,6 @@
 # LAB-11: Orders: see orders on the home page
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-06 (Catalog: see and add lab tests), LAB-08 (Patients: add and list patients)
 - **Unblocks:** LAB-12 (Orders: place an order), LAB-14 (Orders: filter the list by status and patient), LAB-15 (Orders: order detail slide-out panel)
@@ -20,11 +20,13 @@ This task builds the order tables and the two business rules that every later or
 - No total column: the total is always derived from `order_items`.
 - `src/shared/` exports `ORDER_STATUSES` (`ordered`, `collected`, `completed`, `cancelled`) and its `OrderStatus` type: the single list in code. The filter schema (LAB-14), the transition table (LAB-15), the transitions' `to` values (LAB-16) and the UI status labels all derive from it; none retypes the list. The database CHECK above is the one other place. A test asserts the CHECK and `ORDER_STATUSES` agree.
 - `AGENTS.md` gains a "how to add a status" touch-list: the migration (change the CHECK), `ORDER_STATUSES`, the transition table, and the labels.
-- Seed adds exactly 4 obviously fake orders for seeded patients, each with a fixed UUID and inserted with `on conflict (id) do nothing` (order items have no id of their own, so they are inserted `on conflict do nothing` on their primary key), using seeded tests only (CBC, CMP, LIPID, A1C, TSH, UA, VITD, CULT): one test; three tests; one placed on Friday 2026-10-30 at 12:00 in the clinic timezone; one in status `completed`. Items are copied from the catalog and each `estimated_ready_date` comes from `estimateReadyDate`, never typed in by hand.
+- Seed adds exactly 4 obviously fake orders for seeded patients, each with a fixed UUID and inserted with `on conflict (id) do nothing` (order items have no id of their own, so they are inserted `on conflict do nothing` on their primary key), using seeded tests only (CBC, CMP, LIPID, A1C, TSH, UA, VITD, CULT): one test; three tests; one placed on Friday 2026-10-30 at 12:00 in the clinic timezone; one in status `completed`. Items are copied from the catalog and each `estimated_ready_date` comes from `estimateReadyDate` with each order's fixed order time (never "now"), never typed in by hand. Statuses: `ordered` (two), `collected` and `completed`. No order is seeded as `cancelled`: LAB-17's CHECK requires a cancelled order to have its note, name and time, and a cancelled row seeded before those columns exist would make that migration fail.
+- An order has at least one item. The database cannot check this with a CHECK (it would need a trigger), so it is enforced in code: `estimateReadyDate` throws for an empty list, and LAB-12 refuses an empty test list with 422 `INVALID_ORDER_TESTS` before anything is written.
 
 **Rules (pure functions in `src/server/orders/domain/`, no framework or database imports)**
 - `calculateTotal(items)`: sum of `price_cents`, integer cents, 0 for an empty list.
-- `estimateReadyDate(orderedAt, items, timezone)`: take the longest `turnaround_days`. The order day is the calendar day of `orderedAt` in `CLINIC_TIMEZONE` (validated at startup in LAB-02). The order day does not count. Saturdays and Sundays are skipped. An order placed on a Saturday or Sunday counts as placed on the following Monday morning. Returns a `YYYY-MM-DD` string.
+- `estimateReadyDate(orderedAt, items, timezone)`: the ready date is the Nth business day after the day the order was placed, where N is the longest turnaround among the order's tests. Saturday and Sunday are not business days. The order day itself is never counted. "The day the order was placed" is the calendar day of `orderedAt` in `CLINIC_TIMEZONE` (validated at startup in LAB-02). There is no separate weekend step: Friday, Saturday and Sunday orders with the same tests are ready the same day. Returns a `YYYY-MM-DD` string. Calendar arithmetic is on year-month-day numbers, never a JavaScript `Date`, so the result does not depend on the process time zone. Public holidays are not handled; a list of days to skip could be added later as one more parameter.
+- Worked examples, each a unit test: ordered Monday, 1 day = Tuesday, 2 days = Wednesday; Thursday, 2 days = Monday; Friday, 1 day = Monday, 2 days = Tuesday; Saturday or Sunday, 1 day = Monday, 2 days = Tuesday. A separate test shows Friday, Saturday and Sunday orders with the same tests are ready the same day.
 - The clock is injected: the caller passes `orderedAt`, read once, so `created_at` and the ready date cannot disagree.
 
 **API**
@@ -37,15 +39,15 @@ This task builds the order tables and the two business rules that every later or
 - No row click, no filters and no buttons yet.
 
 **Logging**
-- `debug` on the ready-date inputs and result (counts and the date only). `info` request line as in LAB-03. No names or dates of birth in any line.
+- `debug` on the ready-date inputs and result (counts and the date only): written by the server code that calls `estimateReadyDate`, which first happens in LAB-12 (`POST /api/orders`); the function itself is pure and has no logger, and in this task only the seed calls it. `info` request line as in LAB-03. No names or dates of birth in any line.
 
 ## Acceptance criteria
 
 - [ ] After `pnpm dev` on an empty database, the home page shows exactly the 4 seeded orders, newest first.
 - [ ] Each row shows the patient's name and date of birth, the test count, the total, the ready date and the status.
 - [ ] A row's total equals the sum of its items' `price_cents`, and the `orders` table has no total column.
-- [ ] A Monday order with longest turnaround 1 day is ready Tuesday; a Friday order with 1 day is ready Monday; a Saturday order with 1 day is ready Tuesday.
-- [ ] A moment that is Saturday 02:00 UTC but Friday evening in `CLINIC_TIMEZONE` is treated as Friday.
+- [ ] A Monday order with longest turnaround 1 day is ready Tuesday; a Friday order with 1 day is ready Monday; a Saturday or Sunday order with 1 day is ready Monday, and with 2 days Tuesday, the same as a Friday order.
+- [ ] A moment that is Friday 06:30 UTC but 11:30 pm Thursday in `CLINIC_TIMEZONE` is treated as Thursday: with 1 day it is ready Friday, not Monday.
 - [ ] With the same inputs the function always returns the same date, because it reads no clock of its own.
 - [ ] Inserting an `order_items` row with a negative price, a turnaround of 0, or a repeated (order, test) pair is rejected by the database.
 - [ ] Running the seed twice leaves the same 4 orders (same ids) and the same items; `pnpm dev` runs it every time.
@@ -57,7 +59,7 @@ This task builds the order tables and the two business rules that every later or
 
 ## Tests
 
-**Unit** (`domain/`): `calculateTotal` empty, one item, many items. `estimateReadyDate` for each weekday with 1 day; longest of several turnarounds; a 5-day and a 10-day span over weekends; Friday, Saturday and Sunday orders; timezone boundary near midnight; same input gives the same output.
+**Unit** (`domain/`): `calculateTotal` empty, one item, many items. `estimateReadyDate` for each weekday with 1 day; longest of several turnarounds; a 5-day and a 10-day span over weekends; Friday, Saturday and Sunday orders; Friday, Saturday and Sunday ready the same day; timezone boundary near midnight; same input gives the same output.
 
 **Integration** (real Postgres, HTTP): list newest first with tie-break on id; derived total and test count per row; the 4 seeded orders match `estimateReadyDate` and the catalog values; the three database constraints from the criteria; seed twice leaves the same rows; `createdAtClinic` is in the clinic timezone and the response includes `clinicTimezone` (`America/Denver` in the test setup); the status CHECK and `ORDER_STATUSES` agree.
 

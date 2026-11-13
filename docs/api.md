@@ -213,3 +213,51 @@ Changes some of a patient's details. The body has any of the create fields, at l
 Two people saving the same patient at once: the last save wins (a future version may add a version check).
 
 The server logs `patient.updated` at `info` with `patientId` and `changedFields` (the names of the fields the request set, never their values). Rejections are logged at `warn` by the error handler, with the code and a count of fields.
+
+### `GET /api/orders`
+
+Every order, newest first (`created_at` descending, then `id` descending, so orders placed at the same moment always come back in the same order). No query parameters yet: any parameter is a 400 `VALIDATION_ERROR` (LAB-14 adds the filters and real paging).
+
+```json
+{
+  "items": [
+    {
+      "id": "5eed0011-0000-4000-8000-000000000003",
+      "status": "ordered",
+      "patient": {
+        "id": "5eed0008-0000-4000-8000-000000000002",
+        "firstName": "Sample",
+        "lastName": "Person",
+        "dateOfBirth": "1990-12-31"
+      },
+      "testCount": 2,
+      "totalCents": 5600,
+      "estimatedReadyDate": "2026-11-03",
+      "createdAt": "2026-10-30T18:00:00.000Z",
+      "createdAtClinic": "2026-10-30 12:00"
+    }
+  ],
+  "hasMore": false,
+  "clinicTimezone": "America/Denver"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `items` | The orders. An object with `items` rather than a bare array, so `hasMore` and `clinicTimezone` sit beside them. |
+| `status` | One of `ordered`, `collected`, `completed`, `cancelled` (`ORDER_STATUSES`). |
+| `patient` | The patient's id, names and date of birth (`YYYY-MM-DD`): what the screen needs to name them. No email or phone. |
+| `testCount` | How many items the order has. |
+| `totalCents` | The sum of the items' `price_cents` as they were when the order was placed, in whole cents. Worked out on every request by `calculateTotal`; never stored. |
+| `estimatedReadyDate` | `YYYY-MM-DD`, stored when the order was placed. |
+| `createdAt` | When the order was placed, an ISO 8601 instant in UTC. |
+| `createdAtClinic` | The same moment on the clinic's wall clock, `YYYY-MM-DD HH:mm` (24-hour) in `CLINIC_TIMEZONE`. Screens show this, so every browser shows the clinic's time whatever its own time zone. |
+| `hasMore` | Always `false` for now; LAB-14 adds paging. |
+| `clinicTimezone` | The IANA name of `CLINIC_TIMEZONE`, for labelling the created time ("Created (America/Denver)"). |
+
+| Status | Body |
+|---|---|
+| 200 | The list above (`{ "items": [], ... }` when there are no orders). |
+| 400 | `VALIDATION_ERROR` for any query parameter. |
+
+Logged: only the request line. Nothing about the patients is logged.

@@ -11,7 +11,7 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
 - `src/server/`: the API server. Each feature gets its own folder, `src/server/<feature>/` (for example `orders`, `patients`, `catalog`).
   - `routes.ts`: HTTP routes. A route parses its input explicitly with the shared schema, then calls the repository or the service.
   - `repo.ts`: the SQL queries for that feature, hand-written, with typed row mappers. Queries live here and nowhere else.
-  - `domain/`: business rules as pure functions (no Fastify, no `pg`), unit tested on their own. Rules never live in routes or repositories.
+  - `domain/`: business rules as pure functions (no Fastify, no `pg`, no clock: the caller passes the time in), unit tested on their own. Rules never live in routes or repositories. The order total (`calculateTotal`) and ready date (`estimateReadyDate`) are in `src/server/orders/domain/`; call them, never reimplement them.
   - `service.ts`: only where a feature needs a transaction or combines rules with several queries (for example placing an order). Simple features call the repository from the route.
 - `src/web/`: the browser app (React, Vite, React Router, TanStack Query). Each feature gets its own folder, `src/web/<feature>/`, with its page (for example `catalog/CatalogPage.tsx`).
   - `main.tsx` mounts the app (error boundary, query client, router); `App.tsx` holds the routes; `Layout.tsx` and `MenuBar.tsx` are the frame around every page; `NotFoundPage.tsx` is the screen for unknown paths.
@@ -47,7 +47,7 @@ pnpm comes with Node through Corepack. The commands below are written `pnpm <scr
 | `pnpm dev:web` | Run the Vite dev server on `WEB_PORT` (5173), proxying `/api` and `/healthz` to the API on `PORT`. |
 | `pnpm build` | Build the web app into `dist/web`. |
 | `pnpm start` | Run the API server under `tsx` with JSON logs. |
-| `pnpm test` | Unit, component and integration tests (Vitest projects `unit`, `component` and `integration`). The integration project starts the database container and waits until it is healthy, unless `CI` is set, and needs `.env` (or `TEST_DATABASE_URL` in the environment); the unit and component projects need neither Docker nor `.env`. One project alone: `pnpm test --project unit`, `--project component` or `--project integration`. |
+| `pnpm test` | Unit, component and integration tests (Vitest projects `unit`, `component` and `integration`, plus `dates-west-unit` and `dates-west-component`, which run the test files that work out or show a calendar day again in the `Pacific/Honolulu` time zone, so a calendar-day bug that only shows west of UTC fails on every machine and in CI; a new test file that checks a calendar day is added to the list in `vitest.config.ts`). The integration project starts the database container and waits until it is healthy, unless `CI` is set, and needs `.env` (or `TEST_DATABASE_URL` in the environment); the unit and component projects need neither Docker nor `.env`. One project alone: `pnpm test --project unit`, `--project component` or `--project integration`. |
 | `pnpm format` | Format the code with Prettier. Markdown is not formatted. |
 | `pnpm format:check` | Check the formatting without changing files. |
 | `pnpm db:up` | Start Postgres in Docker (host port `DB_PORT`, 5433) and wait until it is healthy. |
@@ -135,6 +135,18 @@ Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere i
 - **Every task that adds a table adds a seed** with obviously fake rows: a file in `db/seeds/` exporting one function that takes the database client and returns how many rows it inserted, and one line in the `SEEDS` list in `db/seed.ts`. Each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so running the seed twice leaves the same rows.
 - **Settings** are read once at startup by `loadConfig()` in `src/server/config.ts`, which exits with one JSON error line if any is missing or invalid. Add a new setting there and to `.env.example`.
 - Test tooling uses only `TEST_DATABASE_URL`, and refuses a database whose name does not end in `_test` (`src/server/db/guards.ts`).
+
+## Adding an order status
+
+The statuses are written in exactly two places, and everything else derives from the first:
+
+1. **The migration:** a new file in `db/migrations/` that drops and re-adds the `orders_status_known` CHECK with the new list (never edit `0004_orders.sql` once merged).
+2. **`ORDER_STATUSES`** in `src/shared/orders.ts`, in the same order as the CHECK. `src/server/orders/schema.integration.test.ts` fails until the two agree.
+3. **The transition table** in `src/server/orders/domain/` (LAB-15): which moves lead into and out of the new status. Its unit tests cover every pair.
+4. **The labels:** `ORDER_STATUS_LABELS` in the same file (the type checker refuses a status without one) and a `.badge-<status>` tint in `src/web/styles/base.css`.
+5. **Docs and test expectations:** the status lists in `docs/api.md` (`GET /api/orders`), `docs/data-model.md` (`orders`) and the badge rows of the colour and contrast tables in `docs/architecture.md` (Visual theme); the hand-written expectations in `src/web/components/StatusBadge.test.tsx` and `src/web/styles/StylesPage.test.tsx` fail until updated, on purpose.
+
+No other source file types a status out: schemas use `orderStatusSchema`, and screens (the `/styles` badge row included) use `ORDER_STATUSES` and `ORDER_STATUS_LABELS`.
 
 ## Workflow
 

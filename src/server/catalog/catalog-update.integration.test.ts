@@ -16,7 +16,7 @@ beforeAll(() => {
 let logsBefore = 0;
 
 beforeEach(async () => {
-  await t.pool.query('truncate lab_tests');
+  await t.pool.query('truncate lab_tests cascade');
   logsBefore = t.logs().length;
 });
 
