@@ -17,7 +17,7 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
 - `src/shared/`: code used by both sides: request and response schemas, money and date helpers, and every fixed list of values.
 - `docs/`: architecture, API, data model, data flow, testing and the acceptance checklist. `docs/plan/` holds the build plan and one ticket per task.
 
-Tests sit next to the code they test, named `<name>.test.ts`. The smoke test is `src/shared/smoke.test.ts`.
+Tests sit next to the code they test: unit tests named `<name>.test.ts`, integration tests (database or HTTP through the app) named `<name>.integration.test.ts`. The smoke test is `src/shared/smoke.test.ts`. See `docs/testing.md`.
 
 ## Import boundary
 
@@ -34,8 +34,9 @@ Tests sit next to the code they test, named `<name>.test.ts`. The smoke test is 
 | `pnpm install` | Install dependencies (pnpm through Corepack; the version is pinned in `package.json`). |
 | `pnpm lint` | ESLint with the TypeScript rules and the import boundary. |
 | `pnpm typecheck` | The TypeScript compiler in strict mode, no output files. |
-| `pnpm test` | Unit tests (Vitest). No database needed. LAB-03 adds the integration tests to this command. |
-| `pnpm test:integration` | Integration tests (`*.integration.test.ts`) against the test database in `TEST_DATABASE_URL`. Needs the database running (`pnpm db:up`). |
+| `pnpm dev:api` | Run the API server under `tsx watch` with readable development logs (`NODE_ENV=development`). |
+| `pnpm start` | Run the API server under `tsx` with JSON logs. |
+| `pnpm test` | Unit and integration tests (Vitest projects `unit` and `integration`). Starts the database container first and waits until it is healthy, unless `CI` is set. One project alone: `pnpm test --project unit` or `--project integration`. |
 | `pnpm format` | Format the code with Prettier. Markdown is not formatted. |
 | `pnpm format:check` | Check the formatting without changing files. |
 | `pnpm db:up` | Start Postgres in Docker (host port 5433) and wait until it is healthy. |
@@ -53,9 +54,24 @@ Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before op
 
 - **Money is in whole cents**, as integers (`price_cents`, `total_cents`). Never floats.
 - **Dates are `YYYY-MM-DD` strings** (a date of birth, a ready date). Never a JavaScript `Date` for a calendar day.
-- **Logs carry ids and counts only.** No names, dates of birth or other patient details in logs.
+- **Logs carry ids and counts only.** No names, dates of birth or other patient details in logs, and never request bodies, query strings, headers or SQL parameters. Levels follow the logging standard in `docs/architecture.md`.
 - **Each fixed list of values is defined once in `src/shared/`** (for example order statuses), and everything else (database checks, schemas, the screens) derives from it.
 - Imports are relative (`../shared/money`).
+
+## Adding a route
+
+1. Put it in `src/server/<feature>/routes.ts`, as a function that takes the app (or the `/api` scope) and the deps it needs, and register it in `buildApp` (`src/server/app.ts`) under the `/api` prefix.
+2. Parse every input explicitly: `const body = parse(createLabTestBody, request.body)`, and the same for `request.params` and `request.query`. Body schemas are `z.strictObject`, so unknown fields are a 400. Schemas live in `src/shared/`.
+3. Run SQL through the repository, giving it `withQueryLog(deps.pool, request.log)` (or the transaction's client), so query durations are logged with the request id.
+4. Throw a typed error from `src/server/errors.ts`; never build an error response by hand:
+   - `ValidationError` (400): the input is malformed or has the wrong shape. `parse` throws it for you.
+   - `NotFoundError` (404): the resource named in the URL path does not exist.
+   - `ConflictError(code, message)` (409): a conflict with stored data, such as a duplicate code (translate the database's unique violation; do not check first).
+   - `BusinessRuleError(code, message)` (422): the shape is right but a business rule is broken, or an id inside the body does not exist.
+   - Anything else becomes a 500 with a generic message; the stack goes to the log.
+5. A new error code goes into `ERROR_CODES` in `src/server/errors.ts` and into the error-code table in `docs/api.md` (a unit test checks they match), in upper snake case.
+6. Log business events once, where they are handled, with `request.log` and a dotted event name (`lab_test.created`), ids and counts only. The levels and rules are in the logging standard in `docs/architecture.md`. The request line and the error lines are already written for you.
+7. Write an integration test with `startTestApp()` from `src/server/testing/harness.ts`, and document the endpoint in `docs/api.md`.
 
 ## Database
 

@@ -19,7 +19,7 @@ It comes before any feature because the logging standard, the status-code rules 
 - `GET /healthz` runs `select 1` through the pool with a 2-second query timeout. It returns 200 `{ "status": "ok" }`, or 503 `{ "status": "unavailable" }` if the database does not answer, and the 503 arrives within 3 seconds even when the database host is unreachable. It reports nothing else (no versions, no connection details).
 
 **Errors**
-- `src/server/errors.ts` defines the typed application errors `ValidationError` (400), `NotFoundError` (404), `ConflictError` (409) and `BusinessRuleError` (422), and the error-code registry: one exported list of upper snake case codes. This task registers the base codes `VALIDATION_ERROR` (400), `NOT_FOUND` (404) and `INTERNAL_ERROR` (500). Later tasks add their own codes to the registry and to the error-code table in `docs/api.md`; codes are never lower case.
+- `src/server/errors.ts` defines the typed application errors `ValidationError` (400), `NotFoundError` (404), `ConflictError` (409) and `BusinessRuleError` (422), and the error-code registry: one exported list of upper snake case codes. This task registers the base codes `VALIDATION_ERROR` (400), `NOT_FOUND` (404) and `INTERNAL_ERROR` (500). Later tasks add their own codes to the registry and to the error-code table in `docs/api.md`; codes are never lower case. (Changed while building: three more codes are registered, so that every response Fastify itself would produce also comes out in the standard shape: `PAYLOAD_TOO_LARGE` (413) for a body over 1 MiB, `UNSUPPORTED_MEDIA_TYPE` (415) for a body that is not JSON, and `SERVICE_UNAVAILABLE` (503) for a request that arrives while the server is shutting down.)
 - One Fastify error handler maps the typed errors to the single response shape `{ "error": { "code", "message", "details"?, "requestId" } }`. Status meanings: 400 malformed or invalid input shape, including unknown extra fields; 404 the resource in the URL path does not exist; 422 a business rule is broken or an id inside the request body does not exist; 409 a conflict.
 - A shared helper `parse(schema, input)` runs a Zod schema and throws `ValidationError` with `details` listing each field and a short reason. Each route calls it explicitly. Schemas used for request bodies reject unknown fields.
 - Anything else becomes 500 `INTERNAL_ERROR` with the generic message "Something went wrong on our side" and the request id. The stack trace goes to the log only. Unknown routes return the same shape with 404 and `NOT_FOUND`.
@@ -30,12 +30,13 @@ It comes before any feature because the logging standard, the status-code rules 
 - Request completion is logged once at `info` (method, route pattern, status, duration). Request bodies, query strings and headers are never logged; the logged route is the pattern (`/api/patients/:id`), not the raw URL.
 - The pool's `'error'` listener from LAB-02 (`createPool` in `src/server/db/pool.ts`, event `db.pool_error`) switches from `console.error` to the pino logger, still logging the error code only and no connection details.
 - The pool wrapper in `src/server/db/` logs each query's duration at `debug` level, with the request id when there is one. It logs no SQL parameters and no row data.
-- Levels follow the logging standard in `docs/process.md`: `debug` developer detail; `info` things that happened (`app.started`, `app.shutting_down`); `warn` expected refusals (4xx from the typed errors); `error` unexpected breaks (500s, with stack) and an unreachable database. Event names are stable and dotted. Only ids and counts go into log fields.
+- Levels follow the logging standard, written down by this task as its own section of `docs/architecture.md` (changed after the ticket was written: it pointed at `docs/process.md`, which is not in the repository): `debug` developer detail; `info` things that happened (`app.started`, `app.shutting_down`); `warn` expected refusals (4xx from the typed errors); `error` unexpected breaks (500s, with stack) and an unreachable database. Event names are stable and dotted. Only ids and counts go into log fields.
 
 **Tooling**
 - The API runs under `tsx` (for example `tsx watch --env-file=.env src/server/main.ts`), and imports stay extensionless (`../shared/money`). Plain `node` cannot resolve extensionless TypeScript imports, so it is not used to run the server.
 - Graceful shutdown on `SIGTERM` and `SIGINT`: stop accepting connections, let in-flight requests finish (10-second cap), close the pool, log `app.shutting_down`, exit 0.
 - Integration harness in `src/server/testing/`: builds the app against the database in `TEST_DATABASE_URL` (and only that setting; it refuses to run unless the database name ends in `_test`), runs pending migrations once per run, truncates all tables except `schema_migrations` between test files (not wrapped in a transaction), and exposes an `inject` helper. Vitest has an integration project with `fileParallelism: false`, so integration test files run one at a time against the one test database. `pnpm test` runs unit and integration together. It starts the database container and waits for it to be healthy (as `pnpm test:e2e` does), so it works as the first command on a fresh clone. It skips the container start when the `CI` environment variable is set. In CI, `TEST_DATABASE_URL` is set by the workflow (LAB-05).
+- Integration test files keep the `*.integration.test.ts` name from LAB-02; the name decides the Vitest project. `pnpm test:integration` and its separate Vitest config are removed: `pnpm test --project integration` runs the integration project alone.
 
 ## Acceptance criteria
 
@@ -61,7 +62,7 @@ It comes before any feature because the logging standard, the status-code rules 
 ## Docs to update
 
 - `docs/api.md` (error shape, status code rules, the error-code table with the three base codes, request id header, `/healthz`).
-- `docs/architecture.md` (server structure, where errors and logging live).
+- `docs/architecture.md` (server structure, where errors and logging live, and the logging standard).
 - `docs/testing.md` (the kinds of test, the harness, `TEST_DATABASE_URL` and the `_test` guard, truncate not transaction, files run one at a time, `pnpm test` starts the database unless `CI` is set).
 - `AGENTS.md` (how to add a route and which error class to throw), `README.md` (run and test commands).
 - `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.

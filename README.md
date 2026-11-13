@@ -16,9 +16,20 @@ This is an early stub. The full README is written in LAB-22.
 pnpm install
 pnpm lint
 pnpm typecheck
-pnpm test
+pnpm test              # unit and integration tests; starts the database container first
 pnpm format:check
 ```
+
+## Running the API
+
+```sh
+cp .env.example .env     # once; the defaults work with the Docker database
+pnpm db:up
+pnpm dev:api             # the API on http://localhost:3000, restarting on changes
+curl http://localhost:3000/healthz
+```
+
+`pnpm start` runs it without watching, with JSON log lines. The web app and the one-command `pnpm dev` arrive with LAB-04.
 
 ## Database
 
@@ -31,7 +42,6 @@ pnpm db:migrate          # apply pending migrations
 pnpm db:seed             # insert the fake sample data
 pnpm db:reset            # start the development database over: drop, migrate, seed
 pnpm db:test:reset       # start the test database over: drop, migrate
-pnpm test:integration    # integration tests against the test database
 pnpm db:down             # stop the database (the data is kept)
 ```
 
