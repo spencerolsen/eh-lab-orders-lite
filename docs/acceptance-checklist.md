@@ -77,7 +77,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Searching `zzz` shows "No patients match" and no table; clearing the box shows every patient again.
 - [ ] Searching `%` or `_` shows "No patients match".
 - [ ] After a search the address is `/patients?q=...`; reloading the page keeps the text in the box and the same rows. Clicking Patients in the menu clears the search.
-- [ ] Clicking a name opens `/patients/<id>`, headed with the name and date of birth, with the stored values in the form (phone as `(801) 555-0101`, an absent email empty).
+- [ ] Clicking a name, or the row's Edit button (in an Actions column, styled like the catalog's row actions), opens `/patients/<id>`, headed with the name and date of birth, with the stored values in the form (phone as `(801) 555-0101`, an absent email empty).
 - [ ] Change the phone and Save changes: "Saved" appears, the page stays, and the Patients list shows the new phone. Save again without changing anything: "No changes to save." and no request.
 - [ ] Clear both email and phone and save: the contact error appears under both fields with a reference, nothing is saved (reload shows the old values).
 - [ ] Edit the date of birth to `2020-02-30` or a date after today: an error under date of birth and no request. An accepted date (`2020-02-29`) shows as "Feb 29, 2020" in the heading and the list, with no day shift.

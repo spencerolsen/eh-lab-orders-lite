@@ -97,3 +97,12 @@ it('links each row to the patient page', async () => {
   );
   expect(url()).toBe('/patients/p2');
 });
+
+it('has an Edit action on each row, named for the patient, opening the same page', async () => {
+  fakePatientsApi();
+  renderAt('/patients');
+  await userEvent.click(
+    await screen.findByRole('link', { name: 'Edit Demo Example' }),
+  );
+  expect(url()).toBe('/patients/p1');
+});

@@ -114,6 +114,7 @@ function PatientList({
             <th scope="col">Date of birth</th>
             <th scope="col">Email</th>
             <th scope="col">Phone</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -127,6 +128,19 @@ function PatientList({
               <td>{formatDate(patient.dateOfBirth)}</td>
               <td>{patient.email ?? ''}</td>
               <td>{patient.phone ? formatPhone(patient.phone) : ''}</td>
+              <td>
+                {/* Like the catalog's row actions; a link, because editing
+                    a patient is a page of its own. */}
+                <div className="row-actions">
+                  <Link
+                    className="button button-secondary"
+                    to={`/patients/${patient.id}`}
+                    aria-label={`Edit ${patientName(patient)}`}
+                  >
+                    Edit
+                  </Link>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>

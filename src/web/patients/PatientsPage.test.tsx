@@ -67,8 +67,8 @@ it('lists the patients with their date of birth as typed', async () => {
   renderApp('/patients');
   expect(await screen.findByRole('table')).toBeTruthy();
   expect(rowTexts()).toEqual([
-    ['Demo Example', 'Feb 29, 2020', '', '(801) 555-0101'],
-    ['Test Patient', 'Mar 9, 1984', 'test.patient@example.test', ''],
+    ['Demo Example', 'Feb 29, 2020', '', '(801) 555-0101', 'Edit'],
+    ['Test Patient', 'Mar 9, 1984', 'test.patient@example.test', '', 'Edit'],
   ]);
 });
 
