@@ -25,7 +25,7 @@ The decisions these tasks implement are in the process log (`docs/process.md` on
 - **One independent review per ticket.** Every ticket is reviewed once, by a session that did not build it, before it is pushed.
 - **The depth matches the risk.** The tickets that hold the business rules and data integrity (LAB-10, LAB-11, LAB-12, LAB-16, LAB-17, LAB-18) get a full review, which includes breaking the code on purpose to check that the tests notice. The rest get a light review: the acceptance criteria reproduced; the diff read against three priorities, which are correct rules, no patient data in logs, and a fresh clone that works; and that ticket's new rules broken a few ways.
 - **Only what must or should be fixed is fixed.** Optional findings go to the [backlog](backlog.md).
-- **The automated checks** on every pull request cover lint, types, formatting, the build and all tests (LAB-05).
+- **The automated checks** on every pull request cover lint, types, formatting, the build and all tests except the browser tests, which run locally (LAB-05).
 
 The first four tickets were reviewed more heavily than this; the process was simplified deliberately once the groundwork was in place.
 

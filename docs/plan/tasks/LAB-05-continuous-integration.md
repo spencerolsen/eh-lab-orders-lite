@@ -28,7 +28,8 @@ Changed at the check-in (owner's decision): the workflow and the README badge ar
 
 **Several copies side by side**
 - Four settings in `.env`, defaults unchanged: `COMPOSE_PROJECT_NAME` (default `lab-orders-lite`; Compose reads it from `.env` and it overrides `name:` in `compose.yaml`, so each copy gets its own container, network and data volume), `DB_PORT` (default `5433`, the database's host port in `compose.yaml`), `PORT` (default `3000`, already a setting) and `WEB_PORT` (default `5173`, new in `src/server/config.ts`, used by `scripts/dev.ts` and `vite.config.ts`).
-- `DATABASE_URL` and `TEST_DATABASE_URL` carry the database port as well, so `DB_PORT` and the two URLs must agree. `checkDatabasePort` (`src/server/db/guards.ts`) stops `pnpm dev` and `pnpm test` (when it starts the container) with one line naming the URL when a URL on `localhost`, `127.0.0.1` or `[::1]` uses a port other than `DB_PORT`. Without it, a second copy whose URLs still said 5433 would silently use, and in tests empty, the first copy's database.
+- `DATABASE_URL` and `TEST_DATABASE_URL` carry the database port as well, so `DB_PORT` and the two URLs must agree. `checkDatabasePort` (`src/server/db/guards.ts`) stops `pnpm dev` and `pnpm test` (when it starts the container) with one line naming the URL when a URL on `localhost`, `127.0.0.1` or `[::1]` uses a port other than `DB_PORT`. Without it, a second copy whose URLs still said 5433 would silently use, and in tests empty, the first copy's database. `db:migrate`, `db:seed`, `db:reset` and `db:test:reset` run the same check before connecting.
+- Changed after the review: the same check refuses a `DB_PORT` other than 5433 while `COMPOSE_PROJECT_NAME` is empty or still `lab-orders-lite`. Compose treats an empty name as unset and falls back to `name:` in `compose.yaml`, so that copy would recreate the first copy's container on the new port, with the first copy's data volume.
 - `pnpm dev`'s checks and messages use the settings: the port-in-use line names `PORT in .env` or `WEB_PORT in .env`, and `PORT` equal to `WEB_PORT` stops with one line saying they must differ. Vite listens on `WEB_PORT` (still `strictPort`) and proxies to `PORT`.
 
 **Docs**
@@ -48,11 +49,12 @@ Changed at the check-in (owner's decision): the workflow and the README badge ar
 - [ ] With the defaults (a fresh clone, `.env` copied from `.env.example`), `pnpm dev` and `pnpm test` work exactly as before: Compose project `lab-orders-lite`, database on 5433, API on 3000, web app on 5173.
 - [ ] A second clone with the `.env` lines from "Running a second copy" runs its own database container and volume, `pnpm dev` and `pnpm test` while the first clone's database and `pnpm dev` are running.
 - [ ] With `DB_PORT=5434` and a URL still on 5433, `pnpm dev` and `pnpm test` stop with one line naming that URL, before starting anything.
+- [ ] With `DB_PORT=5434`, matching URLs and `COMPOSE_PROJECT_NAME` empty or `lab-orders-lite`, `pnpm dev`, `pnpm test` and the `db:*` scripts stop with a message saying the copy needs its own project name.
 - [ ] With `PORT` equal to `WEB_PORT`, `pnpm dev` stops with one line saying they must differ.
 
 ## Tests
 
-- Unit tests for `checkDatabasePort` (defaults accepted, a matching second copy accepted, a mismatch named, a URL without a port counted as 5432, a non-local host ignored), for `WEB_PORT` in the config (default, given, malformed), and that the integration setup refuses a mismatched port before starting Docker.
+- Unit tests for `checkDatabasePort` (defaults accepted, a matching second copy accepted, a mismatch named, a changed `DB_PORT` with no, an empty or the default project name refused, a URL without a port counted as 5432, a non-local host ignored), for `WEB_PORT` in the config (default, given, malformed), and that the integration setup refuses a mismatched port before starting Docker.
 - The workflow itself has no test code: it is verified by a local simulation before the push (a clean clone, `CI=true`, no `.env`, the job's environment, a Postgres 16 container on 5432 with the test database created the same way, then the same commands in the same order), and by its first real runs on GitHub.
 - The two-copies setup is verified by hand: a throwaway second clone running `pnpm dev` and `pnpm test` beside the main checkout, then removed with its container and volume.
 
