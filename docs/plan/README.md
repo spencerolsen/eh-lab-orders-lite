@@ -29,11 +29,13 @@ The decisions these tasks implement are in the process log (`docs/process.md` on
 - The slice is recorded in the process log: what was asked for, what I rejected or changed, and why.
 - I can answer the "What to be able to explain" questions in the ticket.
 
+**The process log, for now.** The process log is kept outside the repository for now. Where a ticket says its `docs/process.md` entry is written in the same pull request, the entry is written to that log at the same time. The log will be added to the repository when I choose.
+
 ## The tasks
 
 | ID | Task | Type | Depends on | Status |
 |---|---|---|---|---|
-| [LAB-01](tasks/LAB-01-repo-skeleton-and-tooling.md) | Repo skeleton and tooling | Groundwork | — | Not started |
+| [LAB-01](tasks/LAB-01-repo-skeleton-and-tooling.md) | Repo skeleton and tooling | Groundwork | — | In progress |
 | [LAB-02](tasks/LAB-02-database-and-config.md) | Database, migrations and config | Groundwork | LAB-01 | Not started |
 | [LAB-03](tasks/LAB-03-api-foundation.md) | API foundation: server, logging, errors, health | Groundwork | LAB-02 | Not started |
 | [LAB-04](tasks/LAB-04-web-foundation.md) | Web foundation: app shell and navigation | Groundwork | LAB-03 | Not started |
