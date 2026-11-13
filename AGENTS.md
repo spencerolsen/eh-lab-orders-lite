@@ -41,7 +41,7 @@ Tests sit next to the code they test, named `<name>.test.ts`. The smoke test is 
 | `pnpm db:up` | Start Postgres in Docker (host port 5433) and wait until it is healthy. |
 | `pnpm db:down` | Stop and remove the container. The data volume is kept. |
 | `pnpm db:migrate` | Apply the pending files in `db/migrations/` to the development database. |
-| `pnpm db:reset` | Drop and recreate the development database's schema, migrate, then seed. Refuses a database whose name lacks `lab_orders`, and refuses when `NODE_ENV=production`. |
+| `pnpm db:reset` | Drop and recreate the development database's schema, migrate, then seed. Refuses any database other than `lab_orders` and `lab_orders_test`, and refuses when `NODE_ENV=production`. |
 | `pnpm db:seed` | Insert the fake sample rows from `db/seed.ts`. |
 | `pnpm db:test:reset` | Drop, recreate and migrate the test database in `TEST_DATABASE_URL`. Refuses a database whose name does not end in `_test`. |
 
@@ -61,7 +61,9 @@ Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before op
 
 - **Migrations** are plain SQL files in `db/migrations/`, named `NNNN_description.sql` (for example `0002_lab_tests.sql`) and applied in filename order by `src/server/db/migrate.ts`. Each file runs in its own transaction and is recorded in `schema_migrations`.
 - **Never edit a migration that has been applied** (merged to `main`). To change the schema, add a new file with the next number.
-- A migration file contains no `begin` or `commit`; the runner wraps it in a transaction.
+- A migration file contains no `begin`, `commit` or `rollback`; the runner wraps it in a transaction, and refuses a file that has its own.
+- The runner also refuses a file not named `NNNN_description.sql` (lower case), and a pending file that sorts before the newest applied one: give a new file the next free number.
+- **Run one migration runner at a time** (one `pnpm db:migrate`, `pnpm db:reset` or test run against a database). There is no lock, but a race cannot apply a file twice: the second runner's insert into `schema_migrations` hits the primary key on `filename`, so its transaction is rolled back and it exits with an error.
 - **Every task that adds a table extends `db/seed.ts`** with obviously fake rows. Each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so running the seed twice leaves the same rows.
 - **Settings** are read once at startup by `loadConfig()` in `src/server/config.ts`, which exits with one JSON error line if any is missing or invalid. Add a new setting there and to `.env.example`.
 - Test tooling uses only `TEST_DATABASE_URL`, and refuses a database whose name does not end in `_test` (`src/server/db/guards.ts`).

@@ -35,6 +35,8 @@ pnpm test:integration    # integration tests against the test database
 pnpm db:down             # stop the database (the data is kept)
 ```
 
+The init script that creates `lab_orders_test` runs only when the database volume is first created. If `lab_orders_test` is missing (for example because the volume is older than the script), run `docker compose down -v` and then `pnpm db:up` again. This deletes all local data.
+
 ## Docs
 
 - [Build plan](docs/plan/README.md)

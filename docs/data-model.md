@@ -18,4 +18,5 @@ The migration runner's bookkeeping: one row per applied file in `db/migrations/`
 ## Rules for every table
 
 - **Calendar days are `date` columns, read as `YYYY-MM-DD` strings.** A date of birth or a ready date is a day, not a moment. The `DATE` type parser (`src/server/db/types.ts`) keeps Postgres's string as it is; without it, `pg` would build a JavaScript `Date` at local midnight, and the day could shift depending on the server's time zone.
+- **A `date[]` (for example from `array_agg`) still comes back as JavaScript `Date`s**, because only the single `DATE` type has a parser. Select dates one per row instead.
 - **Money is whole cents in integer columns** (`price_cents`, `total_cents`).

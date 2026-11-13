@@ -28,6 +28,7 @@ It comes before any feature because the logging standard, the status-code rules 
 - pino, level from `LOG_LEVEL`. Structured JSON in production, readable colourised output (pino-pretty) in development only.
 - Every line carries the request id. The id is taken from an `x-request-id` header when present and valid, otherwise generated, and is returned in the response header `x-request-id` and in every error body.
 - Request completion is logged once at `info` (method, route pattern, status, duration). Request bodies, query strings and headers are never logged; the logged route is the pattern (`/api/patients/:id`), not the raw URL.
+- The pool's `'error'` listener from LAB-02 (`createPool` in `src/server/db/pool.ts`, event `db.pool_error`) switches from `console.error` to the pino logger, still logging the error code only and no connection details.
 - The pool wrapper in `src/server/db/` logs each query's duration at `debug` level, with the request id when there is one. It logs no SQL parameters and no row data.
 - Levels follow the logging standard in `docs/process.md`: `debug` developer detail; `info` things that happened (`app.started`, `app.shutting_down`); `warn` expected refusals (4xx from the typed errors); `error` unexpected breaks (500s, with stack) and an unreachable database. Event names are stable and dotted. Only ids and counts go into log fields.
 
