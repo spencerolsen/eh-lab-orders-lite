@@ -63,6 +63,21 @@ describe('createLabTestBody', () => {
     });
   });
 
+  it.each(['a\u0000b', 'a\tb', 'a\nb', 'a\u007fb'])(
+    'rejects the name %j, which holds a control character',
+    (name) => {
+      expect(problems({ ...valid, name })).toEqual({
+        name: LAB_TEST_MESSAGES.nameControl,
+      });
+    },
+  );
+
+  it('rejects a code with a NUL in it', () => {
+    expect(problems({ ...valid, code: 'AB\u0000C' })).toEqual({
+      code: LAB_TEST_MESSAGES.code,
+    });
+  });
+
   it('accepts a name of 1 and of 100 characters', () => {
     expect(problems({ ...valid, name: 'x' })).toEqual({});
     expect(problems({ ...valid, name: 'x'.repeat(100) })).toEqual({});
@@ -184,6 +199,7 @@ describe('updateLabTestBody', () => {
   it.each([
     { body: { name: '  ' }, field: 'name' },
     { body: { name: 'x'.repeat(101) }, field: 'name' },
+    { body: { name: 'a\u0000b' }, field: 'name' },
     { body: { priceCents: -1 }, field: 'priceCents' },
     { body: { priceCents: 1.5 }, field: 'priceCents' },
     { body: { turnaroundDays: 0 }, field: 'turnaroundDays' },

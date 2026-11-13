@@ -15,6 +15,7 @@ export const MAX_TURNAROUND_DAYS = 365;
 export const LAB_TEST_MESSAGES = {
   code: 'Use 2 to 20 letters, digits or hyphens',
   name: 'Enter a name of 1 to 100 characters',
+  nameControl: 'Remove control characters, such as tabs or line breaks',
   priceCents: 'Must be a whole number of cents, 0 or more',
   turnaroundDays: 'Enter a whole number of business days from 1 to 365',
   isActive: 'Must be true or false',
@@ -39,7 +40,11 @@ const name = z
   .string({ error: m.name })
   .trim()
   .min(1, { error: m.name })
-  .max(100, { error: m.name });
+  .max(100, { error: m.name })
+  // Control characters (a NUL, a tab, a line break) are refused: Postgres text
+  // cannot hold a NUL (it would be a 500), and none of them belongs in a name.
+  // Create and update share this piece, so one rule covers both.
+  .regex(/^[^\p{Cc}]*$/u, { error: m.nameControl });
 
 const priceCents = z
   .number({ error: m.priceCents })

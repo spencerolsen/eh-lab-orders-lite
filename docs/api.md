@@ -89,7 +89,7 @@ Body (all fields required, no others allowed):
 | Field | Rule |
 |---|---|
 | `code` | Text, trimmed and upper-cased, then 2 to 20 letters, digits or hyphens (`demo-09` is stored as `DEMO-09`). |
-| `name` | Text, trimmed, 1 to 100 characters. |
+| `name` | Text, trimmed, 1 to 100 characters, with no control characters (a NUL, tab or line break is a 400). |
 | `priceCents` | Whole number of cents, 0 or more. |
 | `turnaroundDays` | Whole number of business days, 1 to 365. |
 
@@ -109,7 +109,7 @@ Body: at least one of these fields, no others allowed. Each has the same rule as
 
 | Field | Rule |
 |---|---|
-| `name` | Text, trimmed, 1 to 100 characters. |
+| `name` | Text, trimmed, 1 to 100 characters, with no control characters (a NUL, tab or line break is a 400). |
 | `priceCents` | Whole number of cents, 0 or more. |
 | `turnaroundDays` | Whole number of business days, 1 to 365. |
 | `isActive` | `true` or `false`. `false` deactivates the test: it stays in the list and in old orders, but is not offered on new ones (LAB-12). |

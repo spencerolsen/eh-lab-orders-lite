@@ -239,6 +239,8 @@ describe('PATCH /api/lab-tests/:id', () => {
       fields: ['priceCents'],
     },
     { what: 'a blank name', body: { name: ' ' }, fields: ['name'] },
+    // Postgres text cannot hold a NUL: without the schema's rule, a 500.
+    { what: 'a NUL in the name', body: { name: 'a\u0000b' }, fields: ['name'] },
     {
       what: 'a string isActive',
       body: { isActive: 'false' },

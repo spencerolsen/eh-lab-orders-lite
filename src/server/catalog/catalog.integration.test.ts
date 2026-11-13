@@ -208,6 +208,17 @@ describe('POST /api/lab-tests', () => {
       field: 'turnaroundDays',
     },
     { name: 'a blank name', payload: { ...demo, name: '  ' }, field: 'name' },
+    // Postgres text cannot hold a NUL: without the schema's rule, a 500.
+    {
+      name: 'a NUL in the name',
+      payload: { ...demo, name: 'a\u0000b' },
+      field: 'name',
+    },
+    {
+      name: 'a NUL in the code',
+      payload: { ...demo, code: 'AB\u0000C' },
+      field: 'code',
+    },
   ])(
     'answers 400 VALIDATION_ERROR naming the field for $name',
     async ({ payload, field }) => {
