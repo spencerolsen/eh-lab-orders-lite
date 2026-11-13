@@ -25,7 +25,7 @@ Tests sit next to the code they test, named `<name>.test.ts`. The smoke test is 
 - `src/web` may import from `src/shared`, never from `src/server`.
 - `src/shared` imports from neither.
 
-`pnpm lint` enforces this with the rule in `eslint-rules/import-boundary.js`. Do not turn it off; if two sides need the same code, move that code into `src/shared`.
+`pnpm lint` enforces this with the rule in `eslint-rules/import-boundary.js`, and `pnpm test` runs that rule's own tests (`eslint-rules/import-boundary.test.js`). Do not turn it off; if two sides need the same code, move that code into `src/shared`.
 
 ## Commands
 

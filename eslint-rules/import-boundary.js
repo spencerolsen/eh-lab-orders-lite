@@ -7,7 +7,8 @@
 // Imports in this repo are relative ("../shared/money"), so the rule works out
 // which folder each import points to by resolving it against the importing
 // file's own path. Package imports such as "react-dom/server" do not start
-// with "." and are never checked.
+// with "." and are never checked. A path built at run time (a backtick string
+// with ${...} in it) cannot be resolved and is not checked.
 
 import path from 'node:path';
 
@@ -27,6 +28,20 @@ function areaOf(filePath) {
   }
   const area = relative.split(path.sep)[0];
   return area in forbidden ? area : null;
+}
+
+/**
+ * The import path written in the code: a quoted string, or a backtick string
+ * with no ${...} in it. Null for a path built at run time, which cannot be checked.
+ */
+function specifierOf(node) {
+  if (node?.type === 'Literal' && typeof node.value === 'string') {
+    return node.value;
+  }
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis[0].value.cooked;
+  }
+  return null;
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
@@ -50,15 +65,8 @@ export const importBoundary = {
     }
 
     function check(sourceNode) {
-      if (
-        !sourceNode ||
-        sourceNode.type !== 'Literal' ||
-        typeof sourceNode.value !== 'string'
-      ) {
-        return;
-      }
-      const specifier = sourceNode.value;
-      if (!specifier.startsWith('.')) {
+      const specifier = specifierOf(sourceNode);
+      if (specifier === null || !specifier.startsWith('.')) {
         return;
       }
       const target = path.resolve(path.dirname(context.filename), specifier);
@@ -77,6 +85,8 @@ export const importBoundary = {
       ExportNamedDeclaration: (node) => check(node.source),
       ExportAllDeclaration: (node) => check(node.source),
       ImportExpression: (node) => check(node.source),
+      // A type written as import('...'), as in `typeof import('../server/x')`.
+      TSImportType: (node) => check(node.argument?.literal),
     };
   },
 };

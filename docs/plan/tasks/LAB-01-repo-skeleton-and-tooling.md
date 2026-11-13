@@ -37,7 +37,7 @@ It comes first because every later task assumes these rules are already enforced
 
 ## Acceptance criteria
 
-- [ ] On a fresh clone, `pnpm install` then `pnpm test` passes and reports exactly 1 test.
+- [ ] On a fresh clone, `pnpm install` then `pnpm test` passes, running the smoke test and the import-boundary rule tests and nothing else.
 - [ ] `pnpm typecheck` passes, and a deliberate implicit `any` makes it fail.
 - [ ] `pnpm lint` and `pnpm format:check` pass on the repo as committed.
 - [ ] A temporary import from `src/server` into `src/web` makes `pnpm lint` fail with a message naming the boundary; the same for `src/web` into `src/server`; `src/shared` importing either side fails too; an import of `src/shared` from either side passes.
@@ -52,7 +52,7 @@ It comes first because every later task assumes these rules are already enforced
 ## Tests
 
 - **Unit:** one trivial test (`smoke: the test runner runs`) that proves Vitest is wired up. LAB-03 and later tasks add real tests next to it.
-- The import-boundary rule is checked by hand in this task (see the acceptance criteria), not by an automated test. LAB-05 makes `pnpm lint` run on every pull request, which is the automated guard.
+- **Rule tests:** `eslint-rules/import-boundary.test.js` runs the boundary rule through ESLint's `RuleTester`. It must report server to web, web to server, shared to either, `import type`, `export … from`, a dynamic `import()`, a backtick path with no `${}`, and a type written as `typeof import(…)`. It must stay silent for server or web importing shared, `react-dom/server`, and a folder named `server-utils`. (Added after review: the ticket first said the rule was checked by hand only.) LAB-05 makes `pnpm lint` and `pnpm test` run on every pull request.
 
 ## Docs to update
 

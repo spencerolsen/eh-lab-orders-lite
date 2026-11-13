@@ -29,6 +29,7 @@ It comes right after the API foundation because the client must understand the e
 
 **Tooling**
 - Setup is `pnpm install` (a documented prerequisite step), then `pnpm dev`. `pnpm dev` runs one script that: copies `.env.example` to `.env` when `.env` is missing and prints one line saying so (settings validation from LAB-02 still refuses to start when a setting is missing or malformed); starts Docker Compose (`db:up`) and waits until the database is healthy; runs `db:migrate`; ALWAYS runs `db:seed` (each seeded row has a fixed key (a fixed UUID, or for `order_items` its primary key) and is inserted with `on conflict do nothing`, so a second run changes nothing); then starts the API (with file watching) and the Vite dev server together, with prefixed output. Ctrl-C stops both. If Docker is not running, the script prints one line saying so and exits non-zero.
+- ESLint gives `src/web` browser globals, and `src/server` plus the config files Node globals. `DOM` is added to the TypeScript `lib`. With one `tsconfig.json`, Node types stay visible in web code; that is accepted as the cost of a single tsconfig.
 - `pnpm build` builds the web app to `dist/web`. `dev:api` and `dev:web` run each side alone for debugging.
 - Component tests: Vitest with `jsdom` and Testing Library, set up here as a separate Vitest project. `pnpm test` runs unit, component and integration tests. The lint rule from LAB-01 keeps `src/web` from importing `src/server`.
 
