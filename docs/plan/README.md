@@ -20,6 +20,15 @@ The decisions these tasks implement are in the process log (`docs/process.md` on
 4. **Walkthrough.** The AI shows me what was built, how a request flows through it, and the test results. I answer the ticket's "What to be able to explain" questions.
 5. **Merge.** I approve the pull request, and the process log gets its entry.
 
+### How reviews work
+
+- **One independent review per ticket.** Every ticket is reviewed once, by a session that did not build it, before it is pushed.
+- **The depth matches the risk.** The tickets that hold the business rules and data integrity (LAB-10, LAB-11, LAB-12, LAB-16, LAB-17, LAB-18) get a full review, which includes breaking the code on purpose to check that the tests notice. The rest get a light review: the acceptance criteria reproduced; the diff read against three priorities, which are correct rules, no patient data in logs, and a fresh clone that works; and that ticket's new rules broken a few ways.
+- **Only what must or should be fixed is fixed.** Optional findings go to the [backlog](backlog.md).
+- **The automated checks** on every pull request cover lint, types, formatting, the build and all tests (LAB-05).
+
+The first four tickets were reviewed more heavily than this; the process was simplified deliberately once the groundwork was in place.
+
 ### Definition of done, for every task
 
 - Every acceptance criterion in the ticket passes.
@@ -39,7 +48,7 @@ The decisions these tasks implement are in the process log (`docs/process.md` on
 | [LAB-02](tasks/LAB-02-database-and-config.md) | Database, migrations and config | Groundwork | LAB-01 | Done |
 | [LAB-03](tasks/LAB-03-api-foundation.md) | API foundation: server, logging, errors, health | Groundwork | LAB-02 | Done |
 | [LAB-04](tasks/LAB-04-web-foundation.md) | Web foundation: app shell and navigation | Groundwork | LAB-03 | Done |
-| [LAB-05](tasks/LAB-05-continuous-integration.md) | Checks on every pull request | Groundwork | LAB-04 | Not started |
+| [LAB-05](tasks/LAB-05-continuous-integration.md) | Checks on every pull request | Groundwork | LAB-04 | In progress |
 | [LAB-06](tasks/LAB-06-catalog-list-and-add.md) | Catalog: see and add lab tests | Vertical slice | LAB-05 | Not started |
 | [LAB-07](tasks/LAB-07-catalog-edit-and-deactivate.md) | Catalog: edit and activate or deactivate tests | Vertical slice | LAB-06 | Not started |
 | [LAB-08](tasks/LAB-08-patients-create-and-list.md) | Patients: add and list patients | Vertical slice | LAB-05 | Not started |
@@ -136,6 +145,8 @@ Each ticket adds its own checks to the checklist section for its checkpoint, so 
 
 Tasks on the same line do not depend on each other and could be built in parallel by a team. Working alone, I take them left to right.
 
+Up to three tickets may be built at the same time where the dependency diagram allows, each in its own working copy with its own database (README, "Running a second copy"), and merged one at a time.
+
 1. LAB-01 → LAB-02 → LAB-03 → LAB-04 → LAB-05 (groundwork)
 2. LAB-06, LAB-08 (first things a user can see: the catalog and patients)
 3. LAB-07, LAB-09
@@ -145,6 +156,8 @@ Tasks on the same line do not depend on each other and could be built in paralle
 7. LAB-16, LAB-18, LAB-19
 8. LAB-17, LAB-20
 9. LAB-21 → LAB-22 → LAB-23
+
+Improvements deliberately not taken, from reviews and elsewhere, are listed in the [backlog](backlog.md).
 
 An independent review of this plan, done before any code was written, is in [REVIEW.md](REVIEW.md). Its corrections are applied to the tickets; the decisions I made on its open questions are in the process log.
 
