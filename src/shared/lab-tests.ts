@@ -17,6 +17,10 @@ export const LAB_TEST_MESSAGES = {
   name: 'Enter a name of 1 to 100 characters',
   priceCents: 'Must be a whole number of cents, 0 or more',
   turnaroundDays: 'Enter a whole number of business days from 1 to 365',
+  isActive: 'Must be true or false',
+  emptyUpdate:
+    'Send at least one of name, priceCents, turnaroundDays, isActive',
+  id: 'Must be a lab test id (a uuid)',
   tooLarge: 'Too large',
 } as const;
 
@@ -59,6 +63,32 @@ export const createLabTestBody = z.strictObject({
 });
 
 export type CreateLabTestBody = z.output<typeof createLabTestBody>;
+
+// PATCH /api/lab-tests/:id. Any non-empty subset of the editable fields, each
+// with the same rule as on create (the same schema pieces, not copies). The
+// code is not here: it never changes after creation, so sending it is an
+// unknown field and a 400, like any other key the schema does not list.
+export const updateLabTestBody = z
+  .strictObject({
+    name,
+    priceCents,
+    turnaroundDays,
+    isActive: z.boolean({ error: m.isActive }),
+  })
+  .partial()
+  // Only when nothing else is wrong: `{ code: "X" }` is reported as a refused
+  // code, not also as an empty body.
+  .refine((body) => Object.keys(body).length > 0, {
+    error: m.emptyUpdate,
+    when: (payload) => payload.issues.length === 0,
+  });
+
+export type UpdateLabTestBody = z.output<typeof updateLabTestBody>;
+
+// The :id in /api/lab-tests/:id.
+export const labTestParams = z.strictObject({
+  id: z.uuid({ error: m.id }),
+});
 
 // One lab test as the API returns it.
 export const labTestSchema = z.object({

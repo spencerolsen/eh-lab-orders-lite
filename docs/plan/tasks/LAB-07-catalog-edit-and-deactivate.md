@@ -1,6 +1,6 @@
 # LAB-07: Catalog: edit and activate or deactivate tests
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Vertical slice
 - **Depends on:** LAB-06 (Catalog: see and add lab tests)
 - **Unblocks:** LAB-22 (Docs and README, final pass)

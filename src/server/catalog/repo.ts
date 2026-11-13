@@ -1,5 +1,9 @@
 // The SQL for the lab test catalog. Queries live here and nowhere else.
-import type { CreateLabTestBody, LabTest } from '../../shared/lab-tests';
+import type {
+  CreateLabTestBody,
+  LabTest,
+  UpdateLabTestBody,
+} from '../../shared/lab-tests';
 import { labTestSchema } from '../../shared/lab-tests';
 import type { Db } from '../db/query';
 import { ConflictError } from '../errors';
@@ -75,4 +79,46 @@ export async function createLabTest(
     }
     throw error;
   }
+}
+
+// Changes the fields in `changes` and leaves the others as they are. Returns
+// the updated test and whether it was active before, or null when no test has
+// this id.
+//
+// One statement, so there is no read-then-write gap. The `old` step locks the
+// row (for update) and reads is_active as it was just before this change, so
+// the caller can tell whether the test was activated or deactivated. A field
+// left out is passed as null and kept by coalesce; no column is nullable, so
+// null never means "clear it". There is no trigger, so updated_at is set here.
+// Two people saving the same test: the last save wins (docs/plan/backlog.md).
+export async function updateLabTest(
+  db: Db,
+  id: string,
+  changes: UpdateLabTestBody,
+): Promise<{ labTest: LabTest; wasActive: boolean } | null> {
+  const { rows } = await db.query<LabTestRow & { was_active: boolean }>(
+    `with old as (
+       select id, is_active from lab_tests where id = $1 for update
+     )
+     update lab_tests t set
+       name = coalesce($2, t.name),
+       price_cents = coalesce($3, t.price_cents),
+       turnaround_days = coalesce($4, t.turnaround_days),
+       is_active = coalesce($5, t.is_active),
+       updated_at = now()
+     from old
+     where t.id = old.id
+     returning t.id, t.code, t.name, t.price_cents, t.turnaround_days,
+       t.is_active, old.is_active as was_active`,
+    [
+      id,
+      changes.name ?? null,
+      changes.priceCents ?? null,
+      changes.turnaroundDays ?? null,
+      changes.isActive ?? null,
+    ],
+  );
+  const row = rows[0];
+  if (row === undefined) return null;
+  return { labTest: toLabTest(row), wasActive: row.was_active };
 }
