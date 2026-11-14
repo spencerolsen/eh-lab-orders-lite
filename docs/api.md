@@ -433,6 +433,8 @@ The server logs `order.created` at `info` with `orderId`, `patientId` and `itemC
 
 An order's tests and patient cannot be edited after it is placed (a future version may allow it); only its status moves, with the endpoints below. Sending the same request twice without an `Idempotency-Key` places two orders.
 
+**Known limit: the preview can differ from the saved order.** The request carries only the patient and the test ids, so the order is saved with the price and turnaround each test has when the request arrives. If someone changes a test's price or turnaround while the New order dialog is open, the saved total and ready date can differ from the preview the person saw. The response and the orders list show the saved numbers. A fuller fix is on the [backlog](plan/backlog.md).
+
 ### `POST /api/orders/:id/transitions`
 
 Moves an order one step forward (LAB-16): `ordered` to `collected`, `collected` to `completed`.
