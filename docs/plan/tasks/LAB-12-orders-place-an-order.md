@@ -1,6 +1,6 @@
 # LAB-12: Orders: place an order
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Vertical slice
 - **Depends on:** LAB-09 (Patients: search by name and edit a patient), LAB-11 (Orders: see orders on the home page)
 - **Unblocks:** LAB-13 (Orders: live total and ready date while building an order)
