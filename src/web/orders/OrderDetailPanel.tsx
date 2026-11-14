@@ -316,7 +316,7 @@ function OrderView({ order }: { order: OrderDetail }) {
           {order.items.map((item) => (
             <tr key={item.labTestId}>
               <td>{item.testCode}</td>
-              <td>{item.testName}</td>
+              <td className="wrap">{item.testName}</td>
               <td className="numeric">{formatCents(item.priceCents)}</td>
             </tr>
           ))}

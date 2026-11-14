@@ -228,7 +228,7 @@ function ChosenTests({
           {tests.map((test) => (
             <tr key={test.id}>
               <td>{test.code}</td>
-              <td>{test.name}</td>
+              <td className="wrap">{test.name}</td>
               <td className="numeric">{formatCents(test.priceCents)}</td>
               <td>{formatTurnaround(test.turnaroundDays)}</td>
               <td>

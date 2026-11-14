@@ -162,7 +162,7 @@ export function StylesPage() {
           <tr>
             {/* Long text with no spaces wraps inside its cell. */}
             <td>SAMPLE4</td>
-            <td>
+            <td className="wrap">
               Averyveryveryveryveryveryveryveryveryveryveryverylongnamewithnospaces
             </td>
             <td>

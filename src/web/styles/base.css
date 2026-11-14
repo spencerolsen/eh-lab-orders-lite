@@ -59,8 +59,16 @@
 body {
   margin: 0;
   background: var(--color-page);
-  /* Long text with no spaces (a name, a note) wraps instead of overflowing.
+  /* Long text with no spaces (a note, a name) wraps instead of overflowing.
      It is inherited, so every page gets it. */
+  overflow-wrap: break-word;
+}
+
+/* In a table cell, break-word does not let the column get narrower than the
+   long word, so the table would still grow. Text a person types and that can
+   be long and unbroken (a name, an email) gets .wrap there: the column may
+   shrink to the width the table has, and the other columns keep their words. */
+.wrap {
   overflow-wrap: anywhere;
 }
 

@@ -173,3 +173,10 @@ it('keeps the ready date and the created time on one line each', async () => {
     expect(within(row).getByText(text).className).toBe('nowrap');
   }
 });
+
+it('lets a long unbroken patient name wrap inside its cell', async () => {
+  fakeApi(list([FRIDAY_NOON]));
+  renderApp('/');
+  const label = await screen.findByText('Sample Person (born Dec 31, 1990)');
+  expect(label.className).toBe('wrap');
+});

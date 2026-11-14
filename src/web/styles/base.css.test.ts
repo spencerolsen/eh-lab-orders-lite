@@ -25,8 +25,9 @@ it('draws the select arrow in the shared style, inset like the text, in the text
   expect(select).not.toMatch(/#[0-9a-f]{3,8}\b/i);
 });
 
-it('wraps long unbroken text everywhere, from the body', () => {
-  expect(rule('body')).toContain('overflow-wrap: anywhere');
+it('wraps long unbroken text everywhere, from the body, and lets a table cell shrink with .wrap', () => {
+  expect(rule('body')).toContain('overflow-wrap: break-word');
+  expect(rule('.wrap')).toContain('overflow-wrap: anywhere');
 });
 
 it('keeps a date cell on one line', () => {
