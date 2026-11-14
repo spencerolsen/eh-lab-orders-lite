@@ -1,6 +1,6 @@
 # LAB-10: Patients: duplicate warning on create
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-09 (Patients: search by name and edit a patient)
 - **Unblocks:** LAB-21 (Browser tests for the main journeys), LAB-22 (Docs and README, final pass)
