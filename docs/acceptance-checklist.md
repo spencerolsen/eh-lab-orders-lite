@@ -175,3 +175,13 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 **Runs:** in LAB-23.
 
 **Covers:** everything, including idempotent create, patient order history and the New order entry points.
+
+### Patient page: order history (LAB-19)
+
+- [ ] Open a patient who has two orders (`/patients/<id>`): the Orders section under the form lists exactly those two, newest first, with created time, status, ready date, total and number of tests, and none of another patient's.
+- [ ] Open a patient with no orders: the section says "No orders yet".
+- [ ] Open `/patients/new`: there is no Orders section, and the Network tab shows no `GET /api/orders`.
+- [ ] Click a row: the same slide-out panel as on the orders page opens with that order's tests, frozen prices, total and status, and the address has `?order=<id>`. Browser Back closes it and stays on the patient page.
+- [ ] Open `/patients/<id>?order=<that order's id>` directly: the panel opens on load.
+- [ ] With the API stopped after the page loaded, reload the orders by pressing "Try again" in the section (or use a throttled/blocked `GET /api/orders` in the browser's tools): the section shows a plain-language message, with "Reference: <request id>" when the server answered, and the patient form above can still be edited and saved.
+- [ ] A patient with more orders than one page shows "Load more", as on the orders page.
