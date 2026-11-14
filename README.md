@@ -53,7 +53,7 @@ The same checks run automatically on GitHub for every pull request and every pus
 
 ## Database
 
-Postgres 16 runs in Docker on host port 5433 (the `DB_PORT` setting, so it does not clash with a local Postgres on 5432). It holds two databases: `lab_orders` for development and `lab_orders_test` for tests.
+Postgres 16 runs in Docker on host port 5433 (the `DB_PORT` setting, so it does not clash with a local Postgres on 5432). It holds three databases: `lab_orders` for development, `lab_orders_test` for tests, and `lab_orders_e2e`, which `corepack pnpm test:e2e` creates and resets itself.
 
 ```sh
 cp .env.example .env            # settings (pnpm dev does this for you when .env is missing)
