@@ -38,18 +38,18 @@ Duplicate records split a patient's history across two charts, so the app warns.
 
 ## Acceptance criteria
 
-- [ ] Creating a patient with the same email as an existing one in different letter case returns 409 `POSSIBLE_DUPLICATE`, creates nothing, and the panel lists that patient with name, date of birth, email and phone.
-- [ ] A phone typed as `(801) 555-0100` matches an existing patient stored as `8015550100`.
-- [ ] Same first name, last name and date of birth in any letter case is a match; the same name with a different date of birth is not.
-- [ ] Same last name only, or `Jon` against `John`, is not a match and the patient is created.
-- [ ] Two patients that match by different rules both appear, each once.
-- [ ] Open this patient goes to that patient's page, and the patient count is unchanged.
-- [ ] Create anyway creates the patient (201) and the list shows both; the same request with `confirmDuplicate: true` sent directly also returns 201.
-- [ ] An invalid body with a matching email returns 400, not 409; `confirmDuplicate: "yes"` returns 400.
-- [ ] Editing a patient into another patient's email through the edit form saves with no warning.
-- [ ] No log line contains a name, date of birth, email or phone number.
+- [x] Creating a patient with the same email as an existing one in different letter case returns 409 `POSSIBLE_DUPLICATE`, creates nothing, and the panel lists that patient with name, date of birth, email and phone.
+- [x] A phone typed as `(801) 555-0100` matches an existing patient stored as `8015550100`.
+- [x] Same first name, last name and date of birth in any letter case is a match; the same name with a different date of birth is not.
+- [x] Same last name only, or `Jon` against `John`, is not a match and the patient is created.
+- [x] Two patients that match by different rules both appear, each once.
+- [x] Open this patient goes to that patient's page, and the patient count is unchanged.
+- [x] Create anyway creates the patient (201) and the list shows both; the same request with `confirmDuplicate: true` sent directly also returns 201.
+- [x] An invalid body with a matching email returns 400, not 409; `confirmDuplicate: "yes"` returns 400.
+- [x] Editing a patient into another patient's email through the edit form saves with no warning.
+- [x] No log line contains a name, date of birth, email or phone number.
 - [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
-- [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
+- [x] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
 
 ## Tests
 
