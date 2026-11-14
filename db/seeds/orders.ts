@@ -1,4 +1,4 @@
-// Four obviously fake orders for the seeded patients and tests (LAB-11).
+// Five obviously fake orders for the seeded patients and tests (LAB-11).
 //
 // Each order has a fixed id and a fixed order time, so running the seed twice
 // leaves the same rows. The items are copied from the catalog rows (code,
@@ -6,10 +6,9 @@
 // from estimateReadyDate with that fixed time and the clinic's time zone: it
 // is never typed in by hand, and never depends on when the seed runs.
 //
-// Statuses: ordered, collected and completed. No order is seeded as
-// cancelled: a cancelled row needs a note, a name and a time (the CHECK
-// orders_cancellation_complete, migration 0007), and cancelling one from its
-// panel shows the whole flow.
+// Statuses: ordered, collected, completed and one cancelled, so the cancelled
+// state shows on a fresh install. A cancelled row needs a note, a name and a
+// time (the CHECK orders_cancellation_complete, migration 0007).
 import type pg from 'pg';
 
 import type { OrderStatus } from '../../src/shared/orders';
@@ -23,6 +22,8 @@ type SeedOrder = {
   // clinic time zone, America/Denver.
   orderedAt: string;
   testCodes: string[];
+  // Only on a cancelled order: why, who and when.
+  cancellation?: { note: string; cancelledBy: string; cancelledAt: string };
 };
 
 export const SEED_ORDERS: readonly SeedOrder[] = [
@@ -57,6 +58,19 @@ export const SEED_ORDERS: readonly SeedOrder[] = [
     status: 'completed',
     orderedAt: '2026-10-26T16:00:00Z', // Mon 2026-10-26 10:00
     testCodes: ['CMP', 'TSH', 'A1C'],
+  },
+  {
+    // Cancelled the day after it was placed.
+    id: '5eed0011-0000-4000-8000-000000000005',
+    patientId: '5eed0008-0000-4000-8000-000000000003',
+    status: 'cancelled',
+    orderedAt: '2026-11-03T17:00:00Z', // Tue 2026-11-03 10:00
+    testCodes: ['UA'],
+    cancellation: {
+      note: 'Sample note',
+      cancelledBy: 'Sample Staff',
+      cancelledAt: '2026-11-04T16:00:00Z', // Wed 2026-11-04 09:00
+    },
   },
 ];
 
@@ -95,10 +109,20 @@ export async function seedOrders(
     );
     const result = await client.query(
       `insert into orders
-         (id, patient_id, status, estimated_ready_date, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $5)
+         (id, patient_id, status, estimated_ready_date, created_at, updated_at,
+          cancellation_note, cancelled_by, cancelled_at)
+       values ($1, $2, $3, $4, $5, $5, $6, $7, $8)
        on conflict (id) do nothing`,
-      [order.id, order.patientId, order.status, readyDate, orderedAt],
+      [
+        order.id,
+        order.patientId,
+        order.status,
+        readyDate,
+        orderedAt,
+        order.cancellation?.note ?? null,
+        order.cancellation?.cancelledBy ?? null,
+        order.cancellation?.cancelledAt ?? null,
+      ],
     );
     inserted += result.rowCount ?? 0;
     for (const test of tests) {

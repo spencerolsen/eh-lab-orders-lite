@@ -154,7 +154,7 @@ One row per test on an order (LAB-11). Each row is a snapshot: the test's code, 
 
 The primary key (`order_items_pkey`) is (`order_id`, `lab_test_id`), so a test appears at most once on an order. The rows have no id of their own.
 
-Seed (`db/seeds/orders.ts`): 4 orders for seeded patients with fixed ids `5eed0011-0000-4000-8000-00000000000N`, statuses `ordered` (two), `collected` and `completed`, with 1, 3, 2 and 3 items. Each order has a fixed order time, one of them Friday 2026-10-30 at 12:00 in Denver. The seed reads each test from `lab_tests` and copies it onto the item, and stores the ready date `estimateReadyDate` gives for that fixed time in `CLINIC_TIMEZONE`, so it never depends on when the seed runs. No order is seeded as `cancelled`; cancel one from its panel to see one (the CHECK above requires a seeded cancelled order to carry a note, a name and a time).
+Seed (`db/seeds/orders.ts`): 5 orders for seeded patients with fixed ids `5eed0011-0000-4000-8000-00000000000N`, statuses `ordered` (two), `collected`, `completed` and `cancelled`, with 1, 3, 2, 3 and 1 items. Each order has a fixed order time, one of them Friday 2026-10-30 at 12:00 in Denver. The seed reads each test from `lab_tests` and copies it onto the item, and stores the ready date `estimateReadyDate` gives for that fixed time in `CLINIC_TIMEZONE`, so it never depends on when the seed runs. The cancelled one (id ending 5) carries the note "Sample note", the name "Sample Staff" and a time, as the CHECK above requires.
 
 ## Rules for every table
 

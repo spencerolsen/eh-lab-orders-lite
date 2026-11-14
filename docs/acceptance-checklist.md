@@ -86,11 +86,11 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 ### Orders: the home page (LAB-11)
 
-- [ ] After `pnpm dev` on an empty database (`docker compose down -v` first), the home page lists exactly 4 orders, newest first: Test Patient (1 test, $52.50, ready Nov 13, 2026 (placed on a Saturday, so Monday is business day 1), Ordered, Nov 7, 2026, 11:00 am), Fake Tester (3 tests, $132.00, Nov 9, 2026, Collected), Sample Person (2 tests, $56.00, Nov 3, 2026, Ordered, Oct 30, 2026, 12:00 pm), Demo Example (3 tests, $122.50, Oct 28, 2026, Completed).
+- [ ] After `pnpm dev` on an empty database (`docker compose down -v` first), the home page lists exactly 5 orders, newest first: Test Patient (1 test, $52.50, ready Nov 13, 2026 (placed on a Saturday, so Monday is business day 1), Ordered, Nov 7, 2026, 11:00 am), Fake Tester (3 tests, $132.00, Nov 9, 2026, Collected), Demo Example (1 test, $18.00, Nov 4, 2026, Cancelled, Nov 3, 2026, 10:00 am; its panel says "Cancelled by Sample Staff ... Sample note"), Sample Person (2 tests, $56.00, Nov 3, 2026, Ordered, Oct 30, 2026, 12:00 pm), Demo Example (3 tests, $122.50, Oct 28, 2026, Completed).
 - [ ] Each patient is shown with the date of birth ("Sample Person (born Dec 31, 1990)") as a link to that patient's page, the Tests and Total columns are right-aligned, and each status is a tinted badge with its label.
 - [ ] The last column is headed "Created (America/Denver)". Change the computer's time zone (or start the browser with another `TZ`) and reload: the Friday order still shows 12:00 pm.
 - [ ] `docker compose exec db psql -U lab_orders -d lab_orders -c "\d orders"` shows no total column; `select sum(price_cents) from order_items where order_id = '5eed0011-0000-4000-8000-000000000002'` gives 13200, the $132.00 on screen.
-- [ ] Run `pnpm db:seed` a second time: it reports 0 rows inserted, and the page still shows the same 4 orders.
+- [ ] Run `pnpm db:seed` a second time: it reports 0 rows inserted, and the page still shows the same 5 orders.
 - [ ] With no orders (`truncate orders, order_items` in `psql`), the page shows "No orders yet". Stop the API and reload: "Can't reach the server. Try again." with a Try again button.
 - [ ] The API's log for the page load has the request line and nothing with a patient's name or date of birth.
 
