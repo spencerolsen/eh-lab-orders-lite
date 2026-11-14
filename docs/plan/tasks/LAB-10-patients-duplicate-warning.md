@@ -82,3 +82,18 @@ Duplicate records split a patient's history across two charts, so the app warns.
 3. Why does this feature get a service when the other patient routes do not?
 4. Why does a bad body return 400 even when a duplicate exists?
 5. What can still produce a duplicate despite the check, and why is that accepted?
+
+## Build notes
+
+Decisions made while building, and what this version deliberately accepts:
+
+- **The rule** lives in one pure function, `matchRules(candidate, existing)` in `src/server/patients/domain/duplicates.ts`, with the rule written as a comment above it. The rule names (`email`, `phone`, `name_dob`) are `DUPLICATE_RULES` in `src/shared/patients.ts`. Names and emails are compared trimmed and ignoring case; phones as the stored 10 digits; dates exactly. A missing email or phone never matches a missing one.
+- **One candidate query**, `findDuplicateCandidates` in `src/server/patients/repo.ts`, compares `lower(email)`, `phone`, `lower(first_name)`, `lower(last_name)` and `date_of_birth` against bound parameters, sorted by last name then first name, `limit 10`. `matchRules` then labels each row. Migration `0005_patient_duplicate_indexes.sql` adds one plain index per rule, on the same expressions; at a clinic's size Postgres scans the table anyway, but every create runs the query, and the indexes keep it a lookup as the table grows.
+- **The matches are in `error.matches`**, beside `details`, not in `details.matches`: `details` is a list of field problems on every other error, and the web client and the form read it that way. The standard error schema (`src/shared/api-error.ts`) has `matches` as an optional list of patients.
+- **The matches are patient data sent to any caller.** There is no login in this version, so that is by design; with logins it would need a permission check (recorded in `docs/plan/backlog.md`).
+- **The race is accepted.** The check and the insert are not locked together, so two identical creates at the same moment can both succeed. The check warns, it does not guarantee (backlog).
+- **Exact means exact.** `Jon` is not `John`, and names that differ only by an accent (`Zoe`, `Zoë`) do not match (backlog).
+- **Logs.** `patient.possible_duplicate` at `warn` with `code`, `matchCount` and `rules`; `patient.possible_duplicate.matches` at `debug` with the matched ids and their rules; `patient.created` gains `duplicateConfirmed: true`. An integration test triggers each rule with marker values and checks, with the logger at debug, that no marker reaches the log.
+- **The form.** `DuplicateWarning` sits above `PatientForm` on the New patient page only; it is an alert region that takes focus. Create anyway is a secondary button; Save patient stays the primary one. `PatientForm` gained a `busy` prop so Save patient is disabled while Create anyway runs.
+- **Existing tests** that create several patients sharing an email now send `confirmDuplicate: true` in their setup helper; the check itself is tested in `duplicates.integration.test.ts`.
+- The `docs/process.md` criterion is not done here: the process log is kept outside the repository.
