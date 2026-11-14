@@ -12,7 +12,7 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
   - `routes.ts`: HTTP routes. A route parses its input explicitly with the shared schema, then calls the repository or the service.
   - `repo.ts`: the SQL queries for that feature, hand-written, with typed row mappers. Queries live here and nowhere else.
   - `domain/`: business rules as pure functions (no Fastify, no `pg`, no clock: the caller passes the time in), unit tested on their own. Rules never live in routes or repositories. The order total (`calculateTotal`) and ready date (`estimateReadyDate`) are in `src/server/orders/domain/`; call them, never reimplement them. The status moves are the table and `assertTransition` in `domain/transitions.ts`: status changes call it, and nothing else lists legal moves.
-  - `service.ts`: only where a feature needs a transaction or combines rules with several queries (for example placing an order). Simple features call the repository from the route.
+  - `service.ts`: only where a feature needs a transaction or combines rules with several queries (for example placing an order, `src/server/orders/service.ts`, which runs its queries through `inTransaction` from `src/server/db/transaction.ts`). Simple features call the repository from the route.
 - `src/web/`: the browser app (React, Vite, React Router, TanStack Query). Each feature gets its own folder, `src/web/<feature>/`, with its page (for example `catalog/CatalogPage.tsx`).
   - `orders/OrderDetailPanel.tsx` takes only an order id: it fetches its own order, shows its own states and closes itself by removing `?order=` from the address. To show an order from another page, render it for an id; never hand it an order.
   - `main.tsx` mounts the app (error boundary, query client, router); `App.tsx` holds the routes; `Layout.tsx` and `MenuBar.tsx` are the frame around every page; `NotFoundPage.tsx` is the screen for unknown paths.
@@ -21,7 +21,7 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
   - `health/ServerStatus.tsx`: the footer line that says whether the API answers.
   - `styles/base.css`: the only stylesheet, plain CSS: the theme's custom properties and the shared classes (see "Styling a page"). `styles/StylesPage.tsx` is the `/styles` sample page.
   - `testing/`: the component test setup and `renderApp(path)`, which renders the whole app at a path with a fake `fetch`.
-- `src/shared/`: code used by both sides: request and response schemas, money and date helpers, and every fixed list of values.
+- `src/shared/`: code used by both sides: request and response schemas, money and date helpers, and every fixed list of values. The order-item response schema is `src/shared/order-items.ts`, defined once. The quick-add matching rule `matchTests` is `src/shared/match-tests.ts`: a pure function the New order modal calls.
 - `docs/`: architecture, API, data model, data flow, testing and the acceptance checklist. `docs/plan/` holds the build plan and one ticket per task.
 
 Tests sit next to the code they test, and the file name decides how they run: unit tests `<name>.test.ts` (Node, no database), component tests `<name>.test.tsx` (React in jsdom with Testing Library), integration tests (database or HTTP through the app) `<name>.integration.test.ts`. The smoke test is `src/shared/smoke.test.ts`. See `docs/testing.md`.
@@ -110,6 +110,10 @@ Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere i
 | Order status | `<StatusBadge status="ordered" />` from `components/StatusBadge` |
 | Surface | `className="card"` for a box on the page; `className="stack"` puts children in a column with a gap; `className="muted"` for secondary text |
 | Dialog or slide-out panel | `<dialog className="dialog">` or `<dialog className="panel">`, opened with `showModal()` (the backdrop is styled) |
+| Wider dialog | `<dialog className="dialog dialog-wide">` (the New order modal) |
+| Chosen value with a Change button | `<div className="chosen">` holding the value and a `button-secondary` |
+| A list of buttons to pick one from | `<ul className="choices">` with one `<li><button className="button-secondary">` per choice |
+| Type-ahead suggestions | `<ul role="listbox" className="suggestions">` with `<li role="option" aria-selected>`; the highlighted one is `aria-selected="true"` (see `orders/QuickAdd.tsx`) |
 
 ## Adding a route
 
