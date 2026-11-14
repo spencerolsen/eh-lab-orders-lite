@@ -1,6 +1,6 @@
 # LAB-19: Patient page: order history
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-14 (Orders: filter the list by status and patient), LAB-15 (Orders: order detail slide-out panel)
 - **Unblocks:** LAB-20 (New order from the menu bar and the patient page)

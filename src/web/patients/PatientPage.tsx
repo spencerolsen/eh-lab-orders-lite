@@ -15,8 +15,10 @@ import { fetchPatient, PATIENTS_KEY, patientKey, updatePatient } from './api';
 import { changedFields, toFormValues } from './form-values';
 import { PatientForm } from './PatientForm';
 import { PatientLabel } from './PatientLabel';
+import { PatientOrders } from './PatientOrders';
 
-// /patients/:id: the patient's details in the patient form, to correct them.
+// /patients/:id: the patient's details in the patient form, to correct them,
+// and the patient's orders under it.
 export function PatientPage() {
   const { id = '' } = useParams();
   const query = useQuery({
@@ -106,6 +108,7 @@ function EditPatient({ patient: loaded }: { patient: Patient }) {
       <p role="status" className="muted">
         {status}
       </p>
+      <PatientOrders patientId={patient.id} />
     </>
   );
 }
