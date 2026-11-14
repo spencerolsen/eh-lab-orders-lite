@@ -164,8 +164,9 @@ it('disables both buttons while Create anyway runs', async () => {
   await screen.findByRole('heading', { level: 1, name: 'Patients' });
 });
 
-it('shows why Create anyway failed inside the warning', async () => {
-  const fetch = await submitDuplicate();
+// Makes every POST fail with a 500 from now on; returns the fake's own
+// behaviour, to put back with fetch.mockImplementation.
+function failPosts(fetch: ReturnType<typeof fakePatientsApi>) {
   const real = fetch.getMockImplementation()!;
   fetch.mockImplementation((url: string, init?: RequestInit) =>
     init?.method === 'POST'
@@ -183,6 +184,12 @@ it('shows why Create anyway failed inside the warning', async () => {
         )
       : real(url, init),
   );
+  return real;
+}
+
+it('shows why Create anyway failed inside the warning', async () => {
+  const fetch = await submitDuplicate();
+  failPosts(fetch);
   await userEvent.click(
     within(panel()!).getByRole('button', { name: 'Create anyway' }),
   );
@@ -192,4 +199,33 @@ it('shows why Create anyway failed inside the warning', async () => {
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
     'New patient',
   );
+});
+
+it('Save patient with the warning showing checks again', async () => {
+  const fetch = await submitDuplicate();
+  await save();
+  await screen.findByRole('heading', {
+    name: 'This patient may already exist',
+  });
+  // The same values, without confirmDuplicate: only Create anyway confirms.
+  expect(posts(fetch)).toEqual([newBody, newBody]);
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
+    'New patient',
+  );
+});
+
+it('after Create anyway fails, editing a field and saving checks again', async () => {
+  const fetch = await submitDuplicate();
+  const real = failPosts(fetch);
+  await userEvent.click(
+    within(panel()!).getByRole('button', { name: 'Create anyway' }),
+  );
+  await within(panel()!).findByText(/Reference: req-9/);
+  fetch.mockImplementation(real);
+  await userEvent.type(field('Last name'), 's');
+  await save();
+  await screen.findByRole('heading', {
+    name: 'This patient may already exist',
+  });
+  expect(posts(fetch).at(-1)).toEqual({ ...newBody, lastName: 'Samples' });
 });
