@@ -22,6 +22,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 - With a key, the order insert uses `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING ...` inside the existing all-or-nothing transaction.
   - A row came back: the order and its items were created. Respond 201 as before.
   - No row came back: the key already exists. Read the existing order and respond 200 with the same body shape and nothing else written. Items are not inserted a second time.
+- With a key, the existing order is looked up first, at the top of the same transaction, before the tests are validated: a repeat of a used key returns the first order (200) even if one of its tests was deactivated since or the repeat's body would be refused (from the LAB-18 review, by the owner's rule that a repeat returns the order created the first time). The `ON CONFLICT` insert still decides a race the lookup cannot see.
 - Without a key the endpoint behaves exactly as in LAB-12 (201, no protection).
 - Two requests with the same key at the same moment produce one order. The unique index decides the winner; the loser returns the winner's order with 200, never 500 or 409.
 - A replay returns the stored order as it was created, even if the body differs. Comparing the second body with the first is not done.

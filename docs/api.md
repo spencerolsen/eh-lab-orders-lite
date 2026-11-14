@@ -412,9 +412,10 @@ Idempotency-Key: 9b2f6c1e-3d4a-4f5b-8c7d-0e1f2a3b4c5d
 What the server does, in one database transaction (all or nothing):
 
 1. Reads the clock once. That instant is the order's `createdAt` and the moment its ready date counts from.
-2. Reads the chosen tests from the catalog, locked until the transaction ends, and checks the whole list: every offending id is reported, not only the first. The catalog is the authority: a test deactivated after the browser loaded its list is refused.
-3. Works out `estimatedReadyDate` with `estimateReadyDate` (the Nth business day after the order day in `CLINIC_TIMEZONE`, N the longest turnaround) and stores it.
-4. Inserts the order with status `ordered`, then one item per test, each a copy of the test's code, name, price and turnaround at that moment. A later catalog change never alters the order. With a key that an order already holds, the order insert does nothing (`on conflict (idempotency_key) do nothing`); no item is inserted and the stored order is returned instead.
+2. With an `Idempotency-Key`, looks it up. If an order already holds it, that order is the answer (200) and nothing below runs: the body is not checked, so a repeat gets the earlier order even if one of its tests has been deactivated since, or if this body would be refused.
+3. Reads the chosen tests from the catalog, locked until the transaction ends, and checks the whole list: every offending id is reported, not only the first. The catalog is the authority: a test deactivated after the browser loaded its list is refused.
+4. Works out `estimatedReadyDate` with `estimateReadyDate` (the Nth business day after the order day in `CLINIC_TIMEZONE`, N the longest turnaround) and stores it.
+5. Inserts the order with status `ordered`, then one item per test, each a copy of the test's code, name, price and turnaround at that moment. A later catalog change never alters the order. The insert is `on conflict (idempotency_key) do nothing`, so the unique index, not the lookup in step 2, decides a race: if another request with the same key passed step 2 at the same moment and inserted first, this insert waits for it to commit and then does nothing, and that request's order is returned (200) with no item inserted.
 
 The total is not stored; the response works it out from the items with `calculateTotal`, as `GET /api/orders` does.
 
@@ -426,7 +427,7 @@ The total is not stored; the response works it out from the items with `calculat
 | 422 | `INVALID_ORDER_TESTS`: the list is empty, or a test is repeated, does not exist or is inactive. `details` has one entry per offending position, for example `{ "field": "labTestIds.1", "reason": "Lab test <id> is inactive" }` (`{ "field": "labTestIds", ... }` for an empty list). Nothing is saved. |
 | 422 | `UNKNOWN_PATIENT`: no patient has this id. A 422, not a 404: the URL (`/api/orders`) exists; it is an id inside the body that does not. Nothing is saved. |
 
-When both the tests and the patient are wrong, the tests are reported: they are checked first, and the patient is checked by the order insert's foreign key. The tests are checked before the key too, so a replay whose tests are now refused (one was deactivated since, say) gets the 422, not the earlier order. A refused attempt stores nothing, so its key stays unused and a retry with it can still place the order.
+When both the tests and the patient are wrong, the tests are reported: they are checked first, and the patient is checked by the order insert's foreign key. A refused attempt stores nothing, so its key stays unused and a retry with it can still place the order.
 
 The server logs `order.created` at `info` with `orderId`, `patientId` and `itemCount` (not on a replay, which created nothing: that is `order.create_replayed` at `warn`, with `orderId` and `idempotencyKey`, a random id that is not patient data), and `order.ready_date_estimated` at `debug` with `itemCount`, `longestTurnaroundDays` and `estimatedReadyDate`. A refusal is logged at `warn` by the error handler, with the code and a count of `details`. No name, date of birth or test name is logged.
 
