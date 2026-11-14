@@ -18,7 +18,8 @@ import {
   TEST_LIPID,
 } from './fixtures';
 
-const KEY = '50000000-0000-4000-8000-000000000001';
+// Hex letters in it, so the upper-case test really changes its case.
+const KEY = '5000000a-0000-4000-8000-00000000000b';
 const OTHER_KEY = '50000000-0000-4000-8000-000000000002';
 const BODY = { patientId: PATIENT_A, labTestIds: [TEST_CBC, TEST_LIPID] };
 
@@ -96,6 +97,16 @@ describe('the same key twice', () => {
     expect(replayed.patient.id).toBe(PATIENT_A);
     expect(replayed.testCount).toBe(2);
     expect(await counts()).toEqual({ orders: 1, items: 2 });
+  });
+
+  it('returns the order this key placed, not an order placed before or after it', async () => {
+    await post({ patientId: PATIENT_B, labTestIds: [TEST_LIPID] });
+    const first = await post(BODY, KEY);
+    await post({ patientId: PATIENT_B, labTestIds: [TEST_CBC] }, OTHER_KEY);
+    const replay = await post(BODY, KEY);
+
+    expect(replay.statusCode).toBe(200);
+    expect(orderIdOf(replay)).toBe(orderIdOf(first));
   });
 
   it('treats a key written in upper case as the same key', async () => {
