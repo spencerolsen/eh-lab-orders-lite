@@ -1,6 +1,7 @@
 // The SQL for orders. Values are always bound parameters.
 import { clinicDateTime } from '../../shared/dates';
 import {
+  type CancelOrderBody,
   type ListOrdersQuery,
   type OrderDetail,
   orderDetailSchema,
@@ -137,6 +138,11 @@ type OrderDetailRow = {
   date_of_birth: string;
   email: string | null;
   phone: string | null;
+  // All three set when the order is cancelled, all null otherwise (the
+  // CHECK orders_cancellation_complete, migration 0007).
+  cancellation_note: string | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
 };
 
 type OrderItemRow = {
@@ -159,7 +165,8 @@ export async function getOrder(
   const { rows } = await db.query<OrderDetailRow>(
     `select o.id, o.status, o.estimated_ready_date, o.created_at,
             p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
-            p.email, p.phone
+            p.email, p.phone,
+            o.cancellation_note, o.cancelled_by, o.cancelled_at
      from orders o
      join patients p on p.id = o.patient_id
      where o.id = $1`,
@@ -200,6 +207,15 @@ export async function getOrder(
     clinicTimezone,
     allowedNextStatuses: allowedNextStatuses(row.status),
     canCancel: canCancel(row.status),
+    cancellation:
+      row.cancelled_at === null
+        ? null
+        : {
+            note: row.cancellation_note,
+            cancelledBy: row.cancelled_by,
+            cancelledAt: row.cancelled_at.toISOString(),
+            cancelledAtClinic: clinicDateTime(clinicTimezone, row.cancelled_at),
+          },
   });
 }
 
@@ -354,6 +370,30 @@ export async function updateOrderStatus(
      set status = $3, updated_at = now()
      where id = $1 and status = $2`,
     [id, from, to],
+  );
+  return rowCount === 1;
+}
+
+// Cancels an order (LAB-17), only if it is still at `from`: the same
+// conditional update as updateOrderStatus, with the reason, the name and the
+// time set in the same statement. They must be: the CHECK
+// orders_cancellation_complete refuses a cancelled row without all three, so
+// the status cannot be changed first and the details added after. `to` is the
+// cancelled status, passed in by the service. Returns false when no row
+// matched (someone else changed the order after the caller read it).
+export async function updateOrderStatusAndCancellation(
+  db: Db,
+  id: string,
+  from: OrderStatus,
+  to: OrderStatus,
+  { note, cancelledBy }: CancelOrderBody,
+): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `update orders
+     set status = $3, cancellation_note = $4, cancelled_by = $5,
+         cancelled_at = now(), updated_at = now()
+     where id = $1 and status = $2`,
+    [id, from, to, note, cancelledBy],
   );
   return rowCount === 1;
 }

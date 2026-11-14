@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import {
+  cancelOrderBody,
   createOrderBody,
   listOrdersQuery,
   type OrderDetail,
@@ -15,12 +16,18 @@ import { withQueryLog } from '../db/query';
 import { NotFoundError } from '../errors';
 import { parse } from '../parse';
 import { getOrder, listOrders } from './repo';
-import { changeOrderStatus, createOrder, quoteOrder } from './service';
+import {
+  cancelOrder,
+  changeOrderStatus,
+  createOrder,
+  quoteOrder,
+} from './service';
 
 const orderParams = z.strictObject({ id: z.uuid() });
 
-// GET and POST /api/orders, GET /api/orders/:id and POST
-// /api/orders/:id/transitions (docs/api.md), registered
+// GET and POST /api/orders, GET /api/orders/:id, POST
+// /api/orders/:id/transitions and POST /api/orders/:id/cancel (docs/api.md),
+// registered
 // by buildApp. Only ids and counts are logged: never a name, a date of birth
 // or a test name.
 export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
@@ -105,4 +112,13 @@ export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
       return changeOrderStatus(deps, request.log, id, body);
     },
   );
+
+  // POST /api/orders/:id/cancel: 200 with the cancelled order. The same flow
+  // and answers as a transition; the service logs ids and statuses only,
+  // never the note or the name.
+  app.post('/api/orders/:id/cancel', async (request): Promise<OrderDetail> => {
+    const { id } = parse(orderParams, request.params);
+    const body = parse(cancelOrderBody, request.body);
+    return cancelOrder(deps, request.log, id, body);
+  });
 }
