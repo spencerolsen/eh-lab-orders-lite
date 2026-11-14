@@ -1,13 +1,16 @@
 // The orders page's filters and "Load more" (LAB-14), against a fake API that
 // answers like the server: it filters, pages by offset and limit 25, and says
 // hasMore.
-import { screen, waitFor, within } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
 import type { OrderListItem } from '../../shared/orders';
 import type { Patient } from '../../shared/patients';
-import { renderApp } from '../testing/render';
+import { MemoryRouter, useLocation } from 'react-router';
+import { App } from '../App';
+import { renderApp, testQueryClient } from '../testing/render';
 
 const JANE_1: Patient = {
   id: '20000000-0000-4000-8000-000000000001',
@@ -62,6 +65,9 @@ function fakeApi(orders: OrderListItem[]) {
     if (byId) {
       const found = [JANE_1, JANE_2].find((p) => p.id === byId[1]);
       return Promise.resolve(found ? json(200, found) : json(404, {}));
+    }
+    if (pathname.startsWith('/api/orders/')) {
+      return Promise.resolve(json(404, {}));
     }
     if (pathname === '/api/orders') {
       const status = searchParams.get('status');
@@ -206,4 +212,44 @@ it('shows the patient from an id in the address, and the Remove button clears it
   await waitFor(() => expect(bodyRows()).toBe(2));
   expect(orderCalls(fetch).at(-1)).toBe('/api/orders');
   expect(screen.getByLabelText('Filter by patient')).toBeTruthy();
+});
+
+// Renders the app with the address shown, so a test can read it.
+function renderWithAddress(path: string) {
+  function Address() {
+    return <p data-testid="search">{useLocation().search}</p>;
+  }
+  render(
+    <QueryClientProvider client={testQueryClient()}>
+      <MemoryRouter initialEntries={[path]}>
+        <Address />
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  return () => screen.getByTestId('search').textContent;
+}
+
+it('puts only the patient id in the address, never a name', async () => {
+  fakeApi([order(1, JANE_1)]);
+  const address = renderWithAddress('/');
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('Filter by patient'), 'jane');
+  const matches = await screen.findByRole('list', {
+    name: 'Matching patients',
+  });
+  await user.click(within(matches).getAllByRole('button')[0]!);
+  await waitFor(() => expect(address()).toBe(`?patientId=${JANE_1.id}`));
+});
+
+it('keeps the filters when an order is opened and closed', async () => {
+  fakeApi([order(1, JANE_1)]);
+  const address = renderWithAddress('/?status=ordered');
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: /View order/ }));
+  await waitFor(() => expect(address()).toMatch(/order=/));
+  expect(address()).toMatch(/status=ordered/);
+  await user.click(await screen.findByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(address()).not.toMatch(/order=/));
+  expect(address()).toBe('?status=ordered');
 });
