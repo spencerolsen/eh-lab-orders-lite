@@ -87,6 +87,25 @@ describe('GET /api/orders/:id', () => {
     });
   });
 
+  it('keeps the prices the order was placed with when the catalog price changes', async () => {
+    await insertOrder(t.pool, {
+      id: ORDER_ID,
+      createdAt: '2026-10-30T18:00:00Z',
+      items: [CBC, LIPID],
+    });
+    await t.pool.query(
+      'update lab_tests set price_cents = price_cents + 100 where id = $1',
+      [CBC.labTestId],
+    );
+    const response = await t.inject({
+      method: 'GET',
+      url: `/api/orders/${ORDER_ID}`,
+    });
+    const order = response.json<OrderDetail>();
+    expect(order.items.map((item) => item.priceCents)).toEqual([2500, 3800]);
+    expect(order.totalCents).toBe(6300);
+  });
+
   it('returns 404 NOT_FOUND for a well-formed id with no order', async () => {
     const response = await t.inject({
       method: 'GET',
