@@ -130,6 +130,12 @@ The catalog (LAB-06) is the first feature and the pattern the others copy. `POST
 
 There is no `service.ts` and no `domain/` here: the feature has no transaction and no rule beyond what the schema and the database enforce. A feature gets a service when it needs a transaction or combines rules with several queries (the duplicate warning on a new patient, LAB-10; placing an order, LAB-12).
 
+### Scaling the orders list
+
+`GET /api/orders` pages with `limit` and `offset` and fetches `limit + 1` rows: the extra row is the whole answer to "is there a next page", so there is no `COUNT(*)`, which reads every matching row on every request and would get slower as orders pile up. The three indexes in `docs/data-model.md` let each filtered page stop after `limit + 1` rows.
+
+The trade-off accepted: offset paging is not stable while the data changes. If an order is placed after the first page was fetched, every row moves one place down, so the next page repeats the last row of the previous one (the screen shows a row once, whichever page it came from). If an order is cancelled out of a filtered view between pages, a row can be skipped. The next step is cursor (keyset) paging: the client sends the `created_at` and `id` of the last row it has and the query says `where (created_at, id) < ($1, $2)`, which neither repeats nor skips and does not get slower for later pages (an `offset` of 10,000 reads 10,000 rows to throw them away). A total count ("page 3 of 12") would be a separate, optional request, added only if someone needs it. Both are in `docs/plan/backlog.md`.
+
 ## Logging
 
 The server logs with pino. `LOG_LEVEL` sets the level (`info` by default). Each line is one JSON object on standard output; `pnpm dev:api` sets `NODE_ENV=development`, and only then are lines printed readable and coloured by `pino-pretty`, which is a dev dependency.
@@ -169,6 +175,7 @@ Rules for every line:
 | `patient.updated` | `info` | `patientId`, `changedFields` (the names of the fields the request set, such as `["phone"]`, never their values) | `PATCH /api/patients/:id`. A 422 `CONTACT_REQUIRED` is the `request.rejected` line. |
 | `order.created` | `info` | `orderId`, `patientId`, `itemCount` | `POST /api/orders`, after the transaction commits. A refused order (400, 422) is the `request.rejected` line, with its code and a count. |
 | `order.ready_date_estimated` | `debug` | `itemCount`, `longestTurnaroundDays`, `estimatedReadyDate` | The order service, when it works out the ready date (placing an order or a quote). |
+| `orders.listed` | `debug` | `filters` (the names of the filters present, `status` and/or `patientId`, never their values), `rowCount`, `hasMore` | `GET /api/orders`. |
 | `patient.search` | `debug` | `hasQuery`, `resultCount` | `GET /api/patients`. Never the search text: it is something a user typed about a patient. |
 | `app.started`, `app.shutting_down` | `info` | `port`, `signal` | `main.ts`. |
 | `app.start_failed`, `app.shutdown_timeout`, `app.shutdown_failed` | `error` | `err`, `capMs` | `main.ts`. |

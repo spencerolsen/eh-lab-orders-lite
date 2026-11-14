@@ -11,13 +11,31 @@ import {
   orderQuoteSchema,
 } from '../../shared/orders';
 import { apiFetch } from '../api/client';
+import type { OrderFilters } from './filters';
 
 // The TanStack Query key of the order list; placing an order (LAB-12) and
 // changing a status (LAB-16) refresh it.
 export const ORDERS_KEY = ['orders'] as const;
 
-export async function fetchOrders(signal?: AbortSignal): Promise<OrderList> {
-  return orderListSchema.parse(await apiFetch('/api/orders', { signal }));
+// The list's key: every filter combination is its own cache entry.
+export const orderListKey = (filters: OrderFilters) =>
+  [...ORDERS_KEY, 'list', filters] as const;
+
+// One page of the list: the orders matching `filters`, starting at `offset`
+// (the server's default page size; docs/api.md).
+export async function fetchOrders(
+  filters: OrderFilters,
+  offset: number,
+  signal?: AbortSignal,
+): Promise<OrderList> {
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  if (filters.patientId) params.set('patientId', filters.patientId);
+  if (offset > 0) params.set('offset', String(offset));
+  const query = params.toString();
+  return orderListSchema.parse(
+    await apiFetch(query ? `/api/orders?${query}` : '/api/orders', { signal }),
+  );
 }
 
 // One order's key sits under ORDERS_KEY, so refreshing the list refreshes it too.

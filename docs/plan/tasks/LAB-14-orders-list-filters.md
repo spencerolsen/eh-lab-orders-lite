@@ -1,6 +1,6 @@
 # LAB-14: Orders: filter the list by status and patient
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Vertical slice
 - **Depends on:** LAB-09 (Patients: search by name and edit a patient), LAB-11 (Orders: see orders on the home page)
 - **Unblocks:** LAB-17 (Orders: cancel an order with a note and a name), LAB-19 (Patient page: order history), LAB-21 (Browser tests for the main journeys)

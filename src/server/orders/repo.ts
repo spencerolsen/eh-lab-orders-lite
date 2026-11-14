@@ -1,6 +1,7 @@
 // The SQL for orders. Values are always bound parameters.
 import { clinicDateTime } from '../../shared/dates';
 import {
+  type ListOrdersQuery,
   type OrderDetail,
   orderDetailSchema,
   type OrderListItem,
@@ -11,6 +12,7 @@ import type { OrderItem } from '../../shared/order-items';
 import type { LabTestRow } from '../catalog/repo';
 import type { Db } from '../db/query';
 import { BusinessRuleError } from '../errors';
+import { toPage } from './domain/page';
 import { calculateTotal } from './domain/total';
 import { allowedNextStatuses, canCancel } from './domain/transitions';
 
@@ -62,7 +64,8 @@ export function toOrderListItem(
 // The columns and joins of one list row: each order's patient by a join, and
 // its item prices gathered into an array (array_remove drops the single null a
 // left join gives an order with no items, so such an order would show 0
-// tests, not vanish). The caller adds the where, group by and order by.
+// tests, not vanish). The caller adds the where and group by (the list read
+// in listOrders has its own copy, which cuts the page before joining).
 const LIST_ROW_SELECT = `
   select o.id, o.status, o.estimated_ready_date, o.created_at,
          p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
@@ -71,19 +74,56 @@ const LIST_ROW_SELECT = `
   join patients p on p.id = o.patient_id
   left join order_items i on i.order_id = o.id`;
 
-// Every order, newest first; the id breaks ties between orders placed at the
-// same moment, so the order is the same on every call. One query for the
-// whole list.
+// One page of orders, newest first; the id breaks ties between orders placed
+// at the same moment, so the order (and so every page) is the same on every
+// call. The filters combine with AND. One query: it asks for limit + 1 rows,
+// and toPage turns the extra one into hasMore, so there is no COUNT.
 export async function listOrders(
   db: Db,
   clinicTimezone: string,
-): Promise<OrderListItem[]> {
+  query: Pick<ListOrdersQuery, 'status' | 'patientId' | 'limit' | 'offset'>,
+): Promise<{ items: OrderListItem[]; hasMore: boolean }> {
+  // The where clause is built from fixed fragments; the values are always
+  // bound parameters.
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (query.status !== undefined) {
+    params.push(query.status);
+    conditions.push('o.status = $' + params.length);
+  }
+  if (query.patientId !== undefined) {
+    params.push(query.patientId);
+    conditions.push('o.patient_id = $' + params.length);
+  }
+  params.push(query.limit + 1, query.offset);
+  const where =
+    conditions.length > 0 ? 'where ' + conditions.join(' and ') : '';
+  // The page of orders is cut first, from orders alone, so Postgres can read
+  // it from the filter's index in order and stop after limit + 1 rows; only
+  // then are the patients and items joined, for those rows alone.
   const { rows } = await db.query<OrderListRow>(
-    `${LIST_ROW_SELECT}
-     group by o.id, p.id
+    `select o.id, o.status, o.estimated_ready_date, o.created_at,
+            p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
+            array_remove(array_agg(i.price_cents), null) as item_prices
+     from (select * from orders o
+           ${where}
+           order by o.created_at desc, o.id desc
+           limit $` +
+      (params.length - 1) +
+      ` offset $` +
+      params.length +
+      `) o
+     join patients p on p.id = o.patient_id
+     left join order_items i on i.order_id = o.id
+     group by o.id, o.status, o.estimated_ready_date, o.created_at, p.id
      order by o.created_at desc, o.id desc`,
+    params,
   );
-  return rows.map((row) => toOrderListItem(row, clinicTimezone));
+  const page = toPage(rows, query.limit);
+  return {
+    items: page.items.map((row) => toOrderListItem(row, clinicTimezone)),
+    hasMore: page.hasMore,
+  };
 }
 
 type OrderDetailRow = {

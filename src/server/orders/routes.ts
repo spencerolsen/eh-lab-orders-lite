@@ -3,9 +3,10 @@ import { z } from 'zod';
 
 import {
   createOrderBody,
-  type OrderQuote,
+  listOrdersQuery,
   type OrderDetail,
   type OrderList,
+  type OrderQuote,
   quoteOrderBody,
 } from '../../shared/orders';
 import type { AppDeps } from '../app';
@@ -15,9 +16,6 @@ import { parse } from '../parse';
 import { getOrder, listOrders } from './repo';
 import { createOrder, quoteOrder } from './service';
 
-// No query parameters yet (LAB-14 adds the filters and paging), so any is a 400.
-const listOrdersQuery = z.strictObject({});
-
 const orderParams = z.strictObject({ id: z.uuid() });
 
 // GET and POST /api/orders and GET /api/orders/:id (docs/api.md), registered
@@ -25,13 +23,26 @@ const orderParams = z.strictObject({ id: z.uuid() });
 // or a test name.
 export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/orders', async (request): Promise<OrderList> => {
-    parse(listOrdersQuery, request.query);
-    const items = await listOrders(
+    const query = parse(listOrdersQuery, request.query);
+    const { items, hasMore } = await listOrders(
       withQueryLog(deps.pool, request.log),
       deps.clinicTimezone,
+      query,
     );
-    // hasMore is always false until LAB-14 adds paging.
-    return { items, hasMore: false, clinicTimezone: deps.clinicTimezone };
+    // Which filters were used, by name, and how many rows came back: never
+    // a value.
+    request.log.debug(
+      {
+        event: 'orders.listed',
+        filters: (['status', 'patientId'] as const).filter(
+          (name) => query[name] !== undefined,
+        ),
+        rowCount: items.length,
+        hasMore,
+      },
+      'Orders listed',
+    );
+    return { items, hasMore, clinicTimezone: deps.clinicTimezone };
   });
 
   app.get('/api/orders/:id', async (request): Promise<OrderDetail> => {
