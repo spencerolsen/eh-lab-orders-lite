@@ -163,3 +163,16 @@ export const orderQuoteSchema = z.object({
 });
 
 export type OrderQuote = z.infer<typeof orderQuoteSchema>;
+
+// POST /api/orders/:id/transitions: move an order forward one step. `to` is
+// any status except `ordered` (where every order starts, so nothing moves
+// into it) and `cancelled` (cancelling has its own endpoint, LAB-17, with its
+// own data). Whether the move is allowed from the order's current status is
+// the transition table's call on the server, not this schema's.
+export const orderTransitionBody = z.strictObject({
+  to: orderStatusSchema.exclude(['ordered', 'cancelled'], {
+    error: 'Must be a status this endpoint can move an order to',
+  }),
+});
+
+export type OrderTransitionBody = z.infer<typeof orderTransitionBody>;

@@ -7,6 +7,7 @@ import {
   type OrderDetail,
   type OrderList,
   type OrderQuote,
+  orderTransitionBody,
   quoteOrderBody,
 } from '../../shared/orders';
 import type { AppDeps } from '../app';
@@ -14,11 +15,12 @@ import { withQueryLog } from '../db/query';
 import { NotFoundError } from '../errors';
 import { parse } from '../parse';
 import { getOrder, listOrders } from './repo';
-import { createOrder, quoteOrder } from './service';
+import { changeOrderStatus, createOrder, quoteOrder } from './service';
 
 const orderParams = z.strictObject({ id: z.uuid() });
 
-// GET and POST /api/orders and GET /api/orders/:id (docs/api.md), registered
+// GET and POST /api/orders, GET /api/orders/:id and POST
+// /api/orders/:id/transitions (docs/api.md), registered
 // by buildApp. Only ids and counts are logged: never a name, a date of birth
 // or a test name.
 export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
@@ -91,4 +93,16 @@ export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
     const body = parse(quoteOrderBody, request.body);
     return quoteOrder(deps, request.log, body);
   });
+
+  // POST /api/orders/:id/transitions: 200 with the order in its new status.
+  // The service logs the change (info) or the refusal (warn); the error
+  // handler turns its 404, 422 or 409 into the response.
+  app.post(
+    '/api/orders/:id/transitions',
+    async (request): Promise<OrderDetail> => {
+      const { id } = parse(orderParams, request.params);
+      const body = parse(orderTransitionBody, request.body);
+      return changeOrderStatus(deps, request.log, id, body);
+    },
+  );
 }

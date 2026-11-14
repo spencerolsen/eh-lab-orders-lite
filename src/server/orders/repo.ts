@@ -335,3 +335,25 @@ export async function insertOrderItem(
     throw error;
   }
 }
+
+// Moves an order from `from` to `to`, only if it is still at `from`. Returns
+// false when no row matched: the order is no longer at `from`, because someone
+// else changed it after the caller read it (LAB-16). The condition on the old
+// status is what makes two simultaneous clicks safe: the second update finds
+// no row at the old status and changes nothing, instead of overwriting the
+// first. updated_at is set here; there is no trigger. Nothing else changes
+// (the ready date stays as it was stored).
+export async function updateOrderStatus(
+  db: Db,
+  id: string,
+  from: OrderStatus,
+  to: OrderStatus,
+): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `update orders
+     set status = $3, updated_at = now()
+     where id = $1 and status = $2`,
+    [id, from, to],
+  );
+  return rowCount === 1;
+}

@@ -1,29 +1,35 @@
-// Placing an order (POST /api/orders). A service, unlike the other features,
-// because it needs a transaction and combines the rules (which tests may be
-// ordered, the ready date) with several queries.
+// Placing an order (POST /api/orders) and changing its status (POST
+// /api/orders/:id/transitions). A service, unlike the other features, because
+// each combines the rules (which tests may be ordered, the ready date, the
+// legal moves) with several queries, and placing an order needs a transaction.
 import type { FastifyBaseLogger } from 'fastify';
 
 import type { FieldProblem } from '../../shared/api-error';
 import type { OrderItem } from '../../shared/order-items';
 import type {
   CreateOrderBody,
+  OrderDetail,
   OrderListItem,
   OrderQuote,
+  OrderTransitionBody,
   QuoteOrderBody,
 } from '../../shared/orders';
 import type { AppDeps } from '../app';
 import { type Db, withQueryLog } from '../db/query';
 import { inTransaction } from '../db/transaction';
-import { BusinessRuleError } from '../errors';
+import { BusinessRuleError, ConflictError, NotFoundError } from '../errors';
 import { calculateTotal } from './domain/total';
 import { estimateReadyDate } from './domain/ready-date';
+import { assertTransition, InvalidTransitionError } from './domain/transitions';
 import {
   findOrderListItem,
   findTestsForOrder,
+  getOrder,
   INVALID_ORDER_TESTS_MESSAGE,
   insertOrder,
   insertOrderItem,
   type OrderableTest,
+  updateOrderStatus,
 } from './repo';
 
 // The test-list rules: an order needs at least one test, each test once, and
@@ -174,4 +180,74 @@ export async function createOrder(
     if (order === null) throw new Error('The new order could not be read');
     return { order, itemCount: items.length };
   });
+}
+
+// The message of every 409 ORDER_CHANGED; the panel shows it as is.
+export const ORDER_CHANGED_MESSAGE = 'This order was changed by someone else';
+
+// Moves an order one step forward and returns it as GET /api/orders/:id does.
+// Read, check, then a conditional update, in this order, so each failure has
+// its own answer and means one thing to the user:
+// 404 the order is not there; 422 the rules do not allow this move from its
+// status; 409 the move was allowed, but someone changed the order first.
+export async function changeOrderStatus(
+  deps: AppDeps,
+  log: FastifyBaseLogger,
+  id: string,
+  { to }: OrderTransitionBody,
+): Promise<OrderDetail> {
+  const db = withQueryLog(deps.pool, log);
+
+  // 1. READ: the order as it is now. Missing: 404 NOT_FOUND.
+  const order = await getOrder(db, id, deps.clinicTimezone);
+  if (order === null) throw new NotFoundError('There is no such order');
+  const from = order.status;
+
+  // 2. CHECK: the transition table decides, against the status just read.
+  // Only ordered -> collected -> completed, no skipping, no going back;
+  // completed and cancelled are final. Refused: 422 ILLEGAL_TRANSITION, and
+  // the update is never tried.
+  try {
+    assertTransition(from, to);
+  } catch (error) {
+    if (!(error instanceof InvalidTransitionError)) throw error;
+    log.warn(
+      {
+        event: 'order.transition_refused',
+        code: 'ILLEGAL_TRANSITION',
+        orderId: id,
+        from,
+        to,
+      },
+      'Order status change refused',
+    );
+    throw new BusinessRuleError('ILLEGAL_TRANSITION', error.message);
+  }
+
+  // 3. UPDATE, only if the order is still at the status the check saw. Zero
+  // rows: someone else changed it between the read and here (two people
+  // clicking at once). Nothing is overwritten: 409 ORDER_CHANGED, reload.
+  const updated = await updateOrderStatus(db, id, from, to);
+  if (!updated) {
+    log.warn(
+      {
+        event: 'order.transition_lost_race',
+        code: 'ORDER_CHANGED',
+        orderId: id,
+        expected: from,
+        to,
+      },
+      'Order changed before its status could be changed',
+    );
+    throw new ConflictError('ORDER_CHANGED', ORDER_CHANGED_MESSAGE);
+  }
+  log.info(
+    { event: 'order.status_changed', orderId: id, from, to },
+    'Order status changed',
+  );
+
+  // The order as it is now, with its new allowedNextStatuses and canCancel.
+  const changed = await getOrder(db, id, deps.clinicTimezone);
+  if (changed === null) throw new Error('The changed order could not be read');
+  return changed;
 }

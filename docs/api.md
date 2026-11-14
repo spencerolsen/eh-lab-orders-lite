@@ -37,7 +37,7 @@ The one exception is a request the HTTP layer cannot parse at all, such as heade
 |---|---|---|
 | 400 | The input is malformed or has the wrong shape, including unknown extra fields, malformed JSON and a bad URL. | A lab test with a negative price, or a body with an `isAdmin` field. |
 | 404 | The resource named in the URL path does not exist, or there is no such route. | `GET /api/patients/<id>` for an id that is not there. |
-| 409 | The request conflicts with what is already stored. | Adding a lab test whose code already exists. |
+| 409 | The request conflicts with what is already stored. | Adding a lab test whose code already exists, or changing the status of an order someone else changed first. |
 | 413 | The request body is larger than 1 MiB. | |
 | 415 | The request body is not JSON. | A form-encoded or XML body. |
 | 422 | The input has the right shape but breaks a business rule, or an id inside the body does not exist. | An order for a patient id that does not exist, or a status move that is not allowed. |
@@ -61,6 +61,8 @@ Every code the API can return. The list is defined once, as `ERROR_CODES` in `sr
 | `POSSIBLE_DUPLICATE` | 409 | A new patient looks like existing ones; nothing was created, and `matches` lists them. Send again with `confirmDuplicate: true` to create anyway. |
 | `INVALID_ORDER_TESTS` | 422 | An order's test list is empty, or lists a test twice, a test that does not exist or an inactive test; `details` names each offending id. |
 | `UNKNOWN_PATIENT` | 422 | An order names a patient id that does not exist. |
+| `ILLEGAL_TRANSITION` | 422 | The status transition table does not allow this move from the order's current status. |
+| `ORDER_CHANGED` | 409 | Someone else changed the order between reading it and changing its status; nothing was overwritten. Reload the order. |
 
 ## Endpoints
 
@@ -419,4 +421,34 @@ When both the tests and the patient are wrong, the tests are reported: they are 
 
 The server logs `order.created` at `info` with `orderId`, `patientId` and `itemCount`, and `order.ready_date_estimated` at `debug` with `itemCount`, `longestTurnaroundDays` and `estimatedReadyDate`. A refusal is logged at `warn` by the error handler, with the code and a count of `details`. No name, date of birth or test name is logged.
 
-An order cannot be edited after it is placed (a future version may allow it). Sending the same request twice places two orders; LAB-18 adds an `Idempotency-Key`.
+An order's tests and patient cannot be edited after it is placed (a future version may allow it); only its status moves, with the endpoint above. Sending the same request twice places two orders; LAB-18 adds an `Idempotency-Key`.
+
+### `POST /api/orders/:id/transitions`
+
+Moves an order one step forward (LAB-16): `ordered` to `collected`, `collected` to `completed`.
+
+```json
+{ "to": "collected" }
+```
+
+| Field | Rule |
+|---|---|
+| `to` | `collected` or `completed`. Required. Any other value is a 400, `cancelled` included: cancelling has its own endpoint (LAB-17), and `ordered` is where every order starts. No other field is allowed. |
+
+What the server does, in this order, so each failure has its own answer:
+
+1. Reads the order. None: 404.
+2. Checks the move with `assertTransition` (the transition table, `src/server/orders/domain/transitions.ts`) against the status just read. Not allowed: 422, and nothing is written.
+3. Updates with a condition on the status it read: `update orders set status = <to>, updated_at = now() where id = <id> and status = <status read>`. If that changes no row, someone else changed the order after step 1 (two people pressed the button at once): 409, and nothing is overwritten.
+
+Only `status` and `updated_at` change; the stored ready date stays as it is.
+
+| Status | Body | What the user does |
+|---|---|---|
+| 200 | The order in its new status, in the same shape as `GET /api/orders/:id` (with its new `allowedNextStatuses` and `canCancel`). | |
+| 400 | `VALIDATION_ERROR`: `:id` is not a uuid; `to` is missing, not a string or not `collected` or `completed`; or an unknown extra field. | Nothing; the screen never sends these. |
+| 404 | `NOT_FOUND`: no order has that id. | The order is not there. |
+| 409 | `ORDER_CHANGED`: "This order was changed by someone else". | Reload the order and look at its real status. |
+| 422 | `ILLEGAL_TRANSITION`: the table does not allow the move, for example "An order cannot move from ordered to completed", or any move from `completed` or `cancelled`. | The rules forbid it; trying again will not help. |
+
+Logged: `info` `order.status_changed` with `orderId`, `from` and `to`; `warn` `order.transition_refused` with `code`, `orderId`, `from` and `to` for an illegal move; `warn` `order.transition_lost_race` with `code`, `orderId`, `expected` (the status read) and `to` for a lost race. Nothing about the patient.
