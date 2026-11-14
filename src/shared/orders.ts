@@ -105,3 +105,21 @@ export const createOrderBody = z.strictObject({
 });
 
 export type CreateOrderBody = z.output<typeof createOrderBody>;
+
+// POST /api/orders/quote: the same test ids as an order, no patient. Ids are
+// lower-cased like in createOrderBody, so both treat one id the same.
+export const quoteOrderBody = z.strictObject({
+  labTestIds: createOrderBody.shape.labTestIds,
+});
+
+export type QuoteOrderBody = z.output<typeof quoteOrderBody>;
+
+// What the quote returns: the items as an order would snapshot them, and the
+// total and ready date the server's rules give for them.
+export const orderQuoteSchema = z.object({
+  items: z.array(orderItemSchema),
+  totalCents: z.number().int(),
+  estimatedReadyDate: z.string(),
+});
+
+export type OrderQuote = z.infer<typeof orderQuoteSchema>;

@@ -3,15 +3,17 @@ import { z } from 'zod';
 
 import {
   createOrderBody,
+  type OrderQuote,
   type OrderDetail,
   type OrderList,
+  quoteOrderBody,
 } from '../../shared/orders';
 import type { AppDeps } from '../app';
 import { withQueryLog } from '../db/query';
 import { NotFoundError } from '../errors';
 import { parse } from '../parse';
 import { getOrder, listOrders } from './repo';
-import { createOrder } from './service';
+import { createOrder, quoteOrder } from './service';
 
 // No query parameters yet (LAB-14 adds the filters and paging), so any is a 400.
 const listOrdersQuery = z.strictObject({});
@@ -68,5 +70,14 @@ export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
       'Order created',
     );
     return reply.code(201).send(order);
+  });
+
+  // POST /api/orders/quote: 200 with the items, total and ready date an order
+  // of these tests would have now. Saves nothing and takes no patient. The
+  // ready-date debug line is the only log (ids and counts); a refusal is
+  // logged at warn by the error handler.
+  app.post('/api/orders/quote', async (request): Promise<OrderQuote> => {
+    const body = parse(quoteOrderBody, request.body);
+    return quoteOrder(deps, request.log, body);
   });
 }

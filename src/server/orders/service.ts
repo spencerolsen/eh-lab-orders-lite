@@ -5,11 +5,17 @@ import type { FastifyBaseLogger } from 'fastify';
 
 import type { FieldProblem } from '../../shared/api-error';
 import type { OrderItem } from '../../shared/order-items';
-import type { CreateOrderBody, OrderListItem } from '../../shared/orders';
+import type {
+  CreateOrderBody,
+  OrderListItem,
+  OrderQuote,
+  QuoteOrderBody,
+} from '../../shared/orders';
 import type { AppDeps } from '../app';
 import { type Db, withQueryLog } from '../db/query';
 import { inTransaction } from '../db/transaction';
 import { BusinessRuleError } from '../errors';
+import { calculateTotal } from './domain/total';
 import { estimateReadyDate } from './domain/ready-date';
 import {
   findOrderListItem,
@@ -79,6 +85,53 @@ export async function readOrderTests(
   return checkOrderTests(labTestIds, found);
 }
 
+// The ready date of a list of tests, counted from `now` in the clinic's time
+// zone. The one place createOrder and the quote both get it, so the preview
+// and the stored order cannot drift. Logs ids and counts only.
+export function readyDateFor(
+  deps: Pick<AppDeps, 'clinicTimezone'>,
+  log: FastifyBaseLogger,
+  now: Date,
+  items: readonly OrderItem[],
+): string {
+  const estimatedReadyDate = estimateReadyDate(
+    now,
+    items,
+    deps.clinicTimezone,
+  );
+  log.debug(
+    {
+      event: 'order.ready_date_estimated',
+      itemCount: items.length,
+      longestTurnaroundDays: Math.max(
+        ...items.map((item) => item.turnaroundDays),
+      ),
+      estimatedReadyDate,
+    },
+    'Ready date estimated',
+  );
+  return estimatedReadyDate;
+}
+
+// What an order of these tests would cost and when it would be ready, saving
+// nothing (POST /api/orders/quote). Same validation, same rules, one `now`.
+export async function quoteOrder(
+  deps: AppDeps,
+  log: FastifyBaseLogger,
+  input: QuoteOrderBody,
+): Promise<OrderQuote> {
+  const now = deps.clock();
+  const items = await readOrderTests(
+    withQueryLog(deps.pool, log),
+    input.labTestIds,
+  );
+  return {
+    items,
+    totalCents: calculateTotal(items),
+    estimatedReadyDate: readyDateFor(deps, log, now, items),
+  };
+}
+
 // Creates the order and returns it as a list row (the 201's body).
 export async function createOrder(
   deps: AppDeps,
@@ -106,22 +159,7 @@ export async function createOrder(
 
     // READY DATE: calculated once, here, by the rule in domain/ready-date.ts,
     // from `now` in the clinic's time zone, and stored on the order.
-    const estimatedReadyDate = estimateReadyDate(
-      now,
-      items,
-      deps.clinicTimezone,
-    );
-    log.debug(
-      {
-        event: 'order.ready_date_estimated',
-        itemCount: items.length,
-        longestTurnaroundDays: Math.max(
-          ...items.map((item) => item.turnaroundDays),
-        ),
-        estimatedReadyDate,
-      },
-      'Ready date estimated',
-    );
+    const estimatedReadyDate = readyDateFor(deps, log, now, items);
 
     // A new order always starts as 'ordered'.
     const orderId = await insertOrder(db, {
