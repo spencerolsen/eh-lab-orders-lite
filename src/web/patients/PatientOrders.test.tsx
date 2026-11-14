@@ -76,6 +76,7 @@ const DETAIL: OrderDetail = {
   clinicTimezone: 'America/Denver',
   allowedNextStatuses: ['completed'],
   canCancel: true,
+  cancellation: null,
 };
 
 // The patients fake, plus one order's response (GET /api/orders/:id).
