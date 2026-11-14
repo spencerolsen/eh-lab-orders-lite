@@ -134,3 +134,13 @@ it('New patient opens the form, and saving goes back to the refreshed list', asy
     email: 'sample@example.test',
   });
 });
+
+it('lets a long unbroken name wrap, and keeps the date and the phone on one line', async () => {
+  fakeApi([{ ...SEEDED[0]!, firstName: 'W'.repeat(60) }]);
+  renderApp('/patients');
+  await screen.findByRole('table');
+  const cells = screen.getAllByRole('row')[1]!.querySelectorAll('td');
+  expect(cells[0]!.className).toBe('wrap');
+  expect(cells[1]!.className).toBe('nowrap');
+  expect(cells[3]!.className).toBe('nowrap');
+});

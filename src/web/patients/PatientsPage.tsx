@@ -127,7 +127,9 @@ function PatientList({
               </td>
               <td className="nowrap">{formatDate(patient.dateOfBirth)}</td>
               <td>{patient.email ?? ''}</td>
-              <td>{patient.phone ? formatPhone(patient.phone) : ''}</td>
+              <td className="nowrap">
+                {patient.phone ? formatPhone(patient.phone) : ''}
+              </td>
               <td>
                 {/* Like the catalog's row actions; a link, because editing
                     a patient is a page of its own. */}
