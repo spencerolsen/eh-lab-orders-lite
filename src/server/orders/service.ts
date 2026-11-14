@@ -94,11 +94,7 @@ export function readyDateFor(
   now: Date,
   items: readonly OrderItem[],
 ): string {
-  const estimatedReadyDate = estimateReadyDate(
-    now,
-    items,
-    deps.clinicTimezone,
-  );
+  const estimatedReadyDate = estimateReadyDate(now, items, deps.clinicTimezone);
   log.debug(
     {
       event: 'order.ready_date_estimated',
