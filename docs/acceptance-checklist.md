@@ -163,7 +163,8 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 - [ ] Open an `ordered` order: the only status button is "Mark collected". Press it: the panel shows Collected and only "Mark completed", focus is still inside the panel, and the row's badge in the list behind it shows Collected without a reload.
 - [ ] Press "Mark completed": the panel shows Completed and no status buttons (only Close). A cancelled order shows none either.
-- [ ] Open the same `ordered` order in two tabs. Press "Mark collected" in the first, then in the second: the second says "This order was changed by someone else" with a reference, and now shows Collected and "Mark completed".
+- [ ] Open the same `ordered` order in two tabs. Press "Mark collected" in the first, then in the second: the second shows the server's refusal ("An order cannot move from collected to collected", a 422, because the server reads the order as it is now) with a reference, and reloads to show Collected and "Mark completed".
+- [ ] The 409: in `docker compose exec db psql -U lab_orders lab_orders`, run `begin; lock table orders in share mode;`, press "Mark collected" on the same `ordered` order in two tabs, then `commit;`. One tab shows Collected; the other says "This order was changed by someone else" with a reference, and reloads to show Collected and "Mark completed".
 - [ ] `curl -X POST localhost:3000/api/orders/<an ordered order's id>/transitions -H 'content-type: application/json' -d '{"to":"completed"}'` gives 422 `ILLEGAL_TRANSITION` and the status stays `ordered`; on a completed order both `collected` and `completed` give 422.
 - [ ] The same with an unknown well-formed id gives 404 `NOT_FOUND`; with `{}`, `{"to":"shipped"}` or `{"to":"cancelled"}` it gives 400 `VALIDATION_ERROR`.
 - [ ] After a change, `select status, updated_at, estimated_ready_date from orders where id = '<id>'` shows the new status and a new `updated_at`, and the same ready date as before.

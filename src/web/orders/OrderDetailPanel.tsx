@@ -149,9 +149,16 @@ function OrderView({ order }: { order: OrderDetail }) {
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
     },
     onError: (error) => {
-      // 409: someone else changed the order first. Reload it (and the list),
-      // so the user sees its real status and the moves allowed from there.
-      if (error instanceof ApiError && error.status === 409) {
+      // 409: someone else changed the order between the server's read and its
+      // update. 422: the server refused the move from the status it read, and
+      // the button was only offered from the status this panel shows, so the
+      // order changed since the panel loaded it (another tab moved it). Either
+      // way, reload it (and the list), so the user sees its real status and
+      // the moves allowed from there.
+      if (
+        error instanceof ApiError &&
+        (error.status === 409 || error.status === 422)
+      ) {
         void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       }
     },

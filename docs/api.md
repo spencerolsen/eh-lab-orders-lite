@@ -449,6 +449,6 @@ Only `status` and `updated_at` change; the stored ready date stays as it is.
 | 400 | `VALIDATION_ERROR`: `:id` is not a uuid; `to` is missing, not a string or not `collected` or `completed`; or an unknown extra field. | Nothing; the screen never sends these. |
 | 404 | `NOT_FOUND`: no order has that id. | The order is not there. |
 | 409 | `ORDER_CHANGED`: "This order was changed by someone else". | Reload the order and look at its real status. |
-| 422 | `ILLEGAL_TRANSITION`: the table does not allow the move, for example "An order cannot move from ordered to completed", or any move from `completed` or `cancelled`. | The rules forbid it; trying again will not help. |
+| 422 | `ILLEGAL_TRANSITION`: the table does not allow the move from the status the server read, for example "An order cannot move from ordered to completed", or any move from `completed` or `cancelled`. | The rules forbid it; trying again will not help. A screen that offered the move from an older status gets this too (the order moved since it loaded) and reloads the order. |
 
 Logged: `info` `order.status_changed` with `orderId`, `from` and `to`; `warn` `order.transition_refused` with `code`, `orderId`, `from` and `to` for an illegal move; `warn` `order.transition_lost_race` with `code`, `orderId`, `expected` (the status read) and `to` for a lost race. Nothing about the patient.

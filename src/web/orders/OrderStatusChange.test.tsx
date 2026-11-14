@@ -228,16 +228,19 @@ it('on 409 says the order changed and reloads it to show its real status', async
   await waitFor(() => expect(listStatus()).toBe('Collected'));
 });
 
-it("on 422 shows the server's message and the request id", async () => {
-  const { fetch } = fakeApi('ordered', () =>
-    json(422, {
+it("on 422 shows the server's message and reloads the order", async () => {
+  // Another tab marked it collected after this panel loaded it as ordered:
+  // the server reads collected, and the table refuses collected to collected.
+  const { fetch } = fakeApi('ordered', (_to, state) => {
+    state.status = 'collected';
+    return json(422, {
       error: {
         code: 'ILLEGAL_TRANSITION',
-        message: 'An order cannot move from ordered to collected',
+        message: 'An order cannot move from collected to collected',
         requestId: 'req-422',
       },
-    }),
-  );
+    });
+  });
   renderApp(`/?order=${ID}`);
   const dialog = await panel();
   await userEvent.click(
@@ -245,11 +248,12 @@ it("on 422 shows the server's message and the request id", async () => {
   );
 
   expect((await dialog.findByRole('alert')).textContent).toBe(
-    'An order cannot move from ordered to collected. Reference: req-422',
+    'An order cannot move from collected to collected. Reference: req-422',
   );
-  // Not a 409: the order is not reloaded, and its status is as it was.
-  expect(dialog.getByText('Ordered')).toBeTruthy();
+  // Reloaded: the real status and the move allowed from it.
+  expect(await dialog.findByText('Collected')).toBeTruthy();
+  expect(buttons(dialog)).toEqual(['Mark completed', 'Close']);
   expect(
     fetch.mock.calls.filter(([url]) => url === `/api/orders/${ID}`),
-  ).toHaveLength(1);
+  ).toHaveLength(2);
 });

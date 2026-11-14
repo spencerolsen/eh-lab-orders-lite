@@ -244,4 +244,5 @@ sequenceDiagram
 
 - **Two people at once.** Both requests can read `ordered` and pass the check. The update's `status = <status read>` condition lets only the first change the row; the second finds no row at `ordered`, changes nothing and gets the 409. Without the condition both would succeed, and the second would silently write over the first.
 - **The 422 and the 409 are different paths.** The check refuses an illegal move before any update is tried; the 409 only ever comes from an update that changed no row.
+- **Two tabs, one after the other.** If one tab marks the order collected and a tab still showing `ordered` presses the same button a moment later, the server reads `collected` and the check refuses `collected` to `collected`: a 422, not a 409. The 409 is only for two requests whose read and update overlap. Either way the panel reloads the order, so the second tab shows the real status.
 - **What changes.** Only `status` and `updated_at`; the stored ready date stays.
