@@ -149,7 +149,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 ### Order detail panel (LAB-15)
 
 - [ ] Click a row in the Orders list: a panel slides in from the right and the address bar shows `?order=<id>`. Focus is inside the panel.
-- [ ] The panel shows the status badge, the patient's name and date of birth, the ready date, the created time labelled "Created (America/Denver)", each test's code, name and price, and the total, and no buttons other than Close, the status button for the order's status and, for an order that can be cancelled, "Cancel order" (LAB-16 and LAB-17, below).
+- [ ] The panel shows the status badge, the patient's name (no date of birth, under the heading "Order for <name>"), the ready date, the created time labelled "Created (America/Denver)", each test's code, name and price, and the total, and no buttons other than Close, the status button for the order's status and, for an order that can be cancelled, "Cancel order" (LAB-16 and LAB-17, below).
 - [ ] Change the computer's time zone and reload: the created time is unchanged.
 - [ ] Press Escape: the panel closes, `?order=` is gone from the address and focus is back on that row's View button. The list behind it still works.
 - [ ] Open a panel, then press the browser's back button: the panel closes and you stay on the Orders list. Close it with the Close button and with a click on the dark backdrop too.
@@ -163,8 +163,8 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 - [ ] Open an `ordered` order: the only status button is "Mark collected". Press it: the panel shows Collected and only "Mark completed", focus is still inside the panel, and the row's badge in the list behind it shows Collected without a reload.
 - [ ] Press "Mark completed": the panel shows Completed and no status buttons (only Close). A cancelled order shows none either.
-- [ ] Open the same `ordered` order in two tabs. Press "Mark collected" in the first, then in the second: the second shows the server's refusal ("An order cannot move from collected to collected", a 422, because the server reads the order as it is now) with a reference, and reloads to show Collected and "Mark completed".
-- [ ] The 409: in `docker compose exec db psql -U lab_orders lab_orders`, run `begin; lock table orders in share mode;`, press "Mark collected" on the same `ordered` order in two tabs, then `commit;`. One tab shows Collected; the other says "This order was changed by someone else" with a reference, and reloads to show Collected and "Mark completed".
+- [ ] Open the same `ordered` order in two tabs. Press "Mark collected" in the first, then in the second: the second reloads to show Collected and "Mark completed" with the single message "This order has changed. It is now Collected." (the server refused with a 422 because it reads the order as it is now).
+- [ ] The 409: in `docker compose exec db psql -U lab_orders lab_orders`, run `begin; lock table orders in share mode;`, press "Mark collected" on the same `ordered` order in two tabs, then `commit;`. One tab shows Collected; the other reloads to show Collected and "Mark completed" with "This order has changed. It is now Collected." (the server's own sentence, "This order was changed by someone else", only appears if the reload shows nothing new).
 - [ ] `curl -X POST localhost:3000/api/orders/<an ordered order's id>/transitions -H 'content-type: application/json' -d '{"to":"completed"}'` gives 422 `ILLEGAL_TRANSITION` and the status stays `ordered`; on a completed order both `collected` and `completed` give 422.
 - [ ] The same with an unknown well-formed id gives 404 `NOT_FOUND`; with `{}`, `{"to":"shipped"}` or `{"to":"cancelled"}` it gives 400 `VALIDATION_ERROR`.
 - [ ] After a change, `select status, updated_at, estimated_ready_date from orders where id = '<id>'` shows the new status and a new `updated_at`, and the same ready date as before.
@@ -179,7 +179,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Choose "Cancelled" in "Filter by status": the order is there, with the same test count and total as before.
 - [ ] `select status, cancellation_note, cancelled_by, cancelled_at from orders where id = '<id>'` shows all three set; `select count(*) from order_items where order_id = '<id>'` is unchanged.
 - [ ] `curl -X POST localhost:3000/api/orders/<id>/cancel -H 'content-type: application/json' -d '{"note":"x","cancelledBy":"y"}'` on a completed or a cancelled order gives 422 `ILLEGAL_TRANSITION`; on an unknown well-formed id 404 `NOT_FOUND`; with `{}`, `{"note":" ","cancelledBy":"y"}`, a 501-character note, a 101-character name or an extra field 400 `VALIDATION_ERROR`, and the order is unchanged.
-- [ ] The 409: in `psql`, `begin; lock table orders in share mode;`, press "Confirm cancel" on the same order in two tabs, then `commit;`. One tab shows the cancellation; the other says "This order was changed by someone else" and reloads to show it cancelled, and the stored note is the first tab's.
+- [ ] The 409: in `psql`, `begin; lock table orders in share mode;`, press "Confirm cancel" on the same order in two tabs, then `commit;`. One tab shows the cancellation; the other reloads to show it cancelled with "This order has changed. It is now Cancelled." (the server's own sentence only appears if the reload shows nothing new), and the stored note is the first tab's.
 - [ ] In `psql`, `update orders set status = 'cancelled' where id = '<an ordered order>'` fails with `orders_cancellation_complete`.
 - [ ] The API's log has `order.cancelled` at info with the order id and `from` only, and no line contains the note or the name typed.
 
