@@ -8,7 +8,7 @@
 
 ## Description
 
-After this task, the app has a deliberate look: a deep teal menu bar, a lime accent, a warm cream page, and consistent buttons, form fields, tables and status badges. The palette and shapes are inspired by the company this exercise is for, taken from their public website. The app keeps its own name and uses no logo.
+After this task, the app has a deliberate look: a deep teal menu bar, a lime accent, a warm cream page, and consistent buttons, form fields, tables and status badges. The app uses no logo and no image or icon from anywhere else.
 
 It is done now, before the feature pages exist, so that every page built from LAB-06 on inherits the look by using the shared styles. It changes styles only: no behaviour, no API, no data. A short polish pass happens near the end, once the real pages exist.
 
@@ -24,7 +24,7 @@ It is done now, before the feature pages exist, so that every page built from LA
   - `--color-surface: #fffdf9` (cards, tables, dialogs)
   - `--color-text: #451f41` (body text)
   - `--color-text-muted`, `--color-border`, and `--color-danger` with `--color-danger-surface` for errors: chosen in this task to sit well beside the palette.
-- Type: a system serif stack for headings (for example `Georgia, 'Iowan Old Style', 'Times New Roman', serif`) and the system sans-serif stack for everything else. No font files and no font downloads: the company's own typefaces are licensed and are not used.
+- Type: a system serif stack for headings (for example `Georgia, 'Iowan Old Style', 'Times New Roman', serif`) and the system sans-serif stack for everything else. No font files and no font downloads.
 - Spacing steps, two corner sizes (controls and cards) and the pill shape for buttons and badges.
 - The existing focus outline stays clearly visible on every colour it can appear on.
 
@@ -76,7 +76,7 @@ It is done now, before the feature pages exist, so that every page built from LA
 
 ## Out of scope
 
-- The company's logo, name and licensed typefaces: deliberately not used.
+- Logos, brand names and licensed typefaces: deliberately not used.
 - Mobile and narrow-screen layouts: not planned (desktop only).
 - Dark mode: future version.
 - Icons and illustrations: future version.
@@ -98,7 +98,7 @@ It is done now, before the feature pages exist, so that every page built from LA
 ## What to be able to explain
 
 1. Why are colours named by role (`--color-brand`) and not by hue (`--teal`)? What does that make easy to change?
-2. Why system fonts and not the company's own typefaces?
+2. Why system fonts and not a licensed typeface?
 3. Why is the status word always shown on a badge, when the colour already tells you the status?
 4. What is the `/styles` page for, and who is it for?
 5. Why was this done before the feature pages and not at the end?
