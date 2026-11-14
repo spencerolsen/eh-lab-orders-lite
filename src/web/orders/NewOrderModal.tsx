@@ -59,8 +59,13 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
       ref={dialog}
       className="dialog dialog-wide"
       aria-labelledby="new-order-title"
-      // Escape closes a native dialog; tell the page.
-      onClose={onClose}
+      // Escape closes a native dialog; tell the page. The `close` event is
+      // queued, so it also arrives after the effect's own close(): in
+      // development React runs the effect twice (StrictMode), and by then the
+      // dialog is open again, so that event is ignored.
+      onClose={() => {
+        if (!dialog.current?.open) onClose();
+      }}
     >
       <form
         className="stack"

@@ -141,6 +141,21 @@ it('opens from "Place new order" with the focus in the patient search, and Cance
   );
 });
 
+it('stays open in StrictMode, where the opening effect runs twice (as in development)', async () => {
+  fakeApi();
+  const user = userEvent.setup();
+  renderApp('/', { strictMode: true });
+  await user.click(
+    await screen.findByRole('button', { name: 'Place new order' }),
+  );
+  // The close event of the first run's cleanup arrives on a later task.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(
+    screen.getByRole<HTMLDialogElement>('dialog', { name: 'New order' }).open,
+  ).toBe(true);
+  expect(document.activeElement).toBe(screen.getByLabelText('Patient'));
+});
+
 it('closes on Escape', async () => {
   fakeApi();
   const { user } = await openModal();
