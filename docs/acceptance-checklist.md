@@ -39,7 +39,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 ### Catalog: see and add lab tests (LAB-06)
 
-- [ ] After `pnpm db:seed`, Catalog in the menu bar opens the Lab tests page, which lists exactly 8 tests in this order: A1C, CBC, CMP, CULT, LIPID, TSH, UA, VITD, each with a price like `$25.00`, a turnaround like "1 business day" or "3 business days", and the status "Active" (it said "Yes" before LAB-07).
+- [ ] After `pnpm db:seed`, Catalog in the menu bar opens the Lab tests page, which lists exactly 8 tests in this order: A1C, CBC, CMP, CULT, LIPID, TSH, UA, VITD, each with a price like `$25.00`, a turnaround like "1 business day" or "3 business days", and the status "Active".
 - [ ] Add code `demo-09`, name "Demo Panel", price `19.99`, turnaround `2`: the form clears and the table shows `DEMO-09`, `$19.99`, "2 business days", Active, without a page reload. `docker compose exec db psql -U lab_orders -d lab_orders -c "select price_cents from lab_tests where code = 'DEMO-09'"` shows 1999.
 - [ ] Add code `cbc` (or `CBC`, `Cbc`): "This code already exists" appears under the code field, and the table still has one CBC.
 - [ ] Each of these shows a message under the right field and sends no request (the browser's network tab stays empty): a blank name; a price of `-1`, `12.345` or `abc`; a turnaround of `0`, `1.5` or `366`.
