@@ -182,12 +182,34 @@ describe('POST /api/orders: placing an order', () => {
     ]);
   });
 
-  it('accepts ids in upper case as the same tests', async () => {
-    const response = await post({
-      patientId: PATIENT_A.toUpperCase(),
-      labTestIds: [TEST_CBC.toUpperCase()],
+  it('treats an id written in upper case as the same test', async () => {
+    // An id with letters: the fixture ids are digits only, so upper-casing
+    // them changes nothing.
+    const hex = 'abcdef00-0000-4000-8000-0000000000ab';
+    await t.pool.query(
+      `insert into lab_tests (id, code, name, price_cents, turnaround_days)
+       values ($1, 'HEXT', 'Hex id test', 100, 1)`,
+      [hex],
+    );
+    const upper = await post({
+      patientId: PATIENT_A,
+      labTestIds: [hex.toUpperCase()],
     });
-    expect(response.statusCode).toBe(201);
+    expect(upper.statusCode).toBe(201);
+    const twice = await post({
+      patientId: PATIENT_A,
+      labTestIds: [hex, hex.toUpperCase()],
+    });
+    expect(twice.statusCode).toBe(422);
+    expect(
+      twice.json<{ error: { details: { field: string; reason: string }[] } }>()
+        .error.details,
+    ).toEqual([
+      {
+        field: 'labTestIds.1',
+        reason: `Lab test ${hex} is listed more than once`,
+      },
+    ]);
   });
 });
 
@@ -271,13 +293,6 @@ describe('POST /api/orders: refused with 422 and nothing saved', () => {
     );
   });
 
-  it('the same test twice, once in upper case', async () => {
-    await expectRefused(
-      { patientId: PATIENT_A, labTestIds: [TEST_CBC, TEST_CBC.toUpperCase()] },
-      'INVALID_ORDER_TESTS',
-    );
-  });
-
   it('a test id that does not exist, among good ones', async () => {
     await expectRefused(
       {
@@ -329,6 +344,27 @@ describe('POST /api/orders: refused with 422 and nothing saved', () => {
     );
   });
 
+  it('the tests and the patient both wrong: the tests are reported, and nothing is inserted', async () => {
+    const response = await post({
+      patientId: UNKNOWN_PATIENT,
+      labTestIds: [UNKNOWN_TEST],
+    });
+    expect(response.json<{ error: { code: string } }>().error.code).toBe(
+      'INVALID_ORDER_TESTS',
+    );
+    // The tests are checked before the order insert, so a refused list
+    // never reaches an INSERT.
+    const inserts = t
+      .logs()
+      .filter(
+        (line) =>
+          line.requestId === response.headers['x-request-id'] &&
+          line.event === 'db.query' &&
+          line.command === 'INSERT',
+      );
+    expect(inserts).toHaveLength(0);
+  });
+
   it('a patient id that does not exist', async () => {
     await expectRefused(
       { patientId: UNKNOWN_PATIENT, labTestIds: [TEST_CBC] },
@@ -372,6 +408,41 @@ describe('POST /api/orders: a malformed body is a 400', () => {
 });
 
 describe('POST /api/orders: all or nothing', () => {
+  it('holds the catalog rows it copied, on its own connection, until the order commits', async () => {
+    // Pause the order insert, so the transaction is still open after the
+    // catalog read. Another connection must then wait to change the test.
+    await t.pool.query(
+      `create or replace function test_pause() returns trigger language plpgsql
+       as $$ begin perform pg_sleep(0.5); return new; end $$`,
+    );
+    await t.pool.query(
+      `create trigger test_pause before insert on orders
+       for each row execute function test_pause()`,
+    );
+    const placing = post({ patientId: PATIENT_A, labTestIds: [TEST_CBC] });
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const other = await t.pool.connect();
+      try {
+        await other.query("set lock_timeout = '100ms'");
+        await expect(
+          other.query('update lab_tests set price_cents = 1 where id = $1', [
+            TEST_CBC,
+          ]),
+        ).rejects.toMatchObject({ code: '55P03' }); // lock_not_available
+      } finally {
+        other.release();
+      }
+      expect((await placing).statusCode).toBe(201);
+    } finally {
+      // Never drop the trigger while the request still runs.
+      await placing;
+      await t.pool.query(
+        'drop trigger if exists test_pause on orders; drop function if exists test_pause()',
+      );
+    }
+  });
+
   it('leaves no order row when an item insert fails after the order was inserted', async () => {
     // A constraint that only this test adds, so the second item's insert
     // fails inside the transaction, after the order row and the first item.
