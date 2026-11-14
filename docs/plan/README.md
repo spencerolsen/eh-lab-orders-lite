@@ -68,6 +68,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-22](tasks/LAB-22-docs-and-readme.md) | Docs and README, final pass | Docs | LAB-07, LAB-10, LAB-17, LAB-20, LAB-21 | Not started |
 | [LAB-23](tasks/LAB-23-submission-readiness.md) | Submission readiness | Hardening | LAB-05, LAB-22 | Not started |
 | [LAB-24](tasks/LAB-24-visual-theme.md) | Visual theme | Groundwork | LAB-04 | Done |
+| [LAB-25](tasks/LAB-25-polish-pass.md) | Polish pass from the browser checkpoints | Hardening | LAB-20 | In progress |
 
 ## How the tasks depend on each other
 
