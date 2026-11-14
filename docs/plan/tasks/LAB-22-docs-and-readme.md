@@ -2,7 +2,7 @@
 
 - **Status:** Not started
 - **Type:** Docs
-- **Depends on:** LAB-07 (Catalog: edit and activate or deactivate tests), LAB-10 (Patients: duplicate warning on create), LAB-17 (Orders: cancel an order with a note and a name), LAB-20 (New order from the menu bar and the patient page), LAB-21 (Browser tests for the main journeys)
+- **Depends on:** LAB-07 (Catalog: edit and activate or deactivate tests), LAB-10 (Patients: duplicate warning on create), LAB-17 (Orders: cancel an order with a note and a name), LAB-20 (New order from the patient page), LAB-21 (Browser tests for the main journeys)
 - **Unblocks:** LAB-23 (Submission readiness)
 - **Branch:** `lab-22-docs-and-readme`
 

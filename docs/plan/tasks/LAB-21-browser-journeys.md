@@ -2,7 +2,7 @@
 
 - **Status:** Not started
 - **Type:** Hardening
-- **Depends on:** LAB-10 (Patients: duplicate warning on create), LAB-13 (Orders: live total and ready date while building an order), LAB-14 (Orders: filter the list by status and patient), LAB-17 (Orders: cancel an order with a note and a name), LAB-18 (Orders: a double-click or retry cannot create a duplicate order), LAB-20 (New order from the menu bar and the patient page)
+- **Depends on:** LAB-10 (Patients: duplicate warning on create), LAB-13 (Orders: live total and ready date while building an order), LAB-14 (Orders: filter the list by status and patient), LAB-17 (Orders: cancel an order with a note and a name), LAB-18 (Orders: a double-click or retry cannot create a duplicate order), LAB-20 (New order from the patient page)
 - **Unblocks:** LAB-22 (Docs and README, final pass)
 - **Branch:** `lab-21-browser-journeys`
 
