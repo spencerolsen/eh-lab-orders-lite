@@ -29,6 +29,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 **UI**
 - The New order modal generates a key with `crypto.randomUUID()` each time it opens and sends it as `Idempotency-Key` on submit. The same key is reused if the user retries after an error in the same modal session; closing and reopening makes a new key.
 - The "Submit order" button is disabled while the request is in flight and shows a pending label.
+- The modal cannot be closed while the request is in flight (owner decision, from the LAB-12 review note below); any reply makes it closable again.
 - A 200 reply is treated as success, the same as 201: the modal closes and the list refreshes.
 
 **Rules**
@@ -40,7 +41,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 **Tooling**
 - Concurrency tests fire two real simultaneous requests at Postgres, not a mock.
 
-**Note from the LAB-12 review:** today Cancel or Escape during a pending submit closes the modal, but the order is still placed and appears after the refetch; decide whether the modal should wait for the reply. **Decided (owner):** keep it. Closing during a submit still closes at once and the order appears after the refetch; no duplicate can result. Recorded in `docs/plan/backlog.md` with the alternative (block closing while the request runs).
+**Note from the LAB-12 review:** today Cancel or Escape during a pending submit closes the modal, but the order is still placed and appears after the refetch; decide whether the modal should wait for the reply. **Decided (owner):** the modal cannot be closed until the reply arrives. While the create request is pending, Cancel is disabled, and Escape, any other close request and a click outside do nothing (the modal has no close button); "Submit order" stays disabled. Any reply makes it closable again: a success closes it as before; an error reply or a network failure shows the error and keeps the same key for a retry, so the modal is never stuck open on an answer.
 
 ## Acceptance criteria
 
