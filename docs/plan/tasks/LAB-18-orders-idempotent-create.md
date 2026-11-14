@@ -1,6 +1,6 @@
 # LAB-18: Orders: a double-click or retry cannot create a duplicate order
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Hardening
 - **Depends on:** LAB-13 (Orders: live total and ready date while building an order)
 - **Unblocks:** LAB-20 (New order from the patient page), LAB-21 (Browser tests for the main journeys)
