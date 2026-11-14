@@ -67,7 +67,9 @@ export function PatientPicker({
   );
 }
 
-function PatientMatches({
+// The matches for a name search, as buttons to pick from (also used by the
+// orders list's patient filter).
+export function PatientMatches({
   q,
   onPick,
 }: {

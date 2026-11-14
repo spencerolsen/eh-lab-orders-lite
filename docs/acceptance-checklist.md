@@ -133,6 +133,19 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Stop the API (or block `/api/orders/quote`), add a test: the summary shows a plain message with a "Reference:" id, and "Submit order" is still enabled.
 - [ ] `curl -X POST localhost:3000/api/orders/quote -H 'content-type: application/json' -d '{"labTestIds":[]}'` gives 422 `INVALID_ORDER_TESTS`; the Orders list has no new row after any quote.
 
+### Orders list filters (LAB-14)
+
+- [ ] Choose "Collected" in "Filter by status": only collected orders remain and the address bar shows `?status=collected`. Choose "All statuses": the filter and the parameter go.
+- [ ] Type part of a patient's name in "Filter by patient" and pick one: only that patient's orders remain, the address has `?patientId=<id>` and no name, and the chosen patient shows with their date of birth. Two patients with the same name can be told apart by it. "Remove patient filter" brings the search box back and the full list.
+- [ ] Both filters together show only orders matching both.
+- [ ] Reload, and open the address in a new tab: the same filters and rows come back, and the patient is shown by name from the id. The browser's Back and Forward buttons step through the filter changes.
+- [ ] With a filter set, open an order, then close it: the filter is still set. Open `/?order=<id>&status=ordered`: the panel and the filter are both there.
+- [ ] Tab reaches the status select and the patient search; the select is changed with the arrow keys; each has a visible label.
+- [ ] With more than 25 matching orders, "Load more" appears below the table; pressing it adds the rest and the button goes. With exactly 25, it does not appear. Changing a filter starts again from the first page.
+- [ ] A filter that matches nothing shows "No orders match these filters" with "Clear filters", which restores the full list. With no filter and no orders the message is "No orders yet".
+- [ ] `curl 'localhost:3000/api/orders?status=bogus'` (and `limit=0`, `limit=101`, `offset=-1`, `patientId=abc`, `colour=red`) gives 400 `VALIDATION_ERROR` with a request id; an unknown but well-formed `patientId` gives 200 with an empty `items`.
+- [ ] With `LOG_LEVEL=debug` the API's log shows `orders.listed` with filter names and a row count, and no patient name, id or search text.
+
 ### Order detail panel (LAB-15)
 
 - [ ] Click a row in the Orders list: a panel slides in from the right and the address bar shows `?order=<id>`. Focus is inside the panel.

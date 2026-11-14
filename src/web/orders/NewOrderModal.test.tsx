@@ -120,8 +120,13 @@ async function choosePatient(user: ReturnType<typeof userEvent.setup>) {
 }
 
 const quickAdd = () => screen.getByRole('combobox', { name: 'Add a test' });
-const options = () =>
-  screen.queryAllByRole('option').map((option) => option.textContent);
+// The suggestions only: the orders page behind the modal has a status select
+// whose options are options too.
+const suggestionOptions = () =>
+  screen
+    .queryAllByRole('listbox')
+    .flatMap((list) => within(list).queryAllByRole('option'));
+const options = () => suggestionOptions().map((option) => option.textContent);
 const chosenCodes = () => {
   const table = screen.queryByRole('table', { name: 'Chosen tests' });
   if (!table) return [];
@@ -259,8 +264,7 @@ it('moves the highlight with the arrow keys, and Escape closes the suggestions b
   await choosePatient(user);
   await user.type(quickAdd(), 'ts');
   const selected = () =>
-    screen
-      .getAllByRole('option')
+    suggestionOptions()
       .filter((option) => option.getAttribute('aria-selected') === 'true')
       .map((option) => option.textContent);
   expect(selected()).toEqual([]);
