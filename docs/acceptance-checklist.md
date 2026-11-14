@@ -100,6 +100,19 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 **Covers:** live preview, filters, detail panel, status changes, cancel.
 
+### Order detail panel (LAB-15)
+
+- [ ] Click a row in the Orders list: a panel slides in from the right and the address bar shows `?order=<id>`. Focus is inside the panel.
+- [ ] The panel shows the status badge, the patient's name and date of birth, the ready date, the created time labelled "Created (America/Denver)", each test's code, name and price, and the total, and no buttons other than Close.
+- [ ] Change the computer's time zone and reload: the created time is unchanged.
+- [ ] Press Escape: the panel closes, `?order=` is gone from the address and focus is back on that row's View button. The list behind it still works.
+- [ ] Open a panel, then press the browser's back button: the panel closes and you stay on the Orders list. Close it with the Close button and with a click on the dark backdrop too.
+- [ ] Tab to a row's View button and press Enter: the panel opens.
+- [ ] Reload with `?order=<id>` in the address: the panel is open again. Copy the address into a new tab: same.
+- [ ] Open `/?order=5eed0011-0000-4000-8000-0000000000ff`: the panel says "Order not found" with a Close button, and the list is behind it. Open `/?order=nonsense`: the same, and nothing crashes.
+- [ ] `curl localhost:3000/api/orders/nonsense` gives 400 `VALIDATION_ERROR`; a well-formed unknown id gives 404 `NOT_FOUND`.
+- [ ] The API's log for opening a panel has the request line, the query lines and `order.loaded` with an id and a count, and nothing with a patient's name, date of birth or contact detail.
+
 ## Checkpoint 3
 
 **Runs:** in LAB-23.

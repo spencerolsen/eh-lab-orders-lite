@@ -89,3 +89,28 @@ sequenceDiagram
 - **The total is worked out here, every time,** by `calculateTotal` on the frozen item prices; the database has no total column and the SQL has no `SUM`. The ready date is read as stored: it was worked out once, when the order was placed.
 - **The created time is formatted on the server** in `CLINIC_TIMEZONE` and shown as sent, so a browser in another time zone still shows the clinic's time, and the column header names the zone.
 - **Nothing about a patient is logged:** the request line (`request.completed`) and one `db.query` debug line are all.
+
+## One order, from the database to the panel
+
+`GET /api/orders/:id` (LAB-15), opened from a row or from `?order=<id>` in the address.
+
+```mermaid
+sequenceDiagram
+  participant P as OrderDetailPanel
+  participant A as API (GET /api/orders/:id)
+  participant D as Postgres
+
+  P->>A: GET /api/orders/<id> (TanStack Query, key ['orders', id])
+  A->>D: select the order joined to its patient
+  D-->>A: one row, or none (404 NOT_FOUND)
+  A->>D: select the order_items rows of the order
+  D-->>A: code, name, price, turnaround per item
+  Note over A: totalCents = calculateTotal(items),<br/>allowedNextStatuses and canCancel from the transition table,<br/>createdAtClinic = clinicDateTime(CLINIC_TIMEZONE, created_at)
+  A-->>P: the order
+  Note over P: orderDetailSchema.parse; StatusBadge, PatientLabel,<br/>formatCents, formatDate, formatDateTime(createdAtClinic)
+```
+
+- **Two reads, no catalog.** The items are the frozen `order_items` rows, so a later price change in the catalog cannot change what the panel shows.
+- **The id is checked before the database.** A string that is not a uuid is a 400 and never reaches Postgres; a well-formed id with no order is a 404. The panel does not even ask for an address that is not a uuid: it shows "Order not found".
+- **The panel's state is in the address.** Clicking a row adds `?order=<id>` (a history entry); the page renders the panel while it is there, and closing or going back removes it.
+- **Nothing about the patient is logged:** the request line, a `db.query` line per query, and `order.loaded` with the id and the item count.

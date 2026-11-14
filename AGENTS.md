@@ -11,9 +11,10 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
 - `src/server/`: the API server. Each feature gets its own folder, `src/server/<feature>/` (for example `orders`, `patients`, `catalog`).
   - `routes.ts`: HTTP routes. A route parses its input explicitly with the shared schema, then calls the repository or the service.
   - `repo.ts`: the SQL queries for that feature, hand-written, with typed row mappers. Queries live here and nowhere else.
-  - `domain/`: business rules as pure functions (no Fastify, no `pg`, no clock: the caller passes the time in), unit tested on their own. Rules never live in routes or repositories. The order total (`calculateTotal`) and ready date (`estimateReadyDate`) are in `src/server/orders/domain/`; call them, never reimplement them.
+  - `domain/`: business rules as pure functions (no Fastify, no `pg`, no clock: the caller passes the time in), unit tested on their own. Rules never live in routes or repositories. The order total (`calculateTotal`) and ready date (`estimateReadyDate`) are in `src/server/orders/domain/`; call them, never reimplement them. The status moves are the table and `assertTransition` in `domain/transitions.ts`: status changes call it, and nothing else lists legal moves.
   - `service.ts`: only where a feature needs a transaction or combines rules with several queries (for example placing an order). Simple features call the repository from the route.
 - `src/web/`: the browser app (React, Vite, React Router, TanStack Query). Each feature gets its own folder, `src/web/<feature>/`, with its page (for example `catalog/CatalogPage.tsx`).
+  - `orders/OrderDetailPanel.tsx` takes only an order id: it fetches its own order, shows its own states and closes itself by removing `?order=` from the address. To show an order from another page, render it for an id; never hand it an order.
   - `main.tsx` mounts the app (error boundary, query client, router); `App.tsx` holds the routes; `Layout.tsx` and `MenuBar.tsx` are the frame around every page; `NotFoundPage.tsx` is the screen for unknown paths.
   - `api/`: `client.ts` (`apiFetch` and `ApiError`, the only way to call the API), `errors.ts` (`describeError`, the sentence shown for a failed request), `query-client.ts` (TanStack Query defaults).
   - `components/`: shared `Loading`, `EmptyState`, `ErrorMessage`, `StatusBadge` and the `ErrorBoundary`. A page shows loading, empty and error states with these, never its own.
@@ -142,7 +143,7 @@ The statuses are written in exactly two places, and everything else derives from
 
 1. **The migration:** a new file in `db/migrations/` that drops and re-adds the `orders_status_known` CHECK with the new list (never edit `0004_orders.sql` once merged).
 2. **`ORDER_STATUSES`** in `src/shared/orders.ts`, in the same order as the CHECK. `src/server/orders/schema.integration.test.ts` fails until the two agree.
-3. **The transition table** in `src/server/orders/domain/` (LAB-15): which moves lead into and out of the new status. Its unit tests cover every pair.
+3. **The transition table** (`TRANSITIONS` in `src/server/orders/domain/transitions.ts`): which moves lead into and out of the new status (the type checker refuses a status without an entry). Its unit tests list every pair, and fail until the new pairs are written in.
 4. **The labels:** `ORDER_STATUS_LABELS` in the same file (the type checker refuses a status without one) and a `.badge-<status>` tint in `src/web/styles/base.css`.
 5. **Docs and test expectations:** the status lists in `docs/api.md` (`GET /api/orders`), `docs/data-model.md` (`orders`) and the badge rows of the colour and contrast tables in `docs/architecture.md` (Visual theme); the hand-written expectations in `src/web/components/StatusBadge.test.tsx` and `src/web/styles/StylesPage.test.tsx` fail until updated, on purpose.
 

@@ -7,8 +7,13 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
 import { StatusBadge } from '../components/StatusBadge';
-import { PatientLabel } from '../patients/PatientLabel';
+import { PatientLabel, patientName } from '../patients/PatientLabel';
 import { fetchOrders, ORDERS_KEY } from './api';
+import {
+  OrderDetailPanel,
+  useOpenOrder,
+  useOpenOrderId,
+} from './OrderDetailPanel';
 
 // The home page: every order, newest first, as the server sends it. Nothing
 // is worked out here: the total, the ready date and the clinic-time created
@@ -16,15 +21,19 @@ import { fetchOrders, ORDERS_KEY } from './api';
 // (createdAtClinic), never converted to the browser's time zone, and its
 // column says which zone that is.
 export function OrdersPage() {
+  const openOrderId = useOpenOrderId();
   return (
     <>
       <h1>Orders</h1>
       <OrderList query={useOrders()} />
+      {/* The panel knows nothing of this page: it gets only the id. */}
+      {openOrderId && <OrderDetailPanel orderId={openOrderId} />}
     </>
   );
 }
 
 function OrderList({ query }: { query: ReturnType<typeof useOrders> }) {
+  const openOrder = useOpenOrder();
   if (query.isPending) return <Loading label="Loading orders…" />;
   if (query.isError) {
     return (
@@ -47,11 +56,22 @@ function OrderList({ query }: { query: ReturnType<typeof useOrders> }) {
           <th scope="col">Ready by</th>
           <th scope="col">Status</th>
           <th scope="col">Created ({clinicTimezone})</th>
+          <th scope="col">Details</th>
         </tr>
       </thead>
       <tbody>
         {items.map((order) => (
-          <tr key={order.id}>
+          // A click anywhere on the row opens the order; the patient link keeps
+          // its own meaning. Keyboard users use the View button in the last cell.
+          <tr
+            key={order.id}
+            className="clickable"
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest('a, button')) return;
+              event.currentTarget.querySelector('button')?.focus();
+              openOrder(order.id);
+            }}
+          >
             <td>
               {/* The patient page, as a name links on the Patients list. */}
               <Link to={`/patients/${order.patient.id}`}>
@@ -65,6 +85,16 @@ function OrderList({ query }: { query: ReturnType<typeof useOrders> }) {
               <StatusBadge status={order.status} />
             </td>
             <td>{formatDateTime(order.createdAtClinic)}</td>
+            <td>
+              <button
+                type="button"
+                className="button-secondary"
+                aria-label={`View order for ${patientName(order.patient)}`}
+                onClick={() => openOrder(order.id)}
+              >
+                View
+              </button>
+            </td>
           </tr>
         ))}
       </tbody>

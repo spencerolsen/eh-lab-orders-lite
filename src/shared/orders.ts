@@ -2,6 +2,8 @@
 // by the server to build its replies and by the web app to check them.
 import { z } from 'zod';
 
+import { orderItemSchema } from './order-items';
+
 // Every order status, in the order an order moves through them. This is the
 // one list in code: schemas, the transition table (LAB-15) and the screen's
 // labels derive from it. The database CHECK on orders.status (migration
@@ -60,3 +62,31 @@ export const orderListSchema = z.object({
 
 export type OrderListItem = z.infer<typeof orderListItemSchema>;
 export type OrderList = z.infer<typeof orderListSchema>;
+
+// GET /api/orders/:id: one order with its patient and the tests it holds.
+export const orderDetailSchema = z.object({
+  id: z.uuid(),
+  status: orderStatusSchema,
+  patient: z.object({
+    id: z.uuid(),
+    firstName: z.string(),
+    lastName: z.string(),
+    dateOfBirth: z.string(),
+    email: z.string().nullable(),
+    phone: z.string().nullable(),
+  }),
+  items: z.array(orderItemSchema),
+  // Derived from the items by calculateTotal, never stored.
+  totalCents: z.number().int(),
+  estimatedReadyDate: z.string(),
+  createdAt: z.string(),
+  createdAtClinic: z.string(),
+  // The IANA name createdAtClinic is in, so the screen can label it.
+  clinicTimezone: z.string(),
+  // Decided by the server's transition table; the browser repeats none of it.
+  // The forward moves only; cancelling is canCancel.
+  allowedNextStatuses: z.array(orderStatusSchema),
+  canCancel: z.boolean(),
+});
+
+export type OrderDetail = z.infer<typeof orderDetailSchema>;
