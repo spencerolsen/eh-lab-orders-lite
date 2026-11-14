@@ -21,6 +21,9 @@ export default defineConfig({
     // taken, Vite stops with an error instead of picking another one.
     port: webPort,
     strictPort: true,
+    // The browser tests (pnpm test:e2e) write their report and traces here;
+    // a `pnpm dev` running beside them must not reload for that.
+    watch: { ignored: ['**/playwright-report/**', '**/test-results/**'] },
     // The browser talks only to Vite; Vite forwards API calls to the API, so
     // there is one origin and no CORS setup.
     proxy: { '/api': apiUrl, '/healthz': apiUrl },
