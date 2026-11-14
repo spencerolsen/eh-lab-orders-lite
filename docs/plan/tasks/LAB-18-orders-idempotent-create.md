@@ -3,7 +3,7 @@
 - **Status:** In progress
 - **Type:** Hardening
 - **Depends on:** LAB-13 (Orders: live total and ready date while building an order)
-- **Unblocks:** LAB-20 (New order from the menu bar and the patient page), LAB-21 (Browser tests for the main journeys)
+- **Unblocks:** LAB-20 (New order from the patient page), LAB-21 (Browser tests for the main journeys)
 - **Branch:** `lab-18-orders-idempotent-create`
 
 ## Description

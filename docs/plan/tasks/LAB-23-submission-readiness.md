@@ -21,7 +21,7 @@ It comes last because every check needs the finished app and docs. Most of its o
 - The pull request checks (LAB-05) on `main` are green.
 
 **Exploratory pass (Checkpoint 3)**
-- This is Checkpoint 3 of `docs/acceptance-checklist.md`: everything, including idempotent create, patient order history and the New order entry points. Checkpoints 1 and 2 ran earlier (once LAB-04 and LAB-06 to LAB-12 had merged, and once LAB-13 to LAB-17 had merged); here they are run again against the final build.
+- This is Checkpoint 3 of `docs/acceptance-checklist.md`: everything, including idempotent create, patient order history and New order from the orders page and the patient page. Checkpoints 1 and 2 ran earlier (once LAB-04 and LAB-06 to LAB-12 had merged, and once LAB-13 to LAB-17 had merged); here they are run again against the final build.
 - The AI runs every item of `docs/acceptance-checklist.md` in a real browser against the running app, one at a time, and records pass or fail with the date in the checklist's last-run column.
 - Beyond the list it tries to break the app: empty input, 500-character input, special characters and emoji, double submits, back and forward, reload with a panel open, an unknown order id in the URL, the API stopped, two tabs changing one order.
 - Each bug is logged (what, how to reproduce, expected), then given a failing automated test in the layer that owns the rule (unit, integration, or component; e2e only if it can be seen only in a browser), then fixed on its own branch off `main`. The test fails before the fix and passes after.
@@ -39,7 +39,7 @@ It comes last because every check needs the finished app and docs. Most of its o
 - [ ] On a fresh clone, `pnpm install` then `pnpm dev` gives a running app that opens in a browser, with no step beyond what the README lists.
 - [ ] On that fresh clone, `pnpm test` passes and `pnpm test:e2e` passes.
 - [ ] The latest run of the pull request checks on `main` is green.
-- [ ] Checkpoint 3: every item in `docs/acceptance-checklist.md` (all three checkpoint sections, including idempotent create, patient order history and the New order entry points) has a pass recorded for the final build, with the date.
+- [ ] Checkpoint 3: every item in `docs/acceptance-checklist.md` (all three checkpoint sections, including idempotent create, patient order history and New order from both entry points) has a pass recorded for the final build, with the date.
 - [ ] Every bug the exploratory pass found has a test that failed before the fix and passes now, each on its own branch; the bug list is in `docs/process.md`.
 - [ ] `knip` run once reports zero unused dependencies and zero unused exports; a search of `src/` finds no `console.log`, TODO or commented-out code.
 - [ ] A search of the repo finds no real personal data, no secrets, and no log call that includes a name, date of birth, contact detail or search text.

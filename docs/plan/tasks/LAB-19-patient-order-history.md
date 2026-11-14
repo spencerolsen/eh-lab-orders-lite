@@ -3,7 +3,7 @@
 - **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-14 (Orders: filter the list by status and patient), LAB-15 (Orders: order detail slide-out panel)
-- **Unblocks:** LAB-20 (New order from the menu bar and the patient page)
+- **Unblocks:** LAB-20 (New order from the patient page)
 - **Branch:** `lab-19-patient-order-history`
 
 ## Description
@@ -72,7 +72,7 @@ Nothing new is built on the server. The orders list already filters by patient (
 
 ## Out of scope
 
-- Starting a new order from the patient page or the menu bar: LAB-20.
+- Starting a new order from the patient page: LAB-20.
 - Filters on the patient's order list: the orders page already filters (LAB-14); this list shows all of one patient's orders.
 - Editing orders: future version.
 - Copying the patient's name onto the order for the paper requisition: future version.
