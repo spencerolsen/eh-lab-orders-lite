@@ -111,3 +111,8 @@ Optional review findings and ideas that were deliberately not applied, kept as a
 | At 1024 wide the orders table's patient column is the squeezed one ("Test Patient (born Mar 9," then "1984)"). | LAB-25 review | Fine as is; noted only. |
 | The acceptance checklist has no LAB-25 section (panel heading, select arrow, New order dialog scroll). | LAB-25 review | Optional for a polish ticket. |
 | `onSuccess` in `OrderDetailPanel` clears the error a second time after `onMutate` already did. | LAB-25 review | Harmless; one line could go. |
+| Running `playwright test` directly prints a stack trace instead of a short message. | LAB-21 review | Catch it in `playwright.config.ts` and print the one line. |
+| `scripts/e2e.ts` runs Playwright with `spawnSync`, which blocks its own Ctrl-C handler until Playwright exits. | LAB-21 review | Works because Ctrl-C also reaches Playwright; a comment would explain it. |
+| The double-click journey passes because of the idempotency key, not only the disabled button. | LAB-21 review | Rename it to "a double click or a retry creates exactly one order". |
+| The browser tests hard-code seed prices (`$63.00`, `$25.00`, `$18.00`). | LAB-21 review | A seed price change breaks three tests; a one-line comment would say so. |
+| `docs/testing.md` does not say that `trace.zip` is only written for failed tests. | LAB-21 review | One sentence in "Seeing why one failed". |

@@ -51,12 +51,13 @@ pnpm comes with Node through Corepack. The commands below are written `pnpm <scr
 | `pnpm build` | Build the web app into `dist/web`. |
 | `pnpm start` | Run the API server under `tsx` with JSON logs. |
 | `pnpm test` | Unit, component and integration tests (Vitest projects `unit`, `component` and `integration`, plus `dates-west-unit` and `dates-west-component`, which run the test files that work out or show a calendar day again in the `Pacific/Honolulu` time zone, so a calendar-day bug that only shows west of UTC fails on every machine and in CI; a new test file that checks a calendar day is added to the list in `vitest.config.ts`). The integration project starts the database container and waits until it is healthy, unless `CI` is set, and needs `.env` (or `TEST_DATABASE_URL` in the environment); the unit and component projects need neither Docker nor `.env`. One project alone: `pnpm test --project unit`, `--project component` or `--project integration`. |
+| `pnpm test:e2e` | The browser tests (Playwright, Chromium only, `e2e/`): `scripts/e2e.ts` starts the database container, drops, migrates and seeds its own database `lab_orders_e2e`, starts the API and the web app on `PORT` and `WEB_PORT`, runs the journeys and stops what it started. It stops with one line if a port is taken or Docker is not running. One-time download before the first run: `pnpm exec playwright install chromium`. Not part of `pnpm test` and not in CI. Arguments go to Playwright: `pnpm test:e2e -g "double click"`. |
 | `pnpm format` | Format the code with Prettier. Markdown is not formatted. |
 | `pnpm format:check` | Check the formatting without changing files. |
 | `pnpm db:up` | Start Postgres in Docker (host port `DB_PORT`, 5433) and wait until it is healthy. |
 | `pnpm db:down` | Stop and remove the container. The data volume is kept. |
 | `pnpm db:migrate` | Apply the pending files in `db/migrations/` to the development database. |
-| `pnpm db:reset` | Drop and recreate the development database's schema, migrate, then seed. Refuses any database other than `lab_orders` and `lab_orders_test`, and refuses when `NODE_ENV=production`. |
+| `pnpm db:reset` | Drop and recreate the development database's schema, migrate, then seed. Refuses any database other than `lab_orders`, `lab_orders_test` and `lab_orders_e2e`, and refuses when `NODE_ENV=production`. |
 | `pnpm db:seed` | Insert the fake sample rows from `db/seed.ts`. |
 | `pnpm db:test:reset` | Drop, recreate and migrate the test database in `TEST_DATABASE_URL`. Refuses any database other than `lab_orders_test`. |
 
@@ -64,9 +65,9 @@ The TypeScript scripts run under `tsx`, which loads `.env` with `--env-file-if-e
 
 `package.json` lists `esbuild` under `pnpm.ignoredBuiltDependencies`, so `pnpm install` skips its install script without a warning. The script is not needed: tsx, Vite and Vitest use esbuild's JavaScript API, which finds the binary in the platform package (`@esbuild/<platform>`) that pnpm installs as an optional dependency. The script only downloads that binary when the optional package is missing, and speeds up the `esbuild` command, which nothing here runs. A new dependency with an install script must be added to `ignoredBuiltDependencies` or `onlyBuiltDependencies` the same way, with its reason here.
 
-Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. LAB-21 adds `pnpm test:e2e`.
+Run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` before opening a pull request. `pnpm test:e2e` (browser tests, local only) is worth running after a change to a screen the journeys cover (`docs/testing.md`).
 
-The same checks run on GitHub Actions for every pull request and every push to `main` (`.github/workflows/ci.yml`, one job): `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build`, then `pnpm test` against a Postgres 16 service container on port 5432, with the settings in the job's environment (there is no `.env` in CI). Browser tests are not run there; they run locally. A new setting a check needs goes into the workflow's `env` as well as `.env.example`.
+The same checks run on GitHub Actions for every pull request and every push to `main` (`.github/workflows/ci.yml`, one job): `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build`, then `pnpm test` against a Postgres 16 service container on port 5432, with the settings in the job's environment (there is no `.env` in CI). Browser tests are not run there; they run locally (`pnpm test:e2e`). A new setting a check needs goes into the workflow's `env` as well as `.env.example`.
 
 **Several copies at once.** Each copy of the project (one per ticket built in parallel) needs its own `COMPOSE_PROJECT_NAME`, `DB_PORT` (with the same port in `DATABASE_URL` and `TEST_DATABASE_URL`), `PORT` and `WEB_PORT` in its `.env`; the README section "Running a second copy" has the exact lines. Nothing else in the code may hard-code a port or the project name.
 
