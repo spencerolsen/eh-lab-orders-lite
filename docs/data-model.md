@@ -23,6 +23,10 @@ erDiagram
     text first_name
     text last_name
     date date_of_birth
+    text email "null, lower case"
+    text phone "null, 10 digits"
+    timestamptz created_at
+    timestamptz updated_at
   }
   orders {
     uuid id PK
@@ -160,4 +164,4 @@ Seed (`db/seeds/orders.ts`): 5 orders for seeded patients with fixed ids `5eed00
 
 - **Calendar days are `date` columns, read as `YYYY-MM-DD` strings.** A date of birth or a ready date is a day, not a moment. The `DATE` type parser (`src/server/db/types.ts`) keeps Postgres's string as it is; without it, `pg` would build a JavaScript `Date` at local midnight, and the day could shift depending on the server's time zone.
 - **A `date[]` (for example from `array_agg`) still comes back as JavaScript `Date`s**, because only the single `DATE` type has a parser. Select dates one per row instead.
-- **Money is whole cents in integer columns** (`price_cents`, `total_cents`).
+- **Money is whole cents in integer columns** (`price_cents`). The order total is not a column: the API sends it as `totalCents`, worked out from the items.
