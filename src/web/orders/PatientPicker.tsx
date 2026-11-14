@@ -54,11 +54,9 @@ export function PatientPicker({
         autoFocus
         value={text}
         aria-describedby="order-patient-help"
+        // Enter here cannot submit the order: Submit order stays disabled
+        // until a patient is chosen, and then this box is gone.
         onChange={(event) => setText(event.target.value)}
-        onKeyDown={(event) => {
-          // Enter in the search never submits the order.
-          if (event.key === 'Enter') event.preventDefault();
-        }}
       />
       <p id="order-patient-help" className="field-help">
         Type part of the patient’s first or last name

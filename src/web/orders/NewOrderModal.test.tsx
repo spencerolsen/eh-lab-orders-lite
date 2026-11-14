@@ -9,7 +9,8 @@ import type { OrderListItem } from '../../shared/orders';
 import { SEEDED } from '../testing/fake-patients-api';
 import { renderApp } from '../testing/render';
 
-const id = (n: number) => `30000000-0000-4000-8000-00000000000${n}`;
+const id = (n: number) =>
+  `30000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const lab = (
   n: number,
   code: string,
@@ -279,7 +280,7 @@ it('moves the highlight with the arrow keys, and Escape closes the suggestions b
 
 it('never offers an inactive test or one already chosen, and offers at most 8', async () => {
   const many = Array.from({ length: 9 }, (_, n) =>
-    lab(n + 1, `PAN${n + 1}`, `Panel ${n + 1}`),
+    lab(n + 11, `PAN${n + 1}`, `Panel ${n + 1}`),
   );
   fakeApi({
     catalog: () => Promise.resolve(json(200, [...CATALOG, ...many])),
@@ -293,8 +294,13 @@ it('never offers an inactive test or one already chosen, and offers at most 8', 
   await user.type(quickAdd(), 'lipid');
   expect(options()).toEqual([]);
   await user.clear(quickAdd());
+  // Nine PAN tests match (LIPID, "Lipid Panel", is already chosen).
   await user.type(quickAdd(), 'pan');
-  expect(options()).toHaveLength(8);
+  expect(options()).toEqual(
+    ['PAN1', 'PAN2', 'PAN3', 'PAN4', 'PAN5', 'PAN6', 'PAN7', 'PAN8'].map(
+      (code) => `${code} Panel ${code.slice(3)}`,
+    ),
+  );
 });
 
 it('adds a test on a click, and Remove takes it off and offers it again', async () => {
