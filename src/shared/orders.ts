@@ -202,7 +202,7 @@ const cancelText = z.string({
 });
 
 export const cancelOrderBody = z.strictObject({
-  // Free text, so line breaks are allowed; other control characters (a NUL
+  // Free text, so line breaks and tabs are allowed; other control characters (a NUL
   // cannot be stored in Postgres text) are not.
   note: cancelText
     .trim()
@@ -213,7 +213,7 @@ export const cancelOrderBody = z.strictObject({
     )
     .regex(
       /^(?:[^\p{Cc}]|[\t\n\r])*$/u,
-      'must not contain control characters other than line breaks',
+      'must not contain control characters other than line breaks and tabs',
     ),
   cancelledBy: cancelText
     .trim()

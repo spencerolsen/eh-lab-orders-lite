@@ -465,7 +465,7 @@ Cancels an order that is `ordered` or `collected` (LAB-17), keeping why and who.
 
 | Field | Rule |
 |---|---|
-| `note` | Why the order is cancelled. Required text, trimmed, then 1 to 500 characters. Line breaks are kept; other control characters are refused. |
+| `note` | Why the order is cancelled. Required text, trimmed, then 1 to 500 characters. Line breaks and tabs are kept; other control characters (NUL included) are refused. |
 | `cancelledBy` | The name of the person cancelling, typed in (there is no login; with one it would come from the signed-in user). Required text, trimmed, then 1 to 100 characters, no control characters. |
 
 No other field is allowed.

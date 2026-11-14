@@ -86,7 +86,8 @@ describe('cancelOrderBody', () => {
     expect(problems({ ...valid, note: 'one\u0000two' })).toEqual([
       {
         field: 'note',
-        reason: 'must not contain control characters other than line breaks',
+        reason:
+          'must not contain control characters other than line breaks and tabs',
       },
     ]);
     expect(problems({ ...valid, cancelledBy: 'Sample\nStaff' })).toEqual([
