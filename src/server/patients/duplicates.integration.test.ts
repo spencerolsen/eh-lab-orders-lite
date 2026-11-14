@@ -256,6 +256,44 @@ describe('POST /api/patients with a likely duplicate', () => {
         (_, index) => `First${String(index).padStart(2, '0')}`,
       ),
     );
+    // The log counts every match, not only the ten listed.
+    expect(
+      t.logs().find((line) => line.event === 'patient.possible_duplicate'),
+    ).toMatchObject({ matchCount: 12 });
+  });
+
+  // Postgres lower('İlker') is 'ilker', JavaScript's is 'i̇lker' (with a
+  // combining dot), so the query proposes these ten rows and matchRules
+  // rejects them. The real match sorts after them and must still be found:
+  // the limit applies after the rule, never in the query. (On a database
+  // whose lower() leaves İ alone, the ten rows are never proposed, and the
+  // test passes for that reason.)
+  it('a match sorted after ten rows the rule rejects is still found', async () => {
+    for (let index = 0; index < 10; index += 1) {
+      await insert({
+        firstName: 'ilker',
+        lastName: 'Aaa',
+        dateOfBirth: '1980-05-05',
+        email: `ilker.${index}@example.test`,
+        phone: null,
+      });
+    }
+    const zed = await insert({
+      firstName: 'Zed',
+      lastName: 'Zzz',
+      dateOfBirth: '1970-01-01',
+      email: null,
+      phone: '8015550300',
+    });
+    const response = await post({
+      firstName: 'İlker',
+      lastName: 'Aaa',
+      dateOfBirth: '1980-05-05',
+      phone: '(801) 555-0300',
+    });
+    expect(response.statusCode).toBe(409);
+    expect(matchIds(response)).toEqual([zed]);
+    expect(await patientCount()).toBe(11);
   });
 
   it('runs the check when confirmDuplicate is false', async () => {

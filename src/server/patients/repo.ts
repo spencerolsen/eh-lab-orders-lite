@@ -4,7 +4,6 @@ import pg from 'pg';
 import {
   CONTACT_REQUIRED_REASONS,
   type CreatePatientBody,
-  DUPLICATE_MATCH_LIMIT,
   type Patient,
   SEARCH_RESULT_LIMIT,
   type UpdatePatientBody,
@@ -92,8 +91,11 @@ export async function searchPatients(db: Db, text: string): Promise<Patient[]> {
 // lower(first_name), lower(last_name) and date_of_birth, each against a bound
 // parameter, with the indexes of 0005_patient_duplicate_indexes.sql. A null
 // email or phone is never equal to anything in SQL, so missing never matches
-// missing. In the list's order, at most DUPLICATE_MATCH_LIMIT. matchRules
-// (domain/duplicates.ts) then says which rule each row matched.
+// missing. In the list's order, every candidate: there is no limit here,
+// because matchRules (domain/duplicates.ts) decides afterwards, and a row it
+// rejects must not push a real match past a limit (Postgres lower() and
+// JavaScript's toLowerCase() differ for a few letters, such as İ). Each
+// candidate shares an exact value with the new patient, so they are few.
 export async function findDuplicateCandidates(
   db: Db,
   input: CreatePatientBody,
@@ -105,15 +107,13 @@ export async function findDuplicateCandidates(
         or (lower(first_name) = lower($3)
             and lower(last_name) = lower($4)
             and date_of_birth = $5)
-     ${ORDER_BY}
-     limit $6`,
+     ${ORDER_BY}`,
     [
       input.email ?? null,
       input.phone ?? null,
       input.firstName,
       input.lastName,
       input.dateOfBirth,
-      DUPLICATE_MATCH_LIMIT,
     ],
   );
   return rows.map(toPatient);

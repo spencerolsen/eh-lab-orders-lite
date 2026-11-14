@@ -5,6 +5,7 @@ import type { FastifyBaseLogger } from 'fastify';
 
 import {
   type CreatePatientBody,
+  DUPLICATE_MATCH_LIMIT,
   DUPLICATE_RULES,
   type Patient,
 } from '../../shared/patients';
@@ -51,7 +52,11 @@ export async function createPatient(
         },
         'Possible duplicate patient ids',
       );
-      throw new PossibleDuplicateError(matches.map((match) => match.patient));
+      // The limit applies here, after the rule, so the response lists at
+      // most DUPLICATE_MATCH_LIMIT while matchCount is the true count.
+      throw new PossibleDuplicateError(
+        matches.slice(0, DUPLICATE_MATCH_LIMIT).map((match) => match.patient),
+      );
     }
   }
   const patient = await insertPatient(db, body);
