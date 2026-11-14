@@ -1,6 +1,6 @@
 # LAB-16: Orders: mark an order collected or completed
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-15 (Orders: order detail slide-out panel)
 - **Unblocks:** LAB-17 (Orders: cancel an order with a note and a name)
