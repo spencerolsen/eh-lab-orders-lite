@@ -76,7 +76,8 @@ function toFieldErrors(problems: FieldProblem[]): FieldErrors {
 // field, and the message (with its reference) above the button.
 // `initialValues` fills the fields (toFormValues turns a stored patient into
 // them); `onChange` is called on every edit; `secondaryAction` (a Cancel
-// link, say) sits next to the submit button.
+// link, say) sits next to the submit button; `busy` disables the submit
+// button while the page runs a request of its own (Create anyway, LAB-10).
 export function PatientForm<Body>({
   schema,
   initialValues = EMPTY_PATIENT,
@@ -84,6 +85,7 @@ export function PatientForm<Body>({
   onSubmit,
   onChange,
   secondaryAction,
+  busy = false,
 }: {
   schema: (today: string) => z.ZodType<Body>;
   initialValues?: PatientFormValues;
@@ -91,6 +93,7 @@ export function PatientForm<Body>({
   onSubmit: (body: Body) => Promise<unknown>;
   onChange?: () => void;
   secondaryAction?: ReactNode;
+  busy?: boolean;
 }) {
   const id = useId();
   const [values, setValues] = useState(initialValues);
@@ -186,7 +189,7 @@ export function PatientForm<Body>({
       })}
       {submitError !== null && <ErrorMessage error={submitError} />}
       <div className="form-actions">
-        <button type="submit" disabled={saving}>
+        <button type="submit" disabled={saving || busy}>
           {saving ? 'Saving…' : submitLabel}
         </button>
         {secondaryAction}
