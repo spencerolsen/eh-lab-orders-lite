@@ -4,6 +4,7 @@ import type {
   ErrorBody as SharedErrorBody,
   FieldProblem,
 } from '../shared/api-error';
+import type { Patient } from '../shared/patients';
 
 // Every error code the API can return, in upper snake case. Later tasks add
 // their own codes here and to the error-code table in docs/api.md.
@@ -16,6 +17,7 @@ export const ERROR_CODES = [
   'INTERNAL_ERROR',
   'DUPLICATE_TEST_CODE',
   'CONTACT_REQUIRED',
+  'POSSIBLE_DUPLICATE',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -59,6 +61,18 @@ export class NotFoundError extends AppError {
 export class ConflictError extends AppError {
   constructor(code: ErrorCode, message: string) {
     super(409, code, message);
+  }
+}
+
+// 409 POSSIBLE_DUPLICATE: a new patient looks like existing ones (LAB-10).
+// Nothing was created; `matches` goes to the caller as `error.matches`, so the
+// user can open one of them or send the request again with confirmDuplicate.
+export class PossibleDuplicateError extends ConflictError {
+  constructor(readonly matches: Patient[]) {
+    super(
+      'POSSIBLE_DUPLICATE',
+      'This patient may already exist. Open the existing patient, or create a new one anyway.',
+    );
   }
 }
 
@@ -144,6 +158,9 @@ export function toErrorResponse(
         message: known.message,
         ...(known.details && known.details.length > 0
           ? { details: known.details }
+          : {}),
+        ...(known instanceof PossibleDuplicateError
+          ? { matches: known.matches }
           : {}),
         requestId,
       },

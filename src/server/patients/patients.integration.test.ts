@@ -23,8 +23,15 @@ const valid = {
   email: 'test.patient@example.test',
 };
 
+// The patients these tests create share an email on purpose, so each request
+// skips the duplicate check (confirmDuplicate). The check itself is tested in
+// duplicates.integration.test.ts.
 async function post(body: Record<string, unknown>) {
-  return t.inject({ method: 'POST', url: '/api/patients', payload: body });
+  return t.inject({
+    method: 'POST',
+    url: '/api/patients',
+    payload: { ...body, confirmDuplicate: true },
+  });
 }
 
 async function list(): Promise<Patient[]> {
@@ -91,12 +98,6 @@ describe('POST /api/patients', () => {
       email: null,
       phone: '8015550101',
     });
-  });
-
-  it('creates two patients with identical details (no duplicate check yet)', async () => {
-    expect((await post(valid)).statusCode).toBe(201);
-    expect((await post(valid)).statusCode).toBe(201);
-    expect(await storedRows()).toHaveLength(2);
   });
 
   it.each([
@@ -285,7 +286,12 @@ describe('no patient detail reaches the log', () => {
   }
 
   it('on success: patient.created once, at info, with the id only', async () => {
-    const response = await post(markers);
+    // Without confirmDuplicate: the plain path, through the duplicate check.
+    const response = await t.inject({
+      method: 'POST',
+      url: '/api/patients',
+      payload: markers,
+    });
     expect(response.statusCode).toBe(201);
     await list();
     expectNoMarkers();

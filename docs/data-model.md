@@ -101,6 +101,7 @@ Every check is named (`patients_contact_required` for `email is not null or phon
 - **Two places enforce the rules.** The shared schema gives the user a clear error per field; the database checks are the backstop for any row that does not come through the API (a script, direct SQL, a future bug).
 - **The date-of-birth check is loose on purpose.** "Not in the future" means not after the clinic's today, checked in the schema with `CLINIC_TIMEZONE`. The database's `current_date` is in UTC, which can be a day ahead of or behind the clinic, so its check is `date_of_birth <= current_date + 1`: it rejects only dates that are in the future everywhere, and never a date the schema accepts.
 - No unique constraint: two patients with the same details can both exist (LAB-10 warns instead of blocking).
+- **Three indexes serve the duplicate warning** (`db/migrations/0005_patient_duplicate_indexes.sql`, LAB-10): `patients_email_lower_idx` on `lower(email)`, `patients_phone_idx` on `phone`, and `patients_name_dob_idx` on (`lower(first_name)`, `lower(last_name)`, `date_of_birth`), one per rule of the candidate query (`findDuplicateCandidates` in `src/server/patients/repo.ts`), each on the expression it compares. They are plain, not unique: the rule warns and never blocks. Every create runs the query, so they keep it a lookup as the table grows; at a clinic's few hundred rows Postgres scans the table anyway.
 
 ### `orders`
 

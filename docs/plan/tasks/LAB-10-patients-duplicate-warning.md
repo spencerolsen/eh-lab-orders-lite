@@ -1,6 +1,6 @@
 # LAB-10: Patients: duplicate warning on create
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Vertical slice
 - **Depends on:** LAB-09 (Patients: search by name and edit a patient)
 - **Unblocks:** LAB-21 (Browser tests for the main journeys), LAB-22 (Docs and README, final pass)
@@ -24,7 +24,7 @@ Duplicate records split a patient's history across two charts, so the app warns.
 
 **API**
 - `POST /api/patients` accepts an extra optional boolean `confirmDuplicate`. The body is validated first: a bad body is 400 `VALIDATION_ERROR` and is never reported as a duplicate. A non-boolean `confirmDuplicate` is 400.
-- Without `confirmDuplicate: true`, when there is at least one match nothing is created and the response is 409 `POSSIBLE_DUPLICATE` in the standard error shape, with `details.matches`: up to 10 of `{ id, firstName, lastName, dateOfBirth, email, phone }`, sorted by last name, then first name.
+- Without `confirmDuplicate: true`, when there is at least one match nothing is created and the response is 409 `POSSIBLE_DUPLICATE` in the standard error shape, with `error.matches` (beside `details`): up to 10 of `{ id, firstName, lastName, dateOfBirth, email, phone }`, sorted by last name, then first name.
 - With `confirmDuplicate: true` the check is skipped and the patient is created (201). The flag is never stored.
 - No match: 201 as in LAB-08. The check and insert are not locked together, so two simultaneous creates of the same person may both succeed; accepted, because the rule warns and does not block.
 - The route calls the service, which calls the repo. The edit endpoint is unchanged and runs no duplicate check.
@@ -38,23 +38,23 @@ Duplicate records split a patient's history across two charts, so the app warns.
 
 ## Acceptance criteria
 
-- [ ] Creating a patient with the same email as an existing one in different letter case returns 409 `POSSIBLE_DUPLICATE`, creates nothing, and the panel lists that patient with name, date of birth, email and phone.
-- [ ] A phone typed as `(801) 555-0100` matches an existing patient stored as `8015550100`.
-- [ ] Same first name, last name and date of birth in any letter case is a match; the same name with a different date of birth is not.
-- [ ] Same last name only, or `Jon` against `John`, is not a match and the patient is created.
-- [ ] Two patients that match by different rules both appear, each once.
-- [ ] Open this patient goes to that patient's page, and the patient count is unchanged.
-- [ ] Create anyway creates the patient (201) and the list shows both; the same request with `confirmDuplicate: true` sent directly also returns 201.
-- [ ] An invalid body with a matching email returns 400, not 409; `confirmDuplicate: "yes"` returns 400.
-- [ ] Editing a patient into another patient's email through the edit form saves with no warning.
-- [ ] No log line contains a name, date of birth, email or phone number.
+- [x] Creating a patient with the same email as an existing one in different letter case returns 409 `POSSIBLE_DUPLICATE`, creates nothing, and the panel lists that patient with name, date of birth, email and phone.
+- [x] A phone typed as `(801) 555-0100` matches an existing patient stored as `8015550100`.
+- [x] Same first name, last name and date of birth in any letter case is a match; the same name with a different date of birth is not.
+- [x] Same last name only, or `Jon` against `John`, is not a match and the patient is created.
+- [x] Two patients that match by different rules both appear, each once.
+- [x] Open this patient goes to that patient's page, and the patient count is unchanged.
+- [x] Create anyway creates the patient (201) and the list shows both; the same request with `confirmDuplicate: true` sent directly also returns 201.
+- [x] An invalid body with a matching email returns 400, not 409; `confirmDuplicate: "yes"` returns 400.
+- [x] Editing a patient into another patient's email through the edit form saves with no warning.
+- [x] No log line contains a name, date of birth, email or phone number.
 - [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
-- [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
+- [x] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
 
 ## Tests
 
 - **Unit:** `matchRules` for each rule alone, all three, none, empty email and phone never matching each other, letter-case differences, last name only.
-- **Integration (real Postgres):** the candidate query finds each rule's matches (case-insensitive email and name, digits-only phone); 409 shape and `details.matches` fields; no row on 409; `confirmDuplicate: true` creates; invalid body wins over duplicate; the flag is not stored; edit does not warn.
+- **Integration (real Postgres):** the candidate query finds each rule's matches (case-insensitive email and name, digits-only phone); 409 shape and `error.matches` fields; no row on 409; `confirmDuplicate: true` creates; invalid body wins over duplicate; the flag is not stored; edit does not warn.
 - **Component:** the warning panel renders matches, hides on field change, and Create anyway resends with the flag.
 - **E2E:** none added here; the duplicate-warning journey is LAB-21.
 
@@ -82,3 +82,18 @@ Duplicate records split a patient's history across two charts, so the app warns.
 3. Why does this feature get a service when the other patient routes do not?
 4. Why does a bad body return 400 even when a duplicate exists?
 5. What can still produce a duplicate despite the check, and why is that accepted?
+
+## Build notes
+
+Decisions made while building, and what this version deliberately accepts:
+
+- **The rule** lives in one pure function, `matchRules(candidate, existing)` in `src/server/patients/domain/duplicates.ts`, with the rule written as a comment above it. The rule names (`email`, `phone`, `name_dob`) are `DUPLICATE_RULES` in `src/shared/patients.ts`. Names and emails are compared trimmed and ignoring case; phones as the stored 10 digits; dates exactly. A missing email or phone never matches a missing one.
+- **One candidate query**, `findDuplicateCandidates` in `src/server/patients/repo.ts`, compares `lower(email)`, `phone`, `lower(first_name)`, `lower(last_name)` and `date_of_birth` against bound parameters, sorted by last name then first name, with no limit. `matchRules` then decides and labels each row, and the service lists the first 10 matches. The limit comes after the rule because Postgres `lower()` and JavaScript `toLowerCase()` differ for a few letters (`İ`): rows the query proposes and the rule rejects must not push a real match past the limit (review finding 1, with its test). Migration `0005_patient_duplicate_indexes.sql` adds one plain index per rule, on the same expressions; at a clinic's size Postgres scans the table anyway, but every create runs the query, and the indexes keep it a lookup as the table grows.
+- **The matches are in `error.matches`**, beside `details`, not in `details.matches`: `details` is a list of field problems on every other error, and the web client and the form read it that way. The standard error schema (`src/shared/api-error.ts`) has `matches` as an optional list of patients.
+- **The matches are patient data sent to any caller.** There is no login in this version, so that is by design; with logins it would need a permission check (recorded in `docs/plan/backlog.md`).
+- **The race is accepted.** The check and the insert are not locked together, so two identical creates at the same moment can both succeed. The check warns, it does not guarantee (backlog).
+- **Exact means exact.** `Jon` is not `John`, and names that differ only by an accent (`Zoe`, `Zoë`) do not match (backlog).
+- **Logs.** `patient.possible_duplicate` at `warn` with `code`, `matchCount` and `rules`; `patient.possible_duplicate.matches` at `debug` with the matched ids and their rules; `patient.created` gains `duplicateConfirmed: true`. An integration test triggers each rule with marker values and checks, with the logger at debug, that no marker reaches the log.
+- **The form.** `DuplicateWarning` sits above `PatientForm` on the New patient page only; it is an alert region that takes focus. Create anyway is a secondary button; Save patient stays the primary one. `PatientForm` gained a `busy` prop so Save patient is disabled while Create anyway runs.
+- **Existing tests** that create several patients sharing an email now send `confirmDuplicate: true` in their setup helper; the check itself is tested in `duplicates.integration.test.ts`.
+- The `docs/process.md` criterion is not done here: the process log is kept outside the repository.

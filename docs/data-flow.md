@@ -67,6 +67,42 @@ sequenceDiagram
 - **"Today" is the clinic's.** The server asks `today(CLINIC_TIMEZONE, clock())`, so a date of birth of the clinic's today is accepted even when it is already tomorrow in UTC, and the clinic's tomorrow is refused. The browser does not know the clinic's time zone, so it checks against the latest day anywhere on Earth (`latestTodayAnywhere`, UTC+14): it catches a date that is plainly in the future, never blocks one the clinic accepts, and the server's answer wins.
 - **A rejected value goes back as a field problem**, `{ field: "dateOfBirth", reason: "..." }` in `details`, and the form shows it under the date of birth. The value itself is never logged.
 
+## A new patient, through the duplicate check
+
+`POST /api/patients` (LAB-10). The body is parsed first, so a bad body is a 400 and is never reported as a duplicate. Then the patients service runs the check, unless the body says `confirmDuplicate: true`.
+
+```mermaid
+sequenceDiagram
+  participant F as NewPatientPage
+  participant A as API (route, then patients service)
+  participant D as Postgres
+
+  F->>A: POST { firstName, lastName, dateOfBirth, email, phone }
+  Note over A: parse(createPatientBody): 400 VALIDATION_ERROR if wrong
+  A->>D: findDuplicateCandidates: lower(email) = $1 or phone = $2 or (names, date of birth), no limit
+  D-->>A: candidate rows
+  Note over A: matchRules(body, row) for each: email, phone, name_dob; keep the matches, list the first 10
+  alt at least one match
+    Note over A: warn patient.possible_duplicate (count, rule names); debug the ids
+    A-->>F: 409 POSSIBLE_DUPLICATE, error.matches, nothing inserted
+    Note over F: DuplicateWarning above the form, which keeps its values
+    alt Open this patient
+      F->>F: go to /patients/:id (nothing created)
+    else Create anyway
+      F->>A: the same body plus confirmDuplicate: true
+      A->>D: insert (no check)
+      A-->>F: 201, info patient.created duplicateConfirmed: true
+    else the user edits a field
+      Note over F: the warning goes away; the next Save checks again
+    end
+  else no match
+    A->>D: insert
+    A-->>F: 201, info patient.created
+  end
+```
+
+The check and the insert are two statements with no lock between them, so two identical creates sent at the same moment can both pass the check and both insert. That is accepted for this version: the rule warns, it does not guarantee. Editing a patient (`PATCH`) skips all of this.
+
 ## The orders list, from the database to the home page
 
 `GET /api/orders` (LAB-11) in one query, and the two derived values on the way.

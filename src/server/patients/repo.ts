@@ -85,6 +85,40 @@ export async function searchPatients(db: Db, text: string): Promise<Patient[]> {
   return rows.map(toPatient);
 }
 
+// The stored patients that may duplicate a new one (LAB-10), in one query:
+// the same email, or the same phone, or the same first name, last name and
+// date of birth. It compares lower(email), phone (the stored 10 digits),
+// lower(first_name), lower(last_name) and date_of_birth, each against a bound
+// parameter, with the indexes of 0005_patient_duplicate_indexes.sql. A null
+// email or phone is never equal to anything in SQL, so missing never matches
+// missing. In the list's order, every candidate: there is no limit here,
+// because matchRules (domain/duplicates.ts) decides afterwards, and a row it
+// rejects must not push a real match past a limit (Postgres lower() and
+// JavaScript's toLowerCase() differ for a few letters, such as İ). Each
+// candidate shares an exact value with the new patient, so they are few.
+export async function findDuplicateCandidates(
+  db: Db,
+  input: CreatePatientBody,
+): Promise<Patient[]> {
+  const { rows } = await db.query<PatientRow>(
+    `select ${COLUMNS} from patients
+     where lower(email) = lower($1)
+        or phone = $2
+        or (lower(first_name) = lower($3)
+            and lower(last_name) = lower($4)
+            and date_of_birth = $5)
+     ${ORDER_BY}`,
+    [
+      input.email ?? null,
+      input.phone ?? null,
+      input.firstName,
+      input.lastName,
+      input.dateOfBirth,
+    ],
+  );
+  return rows.map(toPatient);
+}
+
 // One patient, or undefined when the id does not exist.
 export async function findPatient(
   db: Db,

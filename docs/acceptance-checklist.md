@@ -94,6 +94,18 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] With no orders (`truncate orders, order_items` in `psql`), the page shows "No orders yet". Stop the API and reload: "Can't reach the server. Try again." with a Try again button.
 - [ ] The API's log for the page load has the request line and nothing with a patient's name or date of birth.
 
+### Patients: duplicate warning on create (LAB-10)
+
+- [ ] After `pnpm db:seed`, New patient with any new name and date of birth and the email `SAMPLE.Person@Example.test`: Save patient shows "This patient may already exist" above the form, with "Sample Person (born Dec 31, 1990)", its email and its phone (or "none"), and an "Open this patient" link. The form keeps every value typed, and keyboard focus is on the warning.
+- [ ] The Patients list still has the same number of patients (nothing was created).
+- [ ] A phone typed `(801) 555-0101` matches Demo Example (stored as `8015550101`). `test` `PATIENT` born `1984-03-09` (with a new email) matches Test Patient; Test Patient born `1984-03-10`, `Other` `Patient` born `1984-03-09`, or `Tes` `Patient` born `1984-03-09` does not, and saves.
+- [ ] Email `sample.person@example.test` with phone `(801) 555-0101` lists Demo Example and Sample Person, each once, by last name.
+- [ ] Open this patient opens that patient's page.
+- [ ] Create anyway (the secondary button) saves the patient and the list shows both records. It and Save patient are disabled while it runs.
+- [ ] With the warning showing, edit any field: the warning goes away, and Save patient checks again.
+- [ ] Editing a patient's email to another patient's email on the patient page saves with no warning.
+- [ ] While doing all of the above, the API's log (with `LOG_LEVEL=debug`) shows `patient.possible_duplicate` at warn with `matchCount` and `rules` such as `["email"]`, `patient.possible_duplicate.matches` with ids only, `patient.created` with `duplicateConfirmed: true` after Create anyway, and never a name, date of birth, email or phone.
+
 ## Checkpoint 2
 
 **Runs:** once LAB-13 to LAB-17 have all merged.

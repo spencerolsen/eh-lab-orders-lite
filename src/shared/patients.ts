@@ -95,25 +95,42 @@ export function patientFields(today: string) {
 // The body of POST /api/patients. Unknown fields are refused. The contact
 // rule runs even when other fields are wrong, so the form shows every problem
 // at once; it reports on both email and phone.
+// `confirmDuplicate: true` skips the duplicate check (LAB-10): the user saw
+// the possible duplicates and chose Create anyway. It is never stored.
 export function createPatientBody(today: string) {
-  return z.strictObject(patientFields(today)).superRefine(
-    (value, ctx) => {
-      if (value.email !== undefined || value.phone !== undefined) return;
-      for (const field of ['email', 'phone'] as const) {
-        ctx.addIssue({
-          code: 'custom',
-          path: [field],
-          message: CONTACT_REQUIRED_REASONS[field],
-        });
-      }
-    },
-    // Zod skips an object's refinements when a field already failed; this
-    // one only needs email and phone, which are parsed by then, so it runs.
-    { when: () => true },
-  );
+  return z
+    .strictObject({
+      ...patientFields(today),
+      confirmDuplicate: z
+        .boolean({ error: 'must be true or false' })
+        .optional(),
+    })
+    .superRefine(
+      (value, ctx) => {
+        if (value.email !== undefined || value.phone !== undefined) return;
+        for (const field of ['email', 'phone'] as const) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [field],
+            message: CONTACT_REQUIRED_REASONS[field],
+          });
+        }
+      },
+      // Zod skips an object's refinements when a field already failed; this
+      // one only needs email and phone, which are parsed by then, so it runs.
+      { when: () => true },
+    );
 }
 
 export type CreatePatientBody = z.output<ReturnType<typeof createPatientBody>>;
+
+// The duplicate rules of a new patient (LAB-10), by the fixed names the server
+// logs: same email, same phone, or same first name, last name and date of birth.
+export const DUPLICATE_RULES = ['email', 'phone', 'name_dob'] as const;
+export type DuplicateRule = (typeof DUPLICATE_RULES)[number];
+
+// A 409 POSSIBLE_DUPLICATE lists at most this many matching patients.
+export const DUPLICATE_MATCH_LIMIT = 10;
 
 // An email or phone field for an update: absent means "leave it as it is";
 // null or empty text means "remove it", and comes out as null.

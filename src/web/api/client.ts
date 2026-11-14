@@ -2,6 +2,7 @@
 // body (callers check it with the shared response schema); on any failure it
 // throws an ApiError, so screens handle a single kind of error.
 import { errorBodySchema, type FieldProblem } from '../../shared/api-error';
+import type { Patient } from '../../shared/patients';
 
 // The code for a failure that did not come with the standard error body: the
 // request never got an answer (the network, or the Vite dev server with the
@@ -18,6 +19,8 @@ export class ApiError extends Error {
     message: string,
     readonly requestId?: string,
     readonly details?: FieldProblem[],
+    // Only on 409 POSSIBLE_DUPLICATE: the existing patients that match.
+    readonly matches?: Patient[],
   ) {
     super(message);
     this.name = 'ApiError';
@@ -77,6 +80,13 @@ export async function apiFetch(
 
   const parsed = errorBodySchema.safeParse(parseJson(text));
   if (!parsed.success) throw unreachable(response.status);
-  const { code, message, requestId, details } = parsed.data.error;
-  throw new ApiError(response.status, code, message, requestId, details);
+  const { code, message, requestId, details, matches } = parsed.data.error;
+  throw new ApiError(
+    response.status,
+    code,
+    message,
+    requestId,
+    details,
+    matches,
+  );
 }

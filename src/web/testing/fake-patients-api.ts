@@ -1,7 +1,10 @@
 // A fake patients API for component tests, standing in for fetch: /healthz is
 // fine; GET /api/patients (with an optional q, matched like the server does),
 // GET and PATCH /api/patients/:id, with a 404 for an unknown id and the 422
-// CONTACT_REQUIRED when an edit would leave no email or phone.
+// CONTACT_REQUIRED when an edit would leave no email or phone, and POST
+// /api/patients, with a 409 POSSIBLE_DUPLICATE when the email is already
+// taken and the body has no confirmDuplicate: true. (The real duplicate rule
+// is tested on the server; one rule is enough for the screens.)
 import { vi } from 'vitest';
 
 import type { Patient } from '../../shared/patients';
@@ -32,10 +35,47 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-function error(status: number, code: string, details?: unknown): Response {
+function error(
+  status: number,
+  code: string,
+  details?: unknown,
+  matches?: Patient[],
+): Response {
   return json(status, {
-    error: { code, message: `Fake ${code}`, requestId: 'req-1', details },
+    error: {
+      code,
+      message: `Fake ${code}`,
+      requestId: 'req-1',
+      details,
+      matches,
+    },
   });
+}
+
+type NewPatient = Omit<Patient, 'id' | 'email' | 'phone'> & {
+  email?: string;
+  phone?: string;
+  confirmDuplicate?: boolean;
+};
+
+function create(patients: Patient[], init: RequestInit): Response {
+  const { confirmDuplicate, ...body } = JSON.parse(
+    init.body as string,
+  ) as NewPatient;
+  const matches = patients.filter(
+    (p) => body.email !== undefined && p.email === body.email,
+  );
+  if (matches.length > 0 && confirmDuplicate !== true) {
+    return error(409, 'POSSIBLE_DUPLICATE', undefined, matches);
+  }
+  const patient: Patient = {
+    id: `new-${patients.length + 1}`,
+    email: null,
+    phone: null,
+    ...body,
+  };
+  patients.push(patient);
+  return json(201, patient);
 }
 
 export function fakePatientsApi(patients: Patient[] = structuredClone(SEEDED)) {
@@ -43,6 +83,9 @@ export function fakePatientsApi(patients: Patient[] = structuredClone(SEEDED)) {
     const { pathname, searchParams } = new URL(url, 'http://localhost');
     if (pathname === '/healthz') {
       return Promise.resolve(json(200, { status: 'ok' }));
+    }
+    if (pathname === '/api/patients' && init?.method === 'POST') {
+      return Promise.resolve(create(patients, init));
     }
     if (pathname === '/api/patients') {
       const q = (searchParams.get('q') ?? '').toLowerCase();
