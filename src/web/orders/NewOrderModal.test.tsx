@@ -177,6 +177,7 @@ it('keeps quick-add disabled with "Choose a patient first" and Submit order disa
 
   await choosePatient(user);
   expect((quickAdd() as HTMLInputElement).disabled).toBe(false);
+  expect(document.activeElement).toBe(quickAdd());
   expect(screen.queryByText('Choose a patient first')).toBeNull();
   // A patient alone is not enough.
   expect((submitButton() as HTMLButtonElement).disabled).toBe(true);

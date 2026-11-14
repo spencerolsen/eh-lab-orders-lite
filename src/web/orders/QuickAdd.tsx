@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { type KeyboardEvent, useState } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 import type { LabTest } from '../../shared/lab-tests';
 import { matchTests } from '../../shared/match-tests';
@@ -28,10 +28,16 @@ export function QuickAdd({
     queryKey: LAB_TESTS_KEY,
     queryFn: ({ signal }) => fetchLabTests(signal),
   });
+  const input = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   // The highlighted suggestion's index, or -1 for none.
   const [highlight, setHighlight] = useState(-1);
+
+  // Once a patient is chosen, the focus moves here: the next step.
+  useEffect(() => {
+    if (!disabled) input.current?.focus();
+  }, [disabled]);
 
   const suggestions = catalog.data
     ? matchTests(text, catalog.data, selectedIds).slice(0, MAX_SUGGESTIONS)
@@ -70,6 +76,7 @@ export function QuickAdd({
       <label htmlFor="quick-add">Add a test</label>
       <input
         id="quick-add"
+        ref={input}
         type="text"
         role="combobox"
         autoComplete="off"
