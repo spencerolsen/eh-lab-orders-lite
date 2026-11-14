@@ -1,16 +1,21 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { z } from 'zod';
 
 import { formatDate, formatDateTime } from '../../shared/dates';
 import { formatCents } from '../../shared/money';
+import {
+  ORDER_STATUS_LABELS,
+  type OrderDetail,
+  type OrderTransitionBody,
+} from '../../shared/orders';
 import { ApiError } from '../api/client';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
 import { StatusBadge } from '../components/StatusBadge';
 import { PatientLabel } from '../patients/PatientLabel';
-import { fetchOrder, orderKey } from './api';
+import { changeOrderStatus, fetchOrder, ORDERS_KEY, orderKey } from './api';
 
 // The query parameter that holds the open order: "?order=<id>".
 export const ORDER_PARAM = 'order';
@@ -31,10 +36,11 @@ export function useOpenOrderId(): string | null {
   return useSearchParams()[0].get(ORDER_PARAM);
 }
 
-// A slide-out panel that shows one order, read-only. Its only input is the
-// order id: it fetches its own data and knows nothing about the page it sits
-// on. It is shown while it is mounted, and it closes itself by removing
-// ?order= from the address, so any page can show it for an id in the URL.
+// A slide-out panel that shows one order and moves its status forward. Its
+// only input is the order id: it fetches its own data and knows nothing about
+// the page it sits on. It is shown while it is mounted, and it closes itself
+// by removing ?order= from the address, so any page can show it for an id in
+// the URL.
 // Focus goes inside when it opens and back to what had it when it closes.
 export function OrderDetailPanel({ orderId }: { orderId: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -123,12 +129,58 @@ function PanelBody({ orderId }: { orderId: string }) {
     );
   }
 
-  const order = query.data;
+  return <OrderView order={query.data} />;
+}
+
+function OrderView({ order }: { order: OrderDetail }) {
+  const queryClient = useQueryClient();
+  // Focus lands on the status line after a change, so it stays inside the
+  // panel when the pressed button goes away.
+  const statusLine = useRef<HTMLParagraphElement>(null);
+
+  const change = useMutation({
+    mutationFn: (to: OrderTransitionBody['to']) =>
+      changeOrderStatus(order.id, { to }),
+    onSuccess: (changed) => {
+      // The panel shows the server's answer at once, and the list behind it
+      // refreshes through the shared ORDERS_KEY (the panel never touches the
+      // list itself).
+      queryClient.setQueryData(orderKey(order.id), changed);
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+    },
+    onError: (error) => {
+      // 409: someone else changed the order first. Reload it (and the list),
+      // so the user sees its real status and the moves allowed from there.
+      if (error instanceof ApiError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      }
+    },
+    onSettled: () => statusLine.current?.focus(),
+  });
+
   return (
     <div className="stack">
-      <p>
+      <p ref={statusLine} tabIndex={-1}>
         <StatusBadge status={order.status} />
       </p>
+      {/* One button per move the server allows; none for a final order. A
+          409 or 422 shows the server's message, with the request id. */}
+      {order.allowedNextStatuses.length > 0 && (
+        <div className="form-actions">
+          {order.allowedNextStatuses.map((to) => (
+            <button
+              key={to}
+              type="button"
+              disabled={change.isPending}
+              // The server's table never offers ordered or cancelled here.
+              onClick={() => change.mutate(to as OrderTransitionBody['to'])}
+            >
+              Mark {ORDER_STATUS_LABELS[to].toLowerCase()}
+            </button>
+          ))}
+        </div>
+      )}
+      {change.isError && <ErrorMessage error={change.error} />}
       <dl className="details">
         <dt>Patient</dt>
         <dd>
