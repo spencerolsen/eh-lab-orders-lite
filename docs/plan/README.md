@@ -130,6 +130,7 @@ flowchart TD
   L17 --> L22
   L20 --> L22
   L05 --> L23
+  L20 --> L25[LAB-25 Polish pass]
 ```
 
 ## Browser checkpoints
