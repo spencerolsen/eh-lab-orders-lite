@@ -70,6 +70,7 @@ describe('orders', () => {
       'cancellation_note',
       'cancelled_by',
       'cancelled_at',
+      'idempotency_key', // LAB-18
     ]);
   });
 

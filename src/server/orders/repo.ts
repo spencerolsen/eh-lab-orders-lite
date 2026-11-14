@@ -277,6 +277,12 @@ export async function findTestsForOrder(
 // Inserts the order row and returns its id. The patient is not looked up
 // first: the foreign key decides, so there is no gap between a check and the
 // insert, and its violation becomes the 422 UNKNOWN_PATIENT.
+//
+// With an idempotency key (LAB-18), an order that already holds the key wins:
+// nothing is inserted and the result is null. The unique index decides, not a
+// select first, so two requests with the same key at the same moment cannot
+// both insert: the second waits for the first to commit, then finds the
+// conflict. Without a key (null) there is never a conflict.
 export async function insertOrder(
   db: Db,
   order: {
@@ -284,22 +290,26 @@ export async function insertOrder(
     status: OrderStatus;
     estimatedReadyDate: string;
     createdAt: Date;
+    idempotencyKey?: string | null;
   },
-): Promise<string> {
+): Promise<string | null> {
   try {
     const { rows } = await db.query<{ id: string }>(
       `insert into orders
-         (patient_id, status, estimated_ready_date, created_at, updated_at)
-       values ($1, $2, $3, $4, $4)
+         (patient_id, status, estimated_ready_date, created_at, updated_at,
+          idempotency_key)
+       values ($1, $2, $3, $4, $4, $5)
+       on conflict (idempotency_key) do nothing
        returning id`,
       [
         order.patientId,
         order.status,
         order.estimatedReadyDate,
         order.createdAt,
+        order.idempotencyKey ?? null,
       ],
     );
-    return rows[0]!.id;
+    return rows[0]?.id ?? null;
   } catch (error) {
     if (violates(error, FOREIGN_KEY_VIOLATION, PATIENT_FOREIGN_KEY)) {
       throw new BusinessRuleError(
@@ -310,6 +320,18 @@ export async function insertOrder(
     }
     throw error;
   }
+}
+
+// The id of the order placed with this idempotency key, or null.
+export async function findOrderIdByIdempotencyKey(
+  db: Db,
+  idempotencyKey: string,
+): Promise<string | null> {
+  const { rows } = await db.query<{ id: string }>(
+    'select id from orders where idempotency_key = $1',
+    [idempotencyKey],
+  );
+  return rows[0]?.id ?? null;
 }
 
 // Inserts one item: the snapshot of the test, copied as given. The primary
