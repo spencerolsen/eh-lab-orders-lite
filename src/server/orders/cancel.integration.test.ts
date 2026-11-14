@@ -84,7 +84,7 @@ async function stored(): Promise<StoredOrder> {
 }
 
 async function storedItems(): Promise<unknown[]> {
-  const { rows } = await t.pool.query(
+  const { rows } = await t.pool.query<Record<string, unknown>>(
     'select * from order_items where order_id = $1 order by lab_test_id',
     [ORDER_ID],
   );
