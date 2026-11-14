@@ -140,12 +140,12 @@ it('PatientOrders row click sets the order search parameter and renders OrderDet
   fakeApi();
   renderApp(`/patients/${PID}`);
   await userEvent.click(await screen.findByRole('cell', { name: '$56.00' }));
-  const dialog = within(await screen.findByRole('dialog', { name: 'Order' }));
+  const dialog = within(await screen.findByRole('dialog', { name: /^Order/ }));
   expect(await dialog.findByText('CBC')).toBeTruthy();
   expect(dialog.getByText('Total $25.00')).toBeTruthy();
   // Close returns to the patient page.
   await userEvent.click(dialog.getByRole('button', { name: 'Close' }));
-  expect(screen.queryByRole('dialog', { name: 'Order' })).toBeNull();
+  expect(screen.queryByRole('dialog', { name: /^Order/ })).toBeNull();
   expect(screen.getByRole('heading', { level: 1 }).textContent).toContain(
     'Demo Example',
   );
@@ -162,6 +162,6 @@ it('PatientPage in create mode does not render PatientOrders', async () => {
 it('PatientPage with ?order=<id> renders OrderDetailPanel on load', async () => {
   fakeApi();
   renderApp(`/patients/${PID}?order=${ID}`);
-  const dialog = within(await screen.findByRole('dialog', { name: 'Order' }));
+  const dialog = within(await screen.findByRole('dialog', { name: /^Order/ }));
   expect(await dialog.findByText('CBC')).toBeTruthy();
 });

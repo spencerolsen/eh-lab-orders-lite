@@ -130,7 +130,7 @@ function fakeApi(
 }
 
 const panel = async () =>
-  within(await screen.findByRole('dialog', { name: 'Order' }));
+  within(await screen.findByRole('dialog', { name: /^Order/ }));
 
 type Panel = Awaited<ReturnType<typeof panel>>;
 
@@ -401,8 +401,9 @@ it.each([
 
     await userEvent.click(form.getByRole('button', { name: 'Confirm cancel' }));
 
+    // Not the server's sentence about the move, but what the order is now.
     expect((await dialog.findByRole('alert')).textContent).toBe(
-      `${message}. Reference: req-${status}`,
+      'This order has changed. It is now Completed.',
     );
     // Reloaded: completed, so no cancel action and no form any more.
     expect(await dialog.findByText('Completed')).toBeTruthy();

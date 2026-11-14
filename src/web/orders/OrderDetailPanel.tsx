@@ -15,7 +15,7 @@ import { ApiError } from '../api/client';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
 import { StatusBadge } from '../components/StatusBadge';
-import { PatientLabel } from '../patients/PatientLabel';
+import { patientName } from '../patients/PatientLabel';
 import {
   cancelOrder,
   changeOrderStatus,
@@ -54,6 +54,7 @@ export function useOpenOrderId(): string | null {
 export function OrderDetailPanel({ orderId }: { orderId: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [, setSearchParams] = useSearchParams();
+  const query = useOrder(orderId);
 
   // What had focus before the panel opened (kept across React's development
   // double run of effects, when focus has already moved into the panel).
@@ -97,8 +98,11 @@ export function OrderDetailPanel({ orderId }: { orderId: string }) {
         if (event.target === dialog.current) dialog.current?.close();
       }}
     >
-      <h2 id="order-panel-title">Order</h2>
-      <PanelBody orderId={orderId} />
+      {/* The dialog's name: "Order for <patient>" once the order has loaded. */}
+      <h2 id="order-panel-title">
+        {query.data ? `Order for ${patientName(query.data.patient)}` : 'Order'}
+      </h2>
+      <PanelBody orderId={orderId} query={query} />
       <div className="form-actions">
         <button
           type="button"
@@ -114,16 +118,27 @@ export function OrderDetailPanel({ orderId }: { orderId: string }) {
 
 const uuid = z.uuid();
 
-function PanelBody({ orderId }: { orderId: string }) {
-  // An address that is not an id cannot name an order: no request is made.
-  const wellFormed = uuid.safeParse(orderId).success;
-  const query = useQuery({
+// An address that is not an id cannot name an order: no request is made.
+const isWellFormed = (orderId: string) => uuid.safeParse(orderId).success;
+
+function useOrder(orderId: string) {
+  return useQuery({
     queryKey: orderKey(orderId),
     queryFn: ({ signal }) => fetchOrder(orderId, signal),
-    enabled: wellFormed,
+    enabled: isWellFormed(orderId),
     retry: (count, error) =>
       !(error instanceof ApiError && error.status === 404) && count < 1,
   });
+}
+
+function PanelBody({
+  orderId,
+  query,
+}: {
+  orderId: string;
+  query: ReturnType<typeof useOrder>;
+}) {
+  const wellFormed = isWellFormed(orderId);
 
   if (
     !wellFormed ||
@@ -148,41 +163,65 @@ function OrderView({ order }: { order: OrderDetail }) {
   const statusLine = useRef<HTMLParagraphElement>(null);
   // Whether the cancel form is open (LAB-17).
   const [cancelling, setCancelling] = useState(false);
+  // The one error shown: the latest. It belongs to the order as the panel
+  // loaded it (`order`), so it disappears when the order reloads as something
+  // else; a refusal because the order changed is kept as "changed" and read
+  // against the reloaded order.
+  const [problem, setProblem] = useState<{
+    order: OrderDetail;
+    error: unknown;
+    changed: boolean;
+  } | null>(null);
+  const shownProblem = problem?.order === order ? problem : null;
 
   // What a status change and a cancel do with the server's answer.
   const answer = {
     onSuccess: (changed: OrderDetail) => {
+      setProblem(null);
       // The panel shows the server's answer at once, and the list behind it
       // refreshes through the shared ORDERS_KEY (the panel never touches the
       // list itself).
       queryClient.setQueryData(orderKey(order.id), changed);
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
     },
-    onError: (error: Error) => {
+    onError: async (error: Error) => {
       // 409: someone else changed the order between the server's read and its
       // update. 422: the server refused the move from the status it read, and
       // the action was only offered from the status this panel shows, so the
       // order changed since the panel loaded it (another tab moved it). Either
       // way, reload it (and the list), so the user sees its real status and
-      // the actions allowed from there.
+      // the actions allowed from there. The panel then says the order has
+      // changed, rather than showing the server's sentence about a move that
+      // was only wrong because the panel was out of date.
       if (
         error instanceof ApiError &&
         (error.status === 409 || error.status === 422)
       ) {
-        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+        await queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+        const reloaded = queryClient.getQueryData<OrderDetail>(
+          orderKey(order.id),
+        );
+        if (reloaded && reloaded !== order) {
+          setProblem({ order: reloaded, error, changed: true });
+          return;
+        }
       }
+      setProblem({ order, error, changed: false });
     },
     onSettled: () => statusLine.current?.focus(),
   };
 
+  // Starting an action clears the error of the one before.
   const change = useMutation({
     mutationFn: (to: OrderTransitionBody['to']) =>
       changeOrderStatus(order.id, { to }),
+    onMutate: () => setProblem(null),
     ...answer,
   });
 
   const cancel = useMutation({
     mutationFn: (body: CancelOrderBody) => cancelOrder(order.id, body),
+    onMutate: () => setProblem(null),
     ...answer,
     onSuccess: (changed) => {
       setCancelling(false);
@@ -228,7 +267,7 @@ function OrderView({ order }: { order: OrderDetail }) {
               className="button-danger"
               disabled={busy}
               onClick={() => {
-                cancel.reset();
+                setProblem(null);
                 setCancelling(true);
               }}
             >
@@ -242,18 +281,22 @@ function OrderView({ order }: { order: OrderDetail }) {
           sending={busy}
           onConfirm={(body) => cancel.mutate(body)}
           onKeep={() => {
-            cancel.reset();
+            setProblem(null);
             setCancelling(false);
           }}
         />
       )}
-      {change.isError && <ErrorMessage error={change.error} />}
-      {cancel.isError && <ErrorMessage error={cancel.error} />}
+      {shownProblem?.changed && (
+        <div role="alert" className="error-message">
+          <p>{`This order has changed. It is now ${ORDER_STATUS_LABELS[order.status]}.`}</p>
+        </div>
+      )}
+      {shownProblem && !shownProblem.changed && (
+        <ErrorMessage error={shownProblem.error} />
+      )}
       <dl className="details">
         <dt>Patient</dt>
-        <dd>
-          <PatientLabel patient={order.patient} />
-        </dd>
+        <dd>{patientName(order.patient)}</dd>
         <dt>Ready by</dt>
         <dd>{formatDate(order.estimatedReadyDate)}</dd>
         <dt>Created ({order.clinicTimezone})</dt>

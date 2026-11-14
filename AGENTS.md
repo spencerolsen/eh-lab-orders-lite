@@ -76,7 +76,7 @@ The same checks run on GitHub Actions for every pull request and every push to `
 - **Dates are `YYYY-MM-DD` strings** (a date of birth, a ready date), from the form to the database and back. Never a JavaScript `Date` for a calendar day: use the helpers in `src/shared/dates.ts` (`isRealDate`, `today(timezone, now)`, `formatDate`). "Today" on the server is `today(deps.clinicTimezone, deps.clock())`, never the server's own time zone.
 - **Logs carry ids and counts only.** No names, dates of birth or other patient details in logs, and never request bodies, query strings, headers or SQL parameters. Levels follow the logging standard in `docs/architecture.md`.
 - **Each fixed list of values is defined once in `src/shared/`** (for example order statuses), and everything else (database checks, schemas, the screens) derives from it.
-- **Patient rules live in one shared schema**, `src/shared/patients.ts`: the server parses with it and the form checks with it. A new screen that creates or edits a patient reuses `PatientForm` (`src/web/patients/`), and any screen that names a patient uses `PatientLabel` (name with date of birth).
+- **Patient rules live in one shared schema**, `src/shared/patients.ts`: the server parses with it and the form checks with it. A new screen that creates or edits a patient reuses `PatientForm` (`src/web/patients/`), and any screen that names a patient uses `PatientLabel` (name with date of birth), except the order panel, which shows the name only (`patientName`, from the same file) and says "Order for <name>" in its heading.
 - Imports are relative (`../shared/money`).
 
 ## Calling the API from a page
