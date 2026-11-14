@@ -59,6 +59,9 @@
 body {
   margin: 0;
   background: var(--color-page);
+  /* Long text with no spaces (a name, a note) wraps instead of overflowing.
+     It is inherited, so every page gets it. */
+  overflow-wrap: anywhere;
 }
 
 #root {
@@ -216,6 +219,21 @@ textarea {
   background: var(--color-surface);
 }
 
+/* A select draws its own arrow (two half-squares of the text colour make a
+   triangle), as far from the right edge as the text is from the left. */
+select {
+  appearance: none;
+  padding-right: calc(var(--space-3) * 2 + 0.75rem);
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - var(--space-3) - 0.375rem) 50%,
+    calc(100% - var(--space-3)) 50%;
+  background-size: 0.375rem 0.375rem;
+  background-repeat: no-repeat;
+}
+
 /* A field that cannot be changed, like a lab test's code when editing it. */
 input:disabled {
   color: var(--color-text-muted);
@@ -279,6 +297,11 @@ textarea[aria-invalid='true'] {
 .row-actions {
   display: flex;
   gap: var(--space-2);
+}
+
+/* A date or time in a table cell stays on one line. */
+.table .nowrap {
+  white-space: nowrap;
 }
 
 /* Numbers (prices, counts) line up on the right. */
@@ -514,6 +537,27 @@ dialog h2 {
    of chosen tests. */
 .dialog-wide {
   width: 48rem;
+  /* Anchored near the top, so it does not jump as tests are added, and never
+     taller than the window. */
+  margin: var(--space-4) auto auto;
+  max-height: calc(100vh - 2 * var(--space-4));
+}
+
+/* The form fills the dialog; the list of chosen tests (.scroll) scrolls when
+   it is long, so the total, the ready date and the buttons stay in view. */
+.dialog-wide[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-wide > form {
+  flex: 1;
+  min-height: 0;
+}
+
+.scroll {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* A label-like heading for a field that is not an input (the chosen patient). */

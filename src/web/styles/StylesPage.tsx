@@ -125,6 +125,7 @@ export function StylesPage() {
             <th scope="col">Code</th>
             <th scope="col">Name</th>
             <th scope="col">Status</th>
+            <th scope="col">Ready by</th>
             <th scope="col" className="numeric">
               Price
             </th>
@@ -137,6 +138,7 @@ export function StylesPage() {
             <td>
               <StatusBadge status="ordered" />
             </td>
+            <td className="nowrap">Nov 16, 2026</td>
             <td className="numeric">$12.50</td>
           </tr>
           <tr>
@@ -145,6 +147,7 @@ export function StylesPage() {
             <td>
               <StatusBadge status="completed" />
             </td>
+            <td className="nowrap">Nov 16, 2026</td>
             <td className="numeric">$140.00</td>
           </tr>
           <tr>
@@ -153,7 +156,20 @@ export function StylesPage() {
             <td>
               <StatusBadge status="cancelled" />
             </td>
+            <td className="nowrap">Nov 16, 2026</td>
             <td className="numeric">$7.25</td>
+          </tr>
+          <tr>
+            {/* Long text with no spaces wraps inside its cell. */}
+            <td>SAMPLE4</td>
+            <td>
+              Averyveryveryveryveryveryveryveryveryveryveryverylongnamewithnospaces
+            </td>
+            <td>
+              <StatusBadge status="collected" />
+            </td>
+            <td className="nowrap">Nov 16, 2026</td>
+            <td className="numeric">$1.00</td>
           </tr>
         </tbody>
       </table>

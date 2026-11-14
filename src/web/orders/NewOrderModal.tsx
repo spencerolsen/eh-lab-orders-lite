@@ -174,38 +174,40 @@ function ChosenTests({
 }) {
   if (tests.length === 0) return <EmptyState message="No tests added yet" />;
   return (
-    <table className="table" aria-label="Chosen tests">
-      <thead>
-        <tr>
-          <th scope="col">Code</th>
-          <th scope="col">Name</th>
-          <th scope="col" className="numeric">
-            Price
-          </th>
-          <th scope="col">Turnaround</th>
-          <th scope="col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {tests.map((test) => (
-          <tr key={test.id}>
-            <td>{test.code}</td>
-            <td>{test.name}</td>
-            <td className="numeric">{formatCents(test.priceCents)}</td>
-            <td>{formatTurnaround(test.turnaroundDays)}</td>
-            <td>
-              <button
-                type="button"
-                className="button-secondary"
-                aria-label={`Remove ${test.code}`}
-                onClick={() => onRemove(test.id)}
-              >
-                Remove
-              </button>
-            </td>
+    <div className="scroll">
+      <table className="table" aria-label="Chosen tests">
+        <thead>
+          <tr>
+            <th scope="col">Code</th>
+            <th scope="col">Name</th>
+            <th scope="col" className="numeric">
+              Price
+            </th>
+            <th scope="col">Turnaround</th>
+            <th scope="col">Actions</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {tests.map((test) => (
+            <tr key={test.id}>
+              <td>{test.code}</td>
+              <td>{test.name}</td>
+              <td className="numeric">{formatCents(test.priceCents)}</td>
+              <td>{formatTurnaround(test.turnaroundDays)}</td>
+              <td>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  aria-label={`Remove ${test.code}`}
+                  onClick={() => onRemove(test.id)}
+                >
+                  Remove
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
