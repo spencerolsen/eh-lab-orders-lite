@@ -1,6 +1,6 @@
 # LAB-18: Orders: a double-click or retry cannot create a duplicate order
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Hardening
 - **Depends on:** LAB-13 (Orders: live total and ready date while building an order)
 - **Unblocks:** LAB-20 (New order from the menu bar and the patient page), LAB-21 (Browser tests for the main journeys)
@@ -22,6 +22,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 - With a key, the order insert uses `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING ...` inside the existing all-or-nothing transaction.
   - A row came back: the order and its items were created. Respond 201 as before.
   - No row came back: the key already exists. Read the existing order and respond 200 with the same body shape and nothing else written. Items are not inserted a second time.
+- With a key, the existing order is looked up first, at the top of the same transaction, before the tests are validated: a repeat of a used key returns the first order (200) even if one of its tests was deactivated since or the repeat's body would be refused (from the LAB-18 review, by the owner's rule that a repeat returns the order created the first time). The `ON CONFLICT` insert still decides a race the lookup cannot see.
 - Without a key the endpoint behaves exactly as in LAB-12 (201, no protection).
 - Two requests with the same key at the same moment produce one order. The unique index decides the winner; the loser returns the winner's order with 200, never 500 or 409.
 - A replay returns the stored order as it was created, even if the body differs. Comparing the second body with the first is not done.
@@ -29,6 +30,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 **UI**
 - The New order modal generates a key with `crypto.randomUUID()` each time it opens and sends it as `Idempotency-Key` on submit. The same key is reused if the user retries after an error in the same modal session; closing and reopening makes a new key.
 - The "Submit order" button is disabled while the request is in flight and shows a pending label.
+- The modal cannot be closed while the request is in flight (owner decision, from the LAB-12 review note below); any reply makes it closable again.
 - A 200 reply is treated as success, the same as 201: the modal closes and the list refreshes.
 
 **Rules**
@@ -40,7 +42,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 **Tooling**
 - Concurrency tests fire two real simultaneous requests at Postgres, not a mock.
 
-**Note from the LAB-12 review:** today Cancel or Escape during a pending submit closes the modal, but the order is still placed and appears after the refetch; decide whether the modal should wait for the reply.
+**Note from the LAB-12 review:** today Cancel or Escape during a pending submit closes the modal, but the order is still placed and appears after the refetch; decide whether the modal should wait for the reply. **Decided (owner):** the modal cannot be closed until the reply arrives. While the create request is pending, Cancel is disabled, and Escape, any other close request and a click outside do nothing (the modal has no close button); "Submit order" stays disabled. Any reply makes it closable again: a success closes it as before; an error reply or a network failure shows the error and keeps the same key for a retry, so the modal is never stuck open on an answer. **Also decided:** the create request times out after 30 seconds (`CREATE_ORDER_TIMEOUT_MS`), shown as "Can't reach the server. Try again." with the modal closable again, so a server that never answers cannot lock it; a retry sends the same key, so an order placed after all is returned, not placed twice. `apiFetch` gained an opt-in `timeoutMs` for this; no other request uses it.
 
 ## Acceptance criteria
 

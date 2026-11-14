@@ -198,3 +198,14 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Open `/patients/<id>?order=<that order's id>` directly: the panel opens on load.
 - [ ] With the API stopped after the page loaded, reload the orders by pressing "Try again" in the section (or use a throttled/blocked `GET /api/orders` in the browser's tools): the section shows a plain-language message, with "Reference: <request id>" when the server answered, and the patient form above can still be edited and saved.
 - [ ] A patient with more orders than one page shows "Load more", as on the orders page.
+
+### No duplicate orders (LAB-18)
+
+- [ ] Open New order, choose a patient and a test, and double-click "Submit order" as fast as you can: the button reads "Submitting…" and is disabled while the request runs, the modal closes, and the list shows one new order, not two. `select count(*) from orders where idempotency_key is not null` went up by one.
+- [ ] With the browser's network throttled (DevTools, "Slow 3G"), press "Submit order" once: the button stays disabled with "Submitting…" until the reply arrives.
+- [ ] Place an order, then open New order again and place the same patient and tests: two orders (a new opening is a new key).
+- [ ] In DevTools, find the `POST /api/orders` of an order just placed and send it again with its `Idempotency-Key` ("Copy as cURL", then run it): the answer is 200 with the same order id, the list still shows one order, and the API's log has `order.create_replayed` at warn with the order id and the key, and no second `order.created`. No line has a patient's name, date of birth or contact detail.
+- [ ] The same request with `-H 'Idempotency-Key: not-a-key'` gives 400 `VALIDATION_ERROR` and places nothing; without the header it places a new order (201).
+- [ ] Press "Submit order" on a throttled network: while "Submitting…" shows, Cancel is disabled, Escape (pressed several times) and a click outside the dialog do nothing, and the modal stays open. When the reply arrives it closes with the new order in the list.
+- [ ] The timeout: in `docker compose exec db psql -U lab_orders lab_orders`, run `begin; lock table orders in share mode;`, then press "Submit order". The modal stays locked with "Submitting…" for 30 seconds, then shows "Can't reach the server. Try again." with Cancel enabled again. Run `commit;` in psql (the held request now places the order), then press "Submit order" again: the modal closes and the list shows that one order, not two.
+- [ ] With the API stopped (Ctrl-C on `dev:api`), press "Submit order": "Can't reach the server. Try again." appears, Cancel and Escape close the modal again, and after restarting the API, "Submit order" in the same modal places one order.

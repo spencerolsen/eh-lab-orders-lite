@@ -494,8 +494,9 @@ describe('POST /api/orders: all or nothing', () => {
         priceCents: 2500,
         turnaroundDays: 1,
       };
-      await insertOrderItem(db, orderId, item);
-      await insertOrderItem(db, orderId, item);
+      // Never null without an idempotency key (LAB-18).
+      await insertOrderItem(db, orderId!, item);
+      await insertOrderItem(db, orderId!, item);
     });
     await expect(attempt).rejects.toBeInstanceOf(BusinessRuleError);
     await expect(attempt).rejects.toMatchObject({

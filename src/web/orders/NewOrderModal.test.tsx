@@ -8,6 +8,7 @@ import type { LabTest } from '../../shared/lab-tests';
 import type { OrderListItem } from '../../shared/orders';
 import { SEEDED } from '../testing/fake-patients-api';
 import { renderApp } from '../testing/render';
+import { CREATE_ORDER_TIMEOUT_MS } from './api';
 
 const id = (n: number) =>
   `30000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -57,11 +58,14 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-// A fake API. POST /api/orders answers with `place()` (a promise, so a test
-// can hold it); the order list holds what has been placed.
+// A fake API. POST /api/orders answers with `place(init)` (a promise, so a
+// test can hold it); the order list holds what has been placed.
 function fakeApi({
-  catalog = (): Promise<Response> => Promise.resolve(json(200, CATALOG)),
-  place = (): Promise<Response> => Promise.resolve(json(201, NEW_ORDER)),
+  catalog = () => Promise.resolve(json(200, CATALOG)),
+  place = () => Promise.resolve(json(201, NEW_ORDER)),
+}: {
+  catalog?: () => Promise<Response>;
+  place?: (init?: RequestInit) => Promise<Response>;
 } = {}) {
   const orders: OrderListItem[] = [];
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
@@ -78,7 +82,7 @@ function fakeApi({
       );
     }
     if (pathname === '/api/orders' && init?.method === 'POST') {
-      const response = await place();
+      const response = await place(init);
       if (response.ok) orders.unshift(NEW_ORDER);
       return response;
     }
@@ -357,7 +361,11 @@ it('submits the patient and the tests, is disabled while the request runs, then 
     patientId: PATIENT.id,
     labTestIds: [LIPID.id, CBC.id],
   });
-  expect((submitButton() as HTMLButtonElement).disabled).toBe(true);
+  // While it runs the button says so (LAB-18).
+  expect(
+    screen.getByRole<HTMLButtonElement>('button', { name: 'Submitting…' })
+      .disabled,
+  ).toBe(true);
 
   answer(json(201, NEW_ORDER));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -395,6 +403,260 @@ it('shows a server error with its request id and keeps the modal open with the c
   expect((submitButton() as HTMLButtonElement).disabled).toBe(false);
   await user.click(submitButton());
   expect(posts(fetch)).toHaveLength(2);
+});
+
+// Double-submit protection (LAB-18): the Idempotency-Key of each POST.
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const keys = (fetch: ReturnType<typeof fakeApi>) =>
+  posts(fetch).map(
+    ([, init]) => (init!.headers as Record<string, string>)['Idempotency-Key'],
+  );
+
+async function addCbcAndSubmit(user: ReturnType<typeof userEvent.setup>) {
+  await choosePatient(user);
+  await user.type(quickAdd(), 'cbc{ArrowDown}{Enter}');
+  await user.click(submitButton());
+}
+
+const serverError = () =>
+  Promise.resolve(
+    json(500, {
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Something went wrong',
+        requestId: 'req-place-2',
+      },
+    }),
+  );
+
+it('sends one request with an Idempotency-Key on a double click, the button disabled and saying "Submitting…" while it runs', async () => {
+  let answer: (response: Response) => void = () => {};
+  const fetch = fakeApi({
+    place: () => new Promise<Response>((resolve) => (answer = resolve)),
+  });
+  const { user } = await openModal();
+  await choosePatient(user);
+  await user.type(quickAdd(), 'cbc{ArrowDown}{Enter}');
+
+  await user.dblClick(submitButton());
+  expect(posts(fetch)).toHaveLength(1);
+  expect(keys(fetch)[0]).toMatch(UUID);
+  const pending = screen.getByRole('button', { name: 'Submitting…' });
+  expect((pending as HTMLButtonElement).disabled).toBe(true);
+  await user.click(pending);
+  expect(posts(fetch)).toHaveLength(1);
+
+  answer(json(201, NEW_ORDER));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+it('sends the same key again when the user retries after a failed submit', async () => {
+  const fetch = fakeApi({ place: serverError });
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await screen.findByRole('alert');
+  // The user tries again in the same modal.
+  await user.click(submitButton());
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(first).toMatch(UUID);
+  expect(second).toBe(first);
+});
+
+it('keeps the key when the choices change after a failure (the accepted limitation)', async () => {
+  const fetch = fakeApi({ place: serverError });
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await screen.findByRole('alert');
+  await user.type(quickAdd(), 'lipid{ArrowDown}{Enter}');
+  await user.click(submitButton());
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(second).toBe(first);
+});
+
+it('makes a new key when the modal is closed and opened again', async () => {
+  const fetch = fakeApi({ place: serverError });
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await screen.findByRole('alert');
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await user.click(screen.getByRole('button', { name: 'Place new order' }));
+  await addCbcAndSubmit(user);
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(first).toMatch(UUID);
+  expect(second).toMatch(UUID);
+  expect(second).not.toBe(first);
+});
+
+it('makes a new key for the next order after a successful submit', async () => {
+  const fetch = fakeApi();
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+  await user.click(screen.getByRole('button', { name: 'Place new order' }));
+  await addCbcAndSubmit(user);
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(second).not.toBe(first);
+});
+
+// No closing while a submit is in flight (owner decision, LAB-18): every way
+// to close is refused until the reply arrives, and any reply ends that.
+async function submitAndHold(place?: () => Promise<Response>) {
+  let answer: (response: Response) => void = () => {};
+  let fail: (error: Error) => void = () => {};
+  const fetch = fakeApi({
+    place:
+      place ??
+      (() =>
+        new Promise<Response>((resolve, reject) => {
+          answer = resolve;
+          fail = reject;
+        })),
+  });
+  const { user, dialog } = await openModal();
+  await addCbcAndSubmit(user);
+  return { user, dialog, fetch, answer, fail };
+}
+
+const cancelButton = () =>
+  screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel' });
+const isOpen = () =>
+  screen.queryByRole<HTMLDialogElement>('dialog', { name: 'New order' })
+    ?.open === true;
+
+it('refuses every way to close while the submit is in flight: Cancel is disabled, Escape and a close request do nothing, a backdrop click does nothing', async () => {
+  const { user, dialog, answer } = await submitAndHold();
+  expect(screen.getByRole('button', { name: 'Submitting…' })).toBeTruthy();
+
+  expect(cancelButton().disabled).toBe(true);
+  await user.click(cancelButton());
+  expect(isOpen()).toBe(true);
+
+  await user.keyboard('{Escape}');
+  await user.keyboard('{Escape}');
+  expect(isOpen()).toBe(true);
+  // The key press itself is stopped, wherever the focus is: a browser may not
+  // let the cancel event of a repeated Escape be refused.
+  const escape = new KeyboardEvent('keydown', {
+    key: 'Escape',
+    bubbles: true,
+    cancelable: true,
+  });
+  document.body.dispatchEvent(escape);
+  expect(escape.defaultPrevented).toBe(true);
+
+  // A close request that is not a key press (a browser's own): its cancel
+  // event is refused.
+  const request = new Event('cancel', { cancelable: true });
+  dialog.dispatchEvent(request);
+  expect(request.defaultPrevented).toBe(true);
+
+  // A click on the backdrop lands on the dialog element itself.
+  await user.click(dialog);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(isOpen()).toBe(true);
+
+  // The reply ends it: a success closes the modal as before.
+  answer(json(201, NEW_ORDER));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+it('is closable again after an error reply, with Cancel enabled and Escape working', async () => {
+  const { user, answer } = await submitAndHold();
+  answer(
+    json(500, {
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Something went wrong',
+        requestId: 'req-place-3',
+      },
+    }),
+  );
+  await screen.findByRole('alert');
+
+  expect(cancelButton().disabled).toBe(false);
+  await user.keyboard('{Escape}');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+it('is closable again after a network failure, keeping the key for a retry', async () => {
+  const { user, fetch, fail } = await submitAndHold();
+  fail(new TypeError('Failed to fetch'));
+  expect((await screen.findByRole('alert')).textContent).toContain(
+    "Can't reach the server",
+  );
+  expect(cancelButton().disabled).toBe(false);
+
+  // A retry is blocked again while it runs, with the same key.
+  await user.click(submitButton());
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+  const [first, second] = keys(fetch);
+  expect(second).toBe(first);
+  expect(cancelButton().disabled).toBe(true);
+});
+
+it('gives up after CREATE_ORDER_TIMEOUT_MS: says it cannot reach the server, is closable again, and the retry sends the same key', async () => {
+  // Fake timers that also follow real time, so the user events still run.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    // A server that takes the request and never answers.
+    const hang = (init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(new DOMException('The request was aborted', 'AbortError')),
+        );
+      });
+    const { user, fetch } = await submitAndHold(hang);
+
+    await vi.advanceTimersByTimeAsync(CREATE_ORDER_TIMEOUT_MS - 1000);
+    expect(cancelButton().disabled).toBe(true);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      "Can't reach the server. Try again.",
+    );
+    expect(cancelButton().disabled).toBe(false);
+    expect(isOpen()).toBe(true);
+
+    await user.click(submitButton());
+    await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+    const [first, second] = keys(fetch);
+    expect(second).toBe(first);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('Cancel closes the modal again once the reply came back with an error', async () => {
+  const { user } = await submitAndHold(serverError);
+  await screen.findByRole('alert');
+  await user.click(cancelButton());
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('treats a 200 (the order this key already placed) as a success: it closes and shows the order', async () => {
+  fakeApi({ place: () => Promise.resolve(json(200, NEW_ORDER)) });
+  const { user } = await openModal();
+  expect(await screen.findByText('No orders yet')).toBeTruthy();
+  await addCbcAndSubmit(user);
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(
+    await screen.findByRole('link', {
+      name: 'Demo Example (born Feb 29, 2020)',
+    }),
+  ).toBeTruthy();
 });
 
 it('shows loading and then an error with Try again when the catalog cannot be loaded', async () => {

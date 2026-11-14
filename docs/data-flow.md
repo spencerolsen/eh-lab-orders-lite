@@ -153,7 +153,7 @@ sequenceDiagram
 
 ## Placing an order, from the modal to the database
 
-`POST /api/orders` (LAB-12): the New order modal, the service and its one transaction.
+`POST /api/orders` (LAB-12, LAB-18): the New order modal, the service and its one transaction, with the replay branch for a key already used.
 
 ```mermaid
 sequenceDiagram
@@ -163,20 +163,32 @@ sequenceDiagram
   participant D as Postgres
 
   Note over M: patient from usePatientSearch, tests from the catalog<br/>(GET /api/lab-tests) through matchTests
-  M->>R: { patientId, labTestIds } (useMutation)
-  Note over R: parse(createOrderBody): 400 for a missing field,<br/>a non-uuid id or an unknown field
-  R->>S: createOrder(deps, request.log, body)
+  Note over M: key = crypto.randomUUID(), once per opening
+  M->>R: { patientId, labTestIds }, Idempotency-Key: key (useMutation)
+  Note over R: parse(createOrderHeaders): 400 for a key that is not a uuid<br/>parse(createOrderBody): 400 for a missing field,<br/>a non-uuid id or an unknown field
+  R->>S: createOrder(deps, request.log, body, key)
   Note over S: now = clock(), read once
   S->>D: begin
+  opt the key already placed an order (a replay)
+    S->>D: select the order by its key, read it as a list row
+    S->>D: commit (nothing written, the body not checked)
+    R-->>M: 200 that order; log warn order.create_replayed
+  end
   S->>D: select the tests by id ... for share
   Note over S: checkOrderTests: empty, repeated, unknown, inactive<br/>-> 422 INVALID_ORDER_TESTS (rollback, nothing saved)
   Note over S: estimateReadyDate(now, tests, CLINIC_TIMEZONE)
-  S->>D: insert order (status ordered, ready date, created_at = now)
-  Note over D: patient foreign key fails -> 422 UNKNOWN_PATIENT (rollback)
-  S->>D: insert one item per test (code, name, price, turnaround copied)
-  S->>D: read the order back as a list row
-  S->>D: commit
-  R-->>M: 201 the list row (total from calculateTotal); log order.created
+  S->>D: insert order (status ordered, ready date, created_at = now, key)<br/>on conflict (idempotency_key) do nothing returning id
+  Note over D: patient foreign key fails -> 422 UNKNOWN_PATIENT (rollback)<br/>same key in a transaction not yet committed -> wait for it
+  alt a row came back: a new order
+    S->>D: insert one item per test (code, name, price, turnaround copied)
+    S->>D: read the order back as a list row
+    S->>D: commit
+    R-->>M: 201 the list row (total from calculateTotal); log order.created
+  else no row: a request with the same key inserted first (a lost race)
+    S->>D: find that order by its key, read it as a list row
+    S->>D: commit (nothing was written)
+    R-->>M: 200 that order; log warn order.create_replayed
+  end
   Note over M: close; invalidate ['orders'], so the list shows it first
 ```
 
@@ -184,6 +196,8 @@ sequenceDiagram
 - **The server is the authority.** The modal's catalog may be stale. The tests are read again inside the transaction and locked (`FOR SHARE`) until it commits, so a test deactivated after the modal loaded is refused, and a price change sent at the same moment waits until the order is saved.
 - **A snapshot.** Each item copies the test's code, name, price and turnaround. Changing or deactivating the test later never changes the order, its total or its ready date.
 - **One `now`.** The clock is read once; the same instant is `created_at` and the moment the ready date counts from.
+- **One order per key (LAB-18).** The modal makes one key when it opens and sends it with every submit, so a double click (the button is also disabled while the request runs) or a retry after a timeout or a lost reply places one order: the first request places it (201), any repeat gets that order (200), which the modal treats as a success. A repeat is answered by the lookup at the start of the transaction, before the tests are checked, so it gets the first order even if a test was deactivated since. The lookup alone could not stop a race (two requests can both find nothing), so the unique index decides that: the second insert waits for the first transaction and then finds the conflict, and returns the first request's order. Closing the modal (after a success, Cancel or Escape) unmounts it, so the next opening has a new key.
+- **No closing while a submit is in flight (LAB-18).** Until the reply arrives, Cancel is disabled, Escape is stopped at the key press and any other close request is refused at the dialog's `cancel` event (there is no close button, and a backdrop click never closes it), so the user always learns whether the order was placed. Any reply ends it: a success closes the modal; an error reply or a failure to reach the server shows the message and makes the modal closable again, with the same key for a retry. So that a server which takes the request and never answers cannot lock the modal, the create request gives up after 30 seconds (`CREATE_ORDER_TIMEOUT_MS` in `src/web/orders/api.ts`) and shows "Can't reach the server. Try again." The order may still be placed after that; a retry sends the same key and gets it back (200) instead of placing a second one.
 - **On a refusal** the modal stays open with the patient and the tests as they were, and shows the server's message with the request id (`ErrorMessage`).
 
 ## The live total and ready date, while building an order

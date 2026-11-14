@@ -158,6 +158,22 @@ export const createOrderBody = z.strictObject({
 
 export type CreateOrderBody = z.output<typeof createOrderBody>;
 
+// The Idempotency-Key header of POST /api/orders (LAB-18): the browser's
+// random key for one attempt to place an order, a uuid. Lower-cased like the
+// ids above, so one key written in either case is the same key. An empty
+// header counts as no key.
+export const createOrderHeaders = z.object({
+  'idempotency-key': z
+    .union([
+      z.literal('').transform(() => undefined),
+      z.uuid({ error: 'Must be a uuid' }).toLowerCase(),
+    ])
+    .optional(),
+});
+
+// The header's name as the browser sends it.
+export const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key';
+
 // POST /api/orders/quote: the same test ids as an order, no patient. Ids are
 // lower-cased like in createOrderBody, so both treat one id the same.
 export const quoteOrderBody = z.strictObject({

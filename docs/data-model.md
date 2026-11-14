@@ -34,6 +34,7 @@ erDiagram
     text cancellation_note "only when cancelled"
     text cancelled_by "only when cancelled"
     timestamptz cancelled_at "only when cancelled"
+    text idempotency_key UK "null, or one order per key"
   }
   order_items {
     uuid order_id PK, FK
@@ -120,6 +121,7 @@ One row per order (LAB-11, `db/migrations/0004_orders.sql`). Orders are never de
 | `cancellation_note` | `text` | Why the order was cancelled (LAB-17, `db/migrations/0007_order_cancellation.sql`). Null unless cancelled. |
 | `cancelled_by` | `text` | The name typed by the person who cancelled it (there is no login). Null unless cancelled. |
 | `cancelled_at` | `timestamptz` | When it was cancelled, set to `now()` by the same update as the status. Null unless cancelled. |
+| `idempotency_key` | `text` | Null when absent (`db/migrations/0008_orders_idempotency_key.sql`, LAB-18). The browser's random key (a uuid, stored in lower case) for one attempt to place an order, from the `Idempotency-Key` header of `POST /api/orders`. Unique (`orders_idempotency_key`); nulls are distinct, so any number of orders have none (every order placed before LAB-18, and every request sent without a key). |
 
 The CHECK `orders_cancellation_complete` ties the three to the status: when `status = 'cancelled'` all three are non-null and the note and the name are not blank (`btrim(...) <> ''`, which trims spaces); for any other status all three are null. The API trims and checks the note and the name first (`cancelOrderBody` in `src/shared/orders.ts`); the CHECK is the backstop for a row written any other way, so a cancelled order without its reason or its name cannot exist. Because the CHECK is not deferred, the cancel sets the status and the three fields in one `UPDATE`.
 
@@ -133,6 +135,7 @@ Three indexes serve the list (`GET /api/orders`), one per filter, each ending in
 
 Without them each filtered page would read and sort every order as the table grows. The list query cuts the page from `orders` alone (filter, order, `limit`, `offset`) before it joins the patients and items, so Postgres can read that page from the filter's index and stop after `limit + 1` rows; joining and grouping first would force it to aggregate every matching order. On 50,000 orders with 100,000 items, `explain analyze` showed each filter reading its own index and returning 26 rows in under a millisecond (the patient-and-status pair about 8 ms); on a table of a few dozen rows, as in the seed, Postgres prefers a plain scan, which is just as fast.
 
+- **One order per idempotency key (LAB-18).** Placing an order first looks the key up (`findOrderIdByIdempotencyKey`) and answers a repeat with the earlier order (200) before checking anything. That select cannot stop a race, since two requests can both find nothing; the unique index `orders_idempotency_key` does: the insert is `on conflict (idempotency_key) do nothing returning id`, so of two requests with the same key at the same moment, the second one's insert waits for the first transaction, then finds the conflict, inserts nothing and returns the first one's order. The index is not partial (`where idempotency_key is not null`), because `on conflict (idempotency_key)` needs a plain unique index on the column. A key never expires and is not tied to a user: the limits of this version (`docs/plan/backlog.md`).
 - **The statuses are written in two places only:** `ORDER_STATUSES` in `src/shared/orders.ts`, from which every schema and screen label derives, and the CHECKs above (`orders_cancellation_complete` names `cancelled` too). An integration test reads the definition of `orders_status_known` and asserts it lists exactly `ORDER_STATUSES`, in order; `orders_cancellation_complete` is covered by its own reject/accept tests. To add a status, follow "Adding an order status" in `AGENTS.md`.
 - **The total is derived, the ready date is stored.** The total is the sum of the items' frozen prices, so it can never disagree with them, and storing it would only add a copy that could. The ready date depends on the moment the order was placed and on the clinic's calendar; working it out again later would need that moment and the same rule version, and a change to the rule (holidays, say) must not move the date of an order already promised to a patient.
 - **"At least one item" is not a database rule.** A CHECK cannot look at other rows, and a trigger would be the only way. Placing an order (LAB-12) refuses an empty test list with a 422 before anything is written, and `estimateReadyDate` throws on an empty list, so the service cannot store an order without items. An order written by hand with no items still shows in the list, as 0 tests and $0.00.

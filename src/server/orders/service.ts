@@ -24,6 +24,7 @@ import { calculateTotal } from './domain/total';
 import { estimateReadyDate } from './domain/ready-date';
 import { assertTransition, InvalidTransitionError } from './domain/transitions';
 import {
+  findOrderIdByIdempotencyKey,
   findOrderListItem,
   findTestsForOrder,
   getOrder,
@@ -137,12 +138,34 @@ export async function quoteOrder(
   };
 }
 
-// Creates the order and returns it as a list row (the 201's body).
+// What placing an order gives back: the order as a list row (the body of the
+// 201, or of the 200 for a replay) and whether it was created now.
+export type CreateOrderResult =
+  | { replayed: false; order: OrderListItem; itemCount: number }
+  | { replayed: true; order: OrderListItem };
+
+// The order an idempotency key placed, as a list row, or null: none yet, or
+// no key was sent.
+async function orderPlacedWith(
+  db: Db,
+  idempotencyKey: string | null,
+  clinicTimezone: string,
+): Promise<OrderListItem | null> {
+  if (idempotencyKey === null) return null;
+  const id = await findOrderIdByIdempotencyKey(db, idempotencyKey);
+  return id === null ? null : findOrderListItem(db, id, clinicTimezone);
+}
+
+// Creates the order and returns it as a list row. With an idempotency key
+// (the Idempotency-Key header, LAB-18) that an earlier order already holds,
+// nothing is written and that earlier order is returned instead: a double
+// click or a retry places one order, not two.
 export async function createOrder(
   deps: AppDeps,
   log: FastifyBaseLogger,
   input: CreateOrderBody,
-): Promise<{ order: OrderListItem; itemCount: number }> {
+  idempotencyKey: string | null = null,
+): Promise<CreateOrderResult> {
   // ONE NOW: the clock is read once. The same instant is the order's
   // created_at and the day the ready date counts from, so they cannot drift
   // apart (an order placed just before midnight is not dated one day and
@@ -155,6 +178,17 @@ export async function createOrder(
   return inTransaction(deps.pool, async (client) => {
     const db = withQueryLog(client, log);
 
+    // REPLAY: this key already placed an order. Return that order as it is
+    // stored, before anything is checked: a repeat of the key always gets the
+    // first order, even if one of its tests was deactivated since, and
+    // whatever this request's body says (it is not compared).
+    const earlier = await orderPlacedWith(
+      db,
+      idempotencyKey,
+      deps.clinicTimezone,
+    );
+    if (earlier !== null) return { replayed: true, order: earlier };
+
     // SNAPSHOT: each item copies the test's code, name, price and turnaround
     // as the catalog holds them now, read inside this transaction (and locked
     // until it ends). A later catalog change never alters this order. The
@@ -166,13 +200,29 @@ export async function createOrder(
     // from `now` in the clinic's time zone, and stored on the order.
     const estimatedReadyDate = readyDateFor(deps, log, now, items);
 
-    // A new order always starts as 'ordered'.
+    // A new order always starts as 'ordered'. ONE ORDER PER KEY: the unique
+    // index decides, not the lookup above. If a request with the same key got
+    // here first, this insert waits until it commits, then does nothing.
     const orderId = await insertOrder(db, {
       patientId: input.patientId,
       status: 'ordered',
       estimatedReadyDate,
       createdAt: now,
+      idempotencyKey,
     });
+
+    // LOST RACE: that other request won. Return its order, inserting no
+    // items. Reading it is a new statement, so it sees the committed row.
+    if (orderId === null) {
+      const winner = await orderPlacedWith(
+        db,
+        idempotencyKey,
+        deps.clinicTimezone,
+      );
+      if (winner === null) throw new Error('The order was not inserted');
+      return { replayed: true, order: winner };
+    }
+
     for (const item of items) {
       await insertOrderItem(db, orderId, item);
     }
@@ -181,7 +231,7 @@ export async function createOrder(
     // row works it out from the items with calculateTotal.
     const order = await findOrderListItem(db, orderId, deps.clinicTimezone);
     if (order === null) throw new Error('The new order could not be read');
-    return { order, itemCount: items.length };
+    return { replayed: false, order, itemCount: items.length };
   });
 }
 

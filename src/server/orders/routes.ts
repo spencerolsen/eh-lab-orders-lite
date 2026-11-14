@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   cancelOrderBody,
   createOrderBody,
+  createOrderHeaders,
   listOrdersQuery,
   type OrderDetail,
   type OrderList,
@@ -77,19 +78,35 @@ export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   // POST /api/orders: 201 with the new order as a list row. A refusal (400,
   // 422) is logged at warn by the error handler, with its code and a count.
+  // With an Idempotency-Key the browser already used, nothing is created: 200
+  // with the order that key placed (LAB-18).
   app.post('/api/orders', async (request, reply) => {
+    const headers = parse(createOrderHeaders, request.headers);
     const body = parse(createOrderBody, request.body);
-    const { order, itemCount } = await createOrder(deps, request.log, body);
+    const idempotencyKey = headers['idempotency-key'] ?? null;
+    const result = await createOrder(deps, request.log, body, idempotencyKey);
+    if (result.replayed) {
+      // The key is a random id made by the browser, not patient data.
+      request.log.warn(
+        {
+          event: 'order.create_replayed',
+          orderId: result.order.id,
+          idempotencyKey,
+        },
+        'Order create replayed',
+      );
+      return reply.code(200).send(result.order);
+    }
     request.log.info(
       {
         event: 'order.created',
-        orderId: order.id,
-        patientId: order.patient.id,
-        itemCount,
+        orderId: result.order.id,
+        patientId: result.order.patient.id,
+        itemCount: result.itemCount,
       },
       'Order created',
     );
-    return reply.code(201).send(order);
+    return reply.code(201).send(result.order);
   });
 
   // POST /api/orders/quote: 200 with the items, total and ready date an order
