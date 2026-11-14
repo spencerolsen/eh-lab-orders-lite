@@ -64,7 +64,8 @@ export function toOrderListItem(
 // The columns and joins of one list row: each order's patient by a join, and
 // its item prices gathered into an array (array_remove drops the single null a
 // left join gives an order with no items, so such an order would show 0
-// tests, not vanish). The caller adds the where, group by and order by.
+// tests, not vanish). The caller adds the where and group by (the list read
+// in listOrders has its own copy, which cuts the page before joining).
 const LIST_ROW_SELECT = `
   select o.id, o.status, o.estimated_ready_date, o.created_at,
          p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
@@ -97,12 +98,25 @@ export async function listOrders(
   params.push(query.limit + 1, query.offset);
   const where =
     conditions.length > 0 ? 'where ' + conditions.join(' and ') : '';
+  // The page of orders is cut first, from orders alone, so Postgres can read
+  // it from the filter's index in order and stop after limit + 1 rows; only
+  // then are the patients and items joined, for those rows alone.
   const { rows } = await db.query<OrderListRow>(
-    `${LIST_ROW_SELECT}
-     ${where}
-     group by o.id, p.id
-     order by o.created_at desc, o.id desc
-     limit $${params.length - 1} offset $${params.length}`,
+    `select o.id, o.status, o.estimated_ready_date, o.created_at,
+            p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
+            array_remove(array_agg(i.price_cents), null) as item_prices
+     from (select * from orders o
+           ${where}
+           order by o.created_at desc, o.id desc
+           limit $` +
+      (params.length - 1) +
+      ` offset $` +
+      params.length +
+      `) o
+     join patients p on p.id = o.patient_id
+     left join order_items i on i.order_id = o.id
+     group by o.id, o.status, o.estimated_ready_date, o.created_at, p.id
+     order by o.created_at desc, o.id desc`,
     params,
   );
   const page = toPage(rows, query.limit);
