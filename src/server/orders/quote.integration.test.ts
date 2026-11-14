@@ -3,6 +3,7 @@
 // The arithmetic and the other list refusals are owned by LAB-11 and LAB-12.
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
+import { errorBodySchema } from '../../shared/api-error';
 import { orderListItemSchema, orderQuoteSchema } from '../../shared/orders';
 import {
   startTestApp,
@@ -75,8 +76,9 @@ it('refuses an inactive test with 422 INVALID_ORDER_TESTS (the shared validation
   ]);
   const response = await quote({ labTestIds: [TEST_CBC, TEST_LIPID] });
   expect(response.statusCode).toBe(422);
-  expect(response.json().error.code).toBe('INVALID_ORDER_TESTS');
-  expect(response.json().error.details).toEqual([
+  const { error } = errorBodySchema.parse(response.json());
+  expect(error.code).toBe('INVALID_ORDER_TESTS');
+  expect(error.details).toEqual([
     { field: 'labTestIds.1', reason: `Lab test ${TEST_LIPID} is inactive` },
   ]);
 });
@@ -89,6 +91,8 @@ it('refuses a malformed body with 400 VALIDATION_ERROR', async () => {
   ]) {
     const response = await quote(body);
     expect(response.statusCode).toBe(400);
-    expect(response.json().error.code).toBe('VALIDATION_ERROR');
+    expect(errorBodySchema.parse(response.json()).error.code).toBe(
+      'VALIDATION_ERROR',
+    );
   }
 });

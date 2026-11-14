@@ -7,6 +7,8 @@ import {
   type OrderListItem,
   orderListItemSchema,
   orderListSchema,
+  type OrderQuote,
+  orderQuoteSchema,
 } from '../../shared/orders';
 import { apiFetch } from '../api/client';
 
@@ -36,5 +38,20 @@ export async function createOrder(
 ): Promise<OrderListItem> {
   return orderListItemSchema.parse(
     await apiFetch('/api/orders', { method: 'POST', body }),
+  );
+}
+
+// POST /api/orders/quote: what an order of these tests would cost and when it
+// would be ready. Saves nothing.
+export async function fetchQuote(
+  labTestIds: string[],
+  signal?: AbortSignal,
+): Promise<OrderQuote> {
+  return orderQuoteSchema.parse(
+    await apiFetch('/api/orders/quote', {
+      method: 'POST',
+      body: { labTestIds },
+      signal,
+    }),
   );
 }
