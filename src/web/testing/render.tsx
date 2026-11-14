@@ -2,6 +2,7 @@
 // fetch standing in for the API.
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 
@@ -34,14 +35,17 @@ export function testQueryClient() {
 }
 
 // Renders the app at `path`. Unless the test stubbed fetch itself, the API
-// answers /healthz with 200 { status: 'ok' }.
-export function renderApp(path = '/') {
+// answers /healthz with 200 { status: 'ok' }. `strictMode` wraps it in
+// StrictMode as main.tsx does, so effects run twice as in development (off by
+// default: it doubles the requests a fake API sees).
+export function renderApp(path = '/', { strictMode = false } = {}) {
   if (!vi.isMockFunction(globalThis.fetch)) stubFetch(200, { status: 'ok' });
-  return render(
+  const app = (
     <QueryClientProvider client={testQueryClient()}>
       <MemoryRouter initialEntries={[path]}>
         <App />
       </MemoryRouter>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  return render(strictMode ? <StrictMode>{app}</StrictMode> : app);
 }

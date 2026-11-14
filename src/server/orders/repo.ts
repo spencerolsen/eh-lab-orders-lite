@@ -7,9 +7,16 @@ import {
   orderListItemSchema,
   type OrderStatus,
 } from '../../shared/orders';
+import type { OrderItem } from '../../shared/order-items';
+import type { LabTestRow } from '../catalog/repo';
 import type { Db } from '../db/query';
+import { BusinessRuleError } from '../errors';
 import { calculateTotal } from './domain/total';
 import { allowedNextStatuses, canCancel } from './domain/transitions';
+
+// The message of every 422 INVALID_ORDER_TESTS; `details` says which ids.
+export const INVALID_ORDER_TESTS_MESSAGE =
+  'Some of the chosen tests cannot be ordered';
 
 type OrderListRow = {
   id: string;
@@ -52,22 +59,27 @@ export function toOrderListItem(
   });
 }
 
+// The columns and joins of one list row: each order's patient by a join, and
+// its item prices gathered into an array (array_remove drops the single null a
+// left join gives an order with no items, so such an order would show 0
+// tests, not vanish). The caller adds the where, group by and order by.
+const LIST_ROW_SELECT = `
+  select o.id, o.status, o.estimated_ready_date, o.created_at,
+         p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
+         array_remove(array_agg(i.price_cents), null) as item_prices
+  from orders o
+  join patients p on p.id = o.patient_id
+  left join order_items i on i.order_id = o.id`;
+
 // Every order, newest first; the id breaks ties between orders placed at the
 // same moment, so the order is the same on every call. One query for the
-// whole list: each order's patient by a join, and its item prices gathered
-// into an array (array_remove drops the single null a left join gives an
-// order with no items, so such an order would show 0 tests, not vanish).
+// whole list.
 export async function listOrders(
   db: Db,
   clinicTimezone: string,
 ): Promise<OrderListItem[]> {
   const { rows } = await db.query<OrderListRow>(
-    `select o.id, o.status, o.estimated_ready_date, o.created_at,
-            p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
-            array_remove(array_agg(i.price_cents), null) as item_prices
-     from orders o
-     join patients p on p.id = o.patient_id
-     left join order_items i on i.order_id = o.id
+    `${LIST_ROW_SELECT}
      group by o.id, p.id
      order by o.created_at desc, o.id desc`,
   );
@@ -149,4 +161,137 @@ export async function getOrder(
     allowedNextStatuses: allowedNextStatuses(row.status),
     canCancel: canCancel(row.status),
   });
+}
+
+// One order as a list row (the 201 of POST /api/orders), or null.
+export async function findOrderListItem(
+  db: Db,
+  id: string,
+  clinicTimezone: string,
+): Promise<OrderListItem | null> {
+  const { rows } = await db.query<OrderListRow>(
+    `${LIST_ROW_SELECT}
+     where o.id = $1
+     group by o.id, p.id`,
+    [id],
+  );
+  const row = rows[0];
+  return row === undefined ? null : toOrderListItem(row, clinicTimezone);
+}
+
+// Postgres's SQLSTATEs for a foreign key and a unique violation, and the
+// constraints they name (migration 0004_orders.sql).
+const FOREIGN_KEY_VIOLATION = '23503';
+const UNIQUE_VIOLATION = '23505';
+const PATIENT_FOREIGN_KEY = 'orders_patient_id_fkey';
+const ITEM_PRIMARY_KEY = 'order_items_pkey';
+
+function violates(error: unknown, sqlState: string, constraint: string) {
+  const fields = (error ?? {}) as { code?: unknown; constraint?: unknown };
+  return fields.code === sqlState && fields.constraint === constraint;
+}
+
+// A catalog row as placing an order reads it.
+export type OrderableTest = OrderItem & { isActive: boolean };
+
+// The catalog rows for these ids, active or not (an id with no row is simply
+// missing from the result). FOR SHARE locks each row until the transaction
+// ends: a deactivation or a price change sent at the same moment waits until
+// the order is saved, so what is copied is what the catalog held at commit.
+export async function findTestsForOrder(
+  db: Db,
+  labTestIds: readonly string[],
+): Promise<OrderableTest[]> {
+  const { rows } = await db.query<LabTestRow>(
+    `select id, code, name, price_cents, turnaround_days, is_active
+     from lab_tests where id = any($1::uuid[])
+     for share`,
+    [labTestIds],
+  );
+  return rows.map((row) => ({
+    labTestId: row.id,
+    testCode: row.code,
+    testName: row.name,
+    priceCents: row.price_cents,
+    turnaroundDays: row.turnaround_days,
+    isActive: row.is_active,
+  }));
+}
+
+// Inserts the order row and returns its id. The patient is not looked up
+// first: the foreign key decides, so there is no gap between a check and the
+// insert, and its violation becomes the 422 UNKNOWN_PATIENT.
+export async function insertOrder(
+  db: Db,
+  order: {
+    patientId: string;
+    status: OrderStatus;
+    estimatedReadyDate: string;
+    createdAt: Date;
+  },
+): Promise<string> {
+  try {
+    const { rows } = await db.query<{ id: string }>(
+      `insert into orders
+         (patient_id, status, estimated_ready_date, created_at, updated_at)
+       values ($1, $2, $3, $4, $4)
+       returning id`,
+      [
+        order.patientId,
+        order.status,
+        order.estimatedReadyDate,
+        order.createdAt,
+      ],
+    );
+    return rows[0]!.id;
+  } catch (error) {
+    if (violates(error, FOREIGN_KEY_VIOLATION, PATIENT_FOREIGN_KEY)) {
+      throw new BusinessRuleError(
+        'UNKNOWN_PATIENT',
+        'There is no patient with this id',
+        [{ field: 'patientId', reason: 'No patient has this id' }],
+      );
+    }
+    throw error;
+  }
+}
+
+// Inserts one item: the snapshot of the test, copied as given. The primary
+// key on (order_id, lab_test_id) is the backstop for a test listed twice: the
+// service refuses that before inserting anything, and should one ever reach
+// this insert, it is still the 422, never a 500.
+export async function insertOrderItem(
+  db: Db,
+  orderId: string,
+  item: OrderItem,
+): Promise<void> {
+  try {
+    await db.query(
+      `insert into order_items
+         (order_id, lab_test_id, test_code, test_name, price_cents, turnaround_days)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [
+        orderId,
+        item.labTestId,
+        item.testCode,
+        item.testName,
+        item.priceCents,
+        item.turnaroundDays,
+      ],
+    );
+  } catch (error) {
+    if (violates(error, UNIQUE_VIOLATION, ITEM_PRIMARY_KEY)) {
+      throw new BusinessRuleError(
+        'INVALID_ORDER_TESTS',
+        INVALID_ORDER_TESTS_MESSAGE,
+        [
+          {
+            field: 'labTestIds',
+            reason: `Lab test ${item.labTestId} is listed more than once`,
+          },
+        ],
+      );
+    }
+    throw error;
+  }
 }

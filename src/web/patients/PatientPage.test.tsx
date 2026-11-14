@@ -95,11 +95,14 @@ it('shows the 422 contact error under both fields, and keeps the stored patient'
   await screen.findByRole('heading', { level: 1 });
   await userEvent.clear(field('Phone'));
   await save();
+  // The errors appear when the PATCH's 422 arrives, after the click.
+  expect((await screen.findByRole('alert')).textContent).toContain(
+    'Reference: req-1',
+  );
   expect(errorUnder('Email')).toBe(
     'Email is required when there is no phone number',
   );
   expect(errorUnder('Phone')).toBe('Phone is required when there is no email');
-  expect(screen.getByRole('alert').textContent).toContain('Reference: req-1');
   expect(screen.queryByText('Saved')).toBeNull();
   expect(patches(fetch)).toEqual([['/api/patients/p1', { phone: null }]]);
 });

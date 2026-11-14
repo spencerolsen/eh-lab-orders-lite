@@ -502,3 +502,58 @@ dialog h2 {
   max-width: 32rem;
   margin-top: var(--space-5);
 }
+
+/* The New order modal (LAB-12): wider than a plain dialog, to fit the table
+   of chosen tests. */
+.dialog-wide {
+  width: 48rem;
+}
+
+/* A label-like heading for a field that is not an input (the chosen patient). */
+.field-label {
+  font-weight: 600;
+}
+
+/* A chosen value with its Change button on one line. */
+.chosen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* A list of buttons to pick one from (the matching patients). */
+.choices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The quick-add suggestions under the box: the highlighted one is tinted
+   and marked with a bar, so it does not rely on the colour alone. */
+.suggestions {
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+  border: 1px solid var(--color-text-muted);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.suggestions li {
+  padding: var(--space-1) var(--space-3);
+  border-left: 4px solid transparent;
+  cursor: pointer;
+}
+
+.suggestions li:hover,
+.suggestions li[aria-selected='true'] {
+  background: var(--color-surface-tint);
+}
+
+.suggestions li[aria-selected='true'] {
+  border-left-color: var(--color-brand);
+}

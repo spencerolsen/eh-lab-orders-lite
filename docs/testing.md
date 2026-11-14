@@ -39,9 +39,9 @@ The file name decides the project: Vitest's `unit` project takes every `*.test.t
 
 ## Component tests
 
-The `component` project runs in jsdom with the React plugin. `src/web/testing/setup.ts` runs before each file: after every test it unmounts what was rendered and puts the real `fetch` back. `src/web/testing/render.tsx` has the helpers:
+The `component` project runs in jsdom with the React plugin. `src/web/testing/setup.ts` runs before each file: after every test it unmounts what was rendered and puts the real `fetch` back. jsdom has the `<dialog>` element but not its behaviour, so `setup.ts` also gives it a small stand-in that does what a browser does: `showModal()` opens it, `close()` closes it and then fires `close` on a later task, and Escape (unless a handler prevented it) fires `cancel` and closes the most recently opened one (the stand-in keeps them in the order they were opened). It does not move the focus: the app moves it itself, and the tests check that. `src/web/testing/render.tsx` has the helpers:
 
-- **`renderApp(path)`** renders the whole app (the app's own query client and routes, in a `MemoryRouter` at `path`). Unless the test stubbed `fetch` itself, `/healthz` answers `200 { "status": "ok" }`.
+- **`renderApp(path)`** renders the whole app (the app's own query client and routes, in a `MemoryRouter` at `path`). Unless the test stubbed `fetch` itself, `/healthz` answers `200 { "status": "ok" }`. `renderApp(path, { strictMode: true })` wraps it in `StrictMode`, as `main.tsx` does, so effects run twice as in development (the New order modal test uses it; it is off by default because it doubles the requests a fake API sees).
 - **`stubFetch(status, body)`** replaces `fetch` with one that answers every request with that status and JSON body, and returns the mock so a test can count the calls.
 - **`testQueryClient()`** is the app's query client with retries made instant, so a test that sees a retry does not wait for it.
 

@@ -106,6 +106,17 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Editing a patient's email to another patient's email on the patient page saves with no warning.
 - [ ] While doing all of the above, the API's log (with `LOG_LEVEL=debug`) shows `patient.possible_duplicate` at warn with `matchCount` and `rules` such as `["email"]`, `patient.possible_duplicate.matches` with ids only, `patient.created` with `duplicateConfirmed: true` after Create anyway, and never a name, date of birth, email or phone.
 
+### Orders: place an order (LAB-12)
+
+- [ ] On the Orders page, "Place new order" opens the New order dialog over a dimmed page, with the focus in the Patient search. "Add a test" is disabled with the hint "Choose a patient first", and "Submit order" is disabled.
+- [ ] Type `sample`: after a short pause the matching patients appear with name and date of birth. Pick Sample Person: the dialog shows "Sample Person (born Dec 31, 1990)" with a Change button, and the focus moves to "Add a test".
+- [ ] Type `li`: LIPID is offered (with CMP, whose name contains "li", after it). Type `cbc` and `CBC`: the same list, CBC first. Press Enter without an arrow: nothing is added and nothing is sent.
+- [ ] Arrow Down, then Enter: the highlighted test is added to the table (code, name, price, turnaround, Remove) and the box is empty. A test already added is no longer offered. Escape with suggestions open closes only the suggestions; Escape again closes the dialog and the focus returns to "Place new order".
+- [ ] Add CBC and LIPID for Sample Person and press "Submit order": the dialog closes and the new order is first in the list with 2 tests, $63.00, Ordered, and a ready date two business days after today.
+- [ ] Deactivate TSH in `psql` (`update lab_tests set is_active = false where code = 'TSH'`) while the dialog is open with TSH added, then submit: the dialog stays open with the patient and TSH, and shows "Some of the chosen tests cannot be ordered. Reference: <id>". Reopen the dialog: TSH is no longer offered. Set it active again afterwards.
+- [ ] Change CBC's price on the Catalog page after ordering: the order's total in the list is unchanged.
+- [ ] The API's log (with `LOG_LEVEL=debug`) shows `order.ready_date_estimated` and `order.created` with ids and counts, and the refusal as `request.rejected` `INVALID_ORDER_TESTS`; no patient name, date of birth, search text or test name.
+
 ## Checkpoint 2
 
 **Runs:** once LAB-13 to LAB-17 have all merged.

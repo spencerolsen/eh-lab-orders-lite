@@ -123,7 +123,8 @@ it('Create anyway sends the same values with confirmDuplicate: true, then the li
     newBody,
     { ...newBody, confirmDuplicate: true },
   ]);
-  expect(screen.getByText('Test Person')).toBeTruthy();
+  // The heading renders at once; the rows only once the list has loaded.
+  expect(await screen.findByText('Test Person')).toBeTruthy();
   expect(screen.getByText('Other Sample')).toBeTruthy();
 });
 

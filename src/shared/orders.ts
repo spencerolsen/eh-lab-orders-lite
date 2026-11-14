@@ -90,3 +90,18 @@ export const orderDetailSchema = z.object({
 });
 
 export type OrderDetail = z.infer<typeof orderDetailSchema>;
+// POST /api/orders. Strict: an unknown field is a 400, and so is a missing
+// field or an id that is not a uuid. An empty list has the right shape, so it
+// passes here and is refused by the server as a 422 INVALID_ORDER_TESTS, with
+// the other test-list rules (a repeated, unknown or inactive test). Ids are
+// lower-cased, as Postgres prints them, so one test written in upper and in
+// lower case counts as the same test (and so as repeated).
+export const createOrderBody = z.strictObject({
+  patientId: z.uuid({ error: 'Must be a patient id (a uuid)' }).toLowerCase(),
+  labTestIds: z.array(
+    z.uuid({ error: 'Must be a lab test id (a uuid)' }).toLowerCase(),
+    { error: 'Must be a list of lab test ids' },
+  ),
+});
+
+export type CreateOrderBody = z.output<typeof createOrderBody>;

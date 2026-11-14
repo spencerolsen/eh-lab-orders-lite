@@ -18,6 +18,8 @@ export const ERROR_CODES = [
   'DUPLICATE_TEST_CODE',
   'CONTACT_REQUIRED',
   'POSSIBLE_DUPLICATE',
+  'INVALID_ORDER_TESTS',
+  'UNKNOWN_PATIENT',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

@@ -218,6 +218,36 @@ export function StylesPage() {
         <ErrorMessage error={sampleError} onRetry={() => {}} />
       </div>
 
+      <h2>Pick from a list</h2>
+      <div className="stack">
+        <div className="chosen">
+          <span>Sample Person (born Jan 1, 1990)</span>
+          <button type="button" className="button-secondary">
+            Change
+          </button>
+        </div>
+        <ul className="choices">
+          <li>
+            <button type="button" className="button-secondary">
+              A choice
+            </button>
+          </li>
+          <li>
+            <button type="button" className="button-secondary">
+              Another choice
+            </button>
+          </li>
+        </ul>
+        <ul className="suggestions">
+          <li aria-selected="true">
+            <strong>SAMPLE1</strong> The highlighted suggestion
+          </li>
+          <li>
+            <strong>SAMPLE2</strong> Another suggestion
+          </li>
+        </ul>
+      </div>
+
       <h2>Dialog and panel</h2>
       <div className="form-actions">
         <button
@@ -237,7 +267,10 @@ export function StylesPage() {
       </div>
       <dialog ref={dialog} className="dialog" aria-labelledby="sample-dialog">
         <h2 id="sample-dialog">A dialog</h2>
-        <p>A centred surface over a backdrop. Escape closes it.</p>
+        <p>
+          A centred surface over a backdrop. Escape closes it. Add{' '}
+          <code>dialog-wide</code> for a wider one, like the New order modal.
+        </p>
         <button type="button" onClick={() => dialog.current?.close()}>
           Close
         </button>

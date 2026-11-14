@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { formatDate, formatDateTime } from '../../shared/dates';
@@ -14,20 +15,29 @@ import {
   useOpenOrder,
   useOpenOrderId,
 } from './OrderDetailPanel';
+import { NewOrderModal } from './NewOrderModal';
 
 // The home page: every order, newest first, as the server sends it. Nothing
 // is worked out here: the total, the ready date and the clinic-time created
 // time all come from the API. The created time is the clinic's wall clock
 // (createdAtClinic), never converted to the browser's time zone, and its
-// column says which zone that is.
+// column says which zone that is. "Place new order" opens the New order
+// modal (LAB-12); the page holds whether it is open.
 export function OrdersPage() {
   const openOrderId = useOpenOrderId();
+  const [placing, setPlacing] = useState(false);
   return (
     <>
-      <h1>Orders</h1>
+      <div className="page-header">
+        <h1>Orders</h1>
+        <button type="button" onClick={() => setPlacing(true)}>
+          Place new order
+        </button>
+      </div>
       <OrderList query={useOrders()} />
       {/* The panel knows nothing of this page: it gets only the id. */}
       {openOrderId && <OrderDetailPanel orderId={openOrderId} />}
+      {placing && <NewOrderModal onClose={() => setPlacing(false)} />}
     </>
   );
 }

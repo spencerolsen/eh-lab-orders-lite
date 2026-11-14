@@ -150,3 +150,39 @@ sequenceDiagram
 - **The id is checked before the database.** A string that is not a uuid is a 400 and never reaches Postgres; a well-formed id with no order is a 404. The panel does not even ask for an address that is not a uuid: it shows "Order not found".
 - **The panel's state is in the address.** Clicking a row adds `?order=<id>` (a history entry); the page renders the panel while it is there, and closing or going back removes it.
 - **Nothing about the patient is logged:** the request line, a `db.query` line per query, and `order.loaded` with the id and the item count.
+
+## Placing an order, from the modal to the database
+
+`POST /api/orders` (LAB-12): the New order modal, the service and its one transaction.
+
+```mermaid
+sequenceDiagram
+  participant M as NewOrderModal
+  participant R as Route (POST /api/orders)
+  participant S as Service (createOrder)
+  participant D as Postgres
+
+  Note over M: patient from usePatientSearch, tests from the catalog<br/>(GET /api/lab-tests) through matchTests
+  M->>R: { patientId, labTestIds } (useMutation)
+  Note over R: parse(createOrderBody): 400 for a missing field,<br/>a non-uuid id or an unknown field
+  R->>S: createOrder(deps, request.log, body)
+  Note over S: now = clock(), read once
+  S->>D: begin
+  S->>D: select the tests by id ... for share
+  Note over S: checkOrderTests: empty, repeated, unknown, inactive<br/>-> 422 INVALID_ORDER_TESTS (rollback, nothing saved)
+  Note over S: estimateReadyDate(now, tests, CLINIC_TIMEZONE)
+  S->>D: insert order (status ordered, ready date, created_at = now)
+  Note over D: patient foreign key fails -> 422 UNKNOWN_PATIENT (rollback)
+  S->>D: insert one item per test (code, name, price, turnaround copied)
+  S->>D: read the order back as a list row
+  S->>D: commit
+  R-->>M: 201 the list row (total from calculateTotal); log order.created
+  Note over M: close; invalidate ['orders'], so the list shows it first
+```
+
+- **All or nothing.** The catalog read, the order and its items run on one connection in one transaction. A refusal or any failure (a constraint on an item, a lost connection) rolls everything back: there is never an order without all of its items.
+- **The server is the authority.** The modal's catalog may be stale. The tests are read again inside the transaction and locked (`FOR SHARE`) until it commits, so a test deactivated after the modal loaded is refused, and a price change sent at the same moment waits until the order is saved.
+- **A snapshot.** Each item copies the test's code, name, price and turnaround. Changing or deactivating the test later never changes the order, its total or its ready date.
+- **One `now`.** The clock is read once; the same instant is `created_at` and the moment the ready date counts from.
+- **On a refusal** the modal stays open with the patient and the tests as they were, and shows the server's message with the request id (`ErrorMessage`).
+

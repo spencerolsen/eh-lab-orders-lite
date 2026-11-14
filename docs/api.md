@@ -59,6 +59,8 @@ Every code the API can return. The list is defined once, as `ERROR_CODES` in `sr
 | `DUPLICATE_TEST_CODE` | 409 | A lab test with this code already exists (codes are compared after upper-casing). |
 | `CONTACT_REQUIRED` | 422 | An edit would leave a patient with neither an email nor a phone; `details` names `email` and `phone`. |
 | `POSSIBLE_DUPLICATE` | 409 | A new patient looks like existing ones; nothing was created, and `matches` lists them. Send again with `confirmDuplicate: true` to create anyway. |
+| `INVALID_ORDER_TESTS` | 422 | An order's test list is empty, or lists a test twice, a test that does not exist or an inactive test; `details` names each offending id. |
+| `UNKNOWN_PATIENT` | 422 | An order names a patient id that does not exist. |
 
 ## Endpoints
 
@@ -333,3 +335,46 @@ One order with its patient and the tests it holds (LAB-15). Read-only.
 | 404 | `NOT_FOUND`: no order has that id. |
 
 Logged: `debug` `order.loaded` with the order id and item count; `warn` `order.not_found` with the order id. Nothing about the patient.
+
+### `POST /api/orders`
+
+Places an order: one patient and the tests to run.
+
+```json
+{
+  "patientId": "5eed0008-0000-4000-8000-000000000002",
+  "labTestIds": [
+    "10000000-0000-4000-8000-000000000001",
+    "10000000-0000-4000-8000-000000000003"
+  ]
+}
+```
+
+| Field | Rule |
+|---|---|
+| `patientId` | A uuid. Required. |
+| `labTestIds` | A list of uuids. Required. The list must not be empty, and each test must exist, be active and appear once (otherwise a 422, below). |
+
+Ids may be sent in upper or lower case; they are compared in lower case. No other field is allowed.
+
+What the server does, in one database transaction (all or nothing):
+
+1. Reads the clock once. That instant is the order's `createdAt` and the moment its ready date counts from.
+2. Reads the chosen tests from the catalog, locked until the transaction ends, and checks the whole list: every offending id is reported, not only the first. The catalog is the authority: a test deactivated after the browser loaded its list is refused.
+3. Works out `estimatedReadyDate` with `estimateReadyDate` (the Nth business day after the order day in `CLINIC_TIMEZONE`, N the longest turnaround) and stores it.
+4. Inserts the order with status `ordered`, then one item per test, each a copy of the test's code, name, price and turnaround at that moment. A later catalog change never alters the order.
+
+The total is not stored; the response works it out from the items with `calculateTotal`, as `GET /api/orders` does.
+
+| Status | Body |
+|---|---|
+| 201 | The new order, in the same shape as one row of `GET /api/orders` (`status` is `ordered`). |
+| 400 | `VALIDATION_ERROR`: a missing field, an id that is not a uuid, `labTestIds` that is not a list, or an unknown extra field. Nothing is saved. |
+| 422 | `INVALID_ORDER_TESTS`: the list is empty, or a test is repeated, does not exist or is inactive. `details` has one entry per offending position, for example `{ "field": "labTestIds.1", "reason": "Lab test <id> is inactive" }` (`{ "field": "labTestIds", ... }` for an empty list). Nothing is saved. |
+| 422 | `UNKNOWN_PATIENT`: no patient has this id. A 422, not a 404: the URL (`/api/orders`) exists; it is an id inside the body that does not. Nothing is saved. |
+
+When both the tests and the patient are wrong, the tests are reported: they are checked first, and the patient is checked by the order insert's foreign key.
+
+The server logs `order.created` at `info` with `orderId`, `patientId` and `itemCount`, and `order.ready_date_estimated` at `debug` with `itemCount`, `longestTurnaroundDays` and `estimatedReadyDate`. A refusal is logged at `warn` by the error handler, with the code and a count of `details`. No name, date of birth or test name is logged.
+
+An order cannot be edited after it is placed (a future version may allow it). Sending the same request twice places two orders; LAB-18 adds an `Idempotency-Key`.

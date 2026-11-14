@@ -1,8 +1,11 @@
 // The order requests the pages make, each checked with the shared schema.
 import {
+  type CreateOrderBody,
   type OrderDetail,
   orderDetailSchema,
   type OrderList,
+  type OrderListItem,
+  orderListItemSchema,
   orderListSchema,
 } from '../../shared/orders';
 import { apiFetch } from '../api/client';
@@ -24,5 +27,14 @@ export async function fetchOrder(
 ): Promise<OrderDetail> {
   return orderDetailSchema.parse(
     await apiFetch(`/api/orders/${id}`, { signal }),
+  );
+}
+
+// POST /api/orders: the new order, as a row of the list.
+export async function createOrder(
+  body: CreateOrderBody,
+): Promise<OrderListItem> {
+  return orderListItemSchema.parse(
+    await apiFetch('/api/orders', { method: 'POST', body }),
   );
 }
