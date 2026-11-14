@@ -341,7 +341,7 @@ Logged: `debug` `order.loaded` with the order id and item count; `warn` `order.n
 What an order of these tests would cost and when it would be ready, if it were placed now (LAB-13). It saves nothing and takes no patient. The New order modal calls it each time the chosen tests change.
 
 ```json
-{ "labTestIds": ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000003"] }
+{ "labTestIds": ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000008"] }
 ```
 
 Same rules for `labTestIds` as `POST /api/orders` (the same function checks them), and no other field is allowed. The response:
@@ -350,7 +350,7 @@ Same rules for `labTestIds` as `POST /api/orders` (the same function checks them
 {
   "items": [
     { "labTestId": "10000000-0000-4000-8000-000000000001", "testCode": "CBC", "testName": "Complete Blood Count", "priceCents": 2500, "turnaroundDays": 1 },
-    { "labTestId": "10000000-0000-4000-8000-000000000003", "testCode": "CULT", "testName": "Bacterial Culture", "priceCents": 5250, "turnaroundDays": 5 }
+    { "labTestId": "10000000-0000-4000-8000-000000000008", "testCode": "CULT", "testName": "Bacterial Culture", "priceCents": 5250, "turnaroundDays": 5 }
   ],
   "totalCents": 7750,
   "estimatedReadyDate": "2026-11-20"
@@ -365,7 +365,7 @@ Same rules for `labTestIds` as `POST /api/orders` (the same function checks them
 | 400 | `VALIDATION_ERROR`: `labTestIds` missing or not a list of uuids, or an unknown extra field. |
 | 422 | `INVALID_ORDER_TESTS`: the list is empty, or a test is repeated, does not exist or is inactive; `details` names each offending position, as for create. |
 
-Logging: only the `order.ready_date_estimated` line at `debug` (ids and counts); a refusal is `warn` from the error handler. Nothing is logged at `info`.
+Logging: only the `order.ready_date_estimated` line at `debug` (ids and counts); a refusal is `warn` from the error handler. The quote adds no `info` line of its own (only the generic `request.completed` line every request gets).
 
 ### `POST /api/orders`
 
