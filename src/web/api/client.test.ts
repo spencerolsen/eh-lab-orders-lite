@@ -61,6 +61,25 @@ describe('apiFetch', () => {
     });
   });
 
+  it('adds the extra headers given (the Idempotency-Key of placing an order)', async () => {
+    const fetch = respondWith('{}', 201);
+    await apiFetch('/api/orders', {
+      method: 'POST',
+      body: {},
+      headers: { 'Idempotency-Key': 'key-1' },
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/orders',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'key-1',
+        },
+      }),
+    );
+  });
+
   it('apiFetch throws ApiError with code, message and requestId from the standard shape', async () => {
     respondWith(
       JSON.stringify({

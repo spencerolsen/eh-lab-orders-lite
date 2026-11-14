@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import type { LabTest } from '../../shared/lab-tests';
+import type { CreateOrderBody } from '../../shared/orders';
 import { formatCents } from '../../shared/money';
 import type { Patient } from '../../shared/patients';
 import { formatTurnaround } from '../catalog/CatalogPage';
@@ -17,6 +18,17 @@ import { QuickAdd } from './QuickAdd';
 // add tests, "Submit order". On success it closes and the order list is
 // refreshed; on a failure it stays open with the choices kept and shows the
 // server's message with the request id.
+//
+// DOUBLE-SUBMIT PROTECTION (LAB-18): one idempotency key per opening of the
+// modal, sent with every submit. A retry after a failure (a timeout, a lost
+// reply) sends the same key, so if the first attempt did place the order the
+// server returns it (200) instead of placing a second one. The page unmounts
+// the modal when it closes, so the next opening (after a success, a Cancel or
+// Escape) gets a new key. Known and accepted: changing the patient or tests
+// after a failed submit and submitting again still sends the same key, so if
+// the failed attempt had in fact placed an order, that first order is returned.
+// Cancel or Escape while a submit is in flight close the modal at once; the
+// order is still placed and appears when the list refreshes.
 export function NewOrderModal({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const quickAdd = useRef<HTMLInputElement>(null);
@@ -30,9 +42,12 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
   );
   const [patient, setPatient] = useState<Patient | null>(null);
   const [tests, setTests] = useState<LabTest[]>([]);
+  // crypto.randomUUID needs a secure context: https, or localhost.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const queryClient = useQueryClient();
   const submit = useMutation({
-    mutationFn: createOrder,
+    mutationFn: (body: CreateOrderBody) => createOrder(body, idempotencyKey),
+    // A 200 (the order this key already placed) is a success like a 201.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       onClose();
@@ -101,7 +116,7 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
         {submit.isError && <ErrorMessage error={submit.error} />}
         <div className="form-actions">
           <button type="submit" disabled={!canSubmit}>
-            Submit order
+            {submit.isPending ? 'Submitting…' : 'Submit order'}
           </button>
           <button type="button" className="button-secondary" onClick={onClose}>
             Cancel

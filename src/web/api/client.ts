@@ -46,11 +46,13 @@ export type ApiFetchOptions = {
   body?: unknown;
   // TanStack Query passes one, to cancel a request nobody waits for any more.
   signal?: AbortSignal;
+  // Extra request headers (the Idempotency-Key of placing an order).
+  headers?: Record<string, string>;
 };
 
 export async function apiFetch(
   path: string,
-  { method = 'GET', body, signal }: ApiFetchOptions = {},
+  { method = 'GET', body, signal, headers }: ApiFetchOptions = {},
 ): Promise<unknown> {
   let response: Response;
   let text: string;
@@ -58,10 +60,11 @@ export async function apiFetch(
     response = await fetch(path, {
       method,
       signal,
-      headers:
-        body === undefined
-          ? { Accept: 'application/json' }
-          : { Accept: 'application/json', 'Content-Type': 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     text = await response.text();

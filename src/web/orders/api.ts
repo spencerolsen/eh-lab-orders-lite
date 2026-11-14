@@ -2,6 +2,7 @@
 import {
   type CancelOrderBody,
   type CreateOrderBody,
+  IDEMPOTENCY_KEY_HEADER,
   type OrderDetail,
   orderDetailSchema,
   type OrderList,
@@ -52,12 +53,19 @@ export async function fetchOrder(
   );
 }
 
-// POST /api/orders: the new order, as a row of the list.
+// POST /api/orders: the new order, as a row of the list. The key names this
+// attempt to place an order: sent again, it returns the order it placed
+// (200) instead of a second one (LAB-18).
 export async function createOrder(
   body: CreateOrderBody,
+  idempotencyKey: string,
 ): Promise<OrderListItem> {
   return orderListItemSchema.parse(
-    await apiFetch('/api/orders', { method: 'POST', body }),
+    await apiFetch('/api/orders', {
+      method: 'POST',
+      body,
+      headers: { [IDEMPOTENCY_KEY_HEADER]: idempotencyKey },
+    }),
   );
 }
 

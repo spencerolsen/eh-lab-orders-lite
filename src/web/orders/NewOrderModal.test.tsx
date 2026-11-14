@@ -357,7 +357,11 @@ it('submits the patient and the tests, is disabled while the request runs, then 
     patientId: PATIENT.id,
     labTestIds: [LIPID.id, CBC.id],
   });
-  expect((submitButton() as HTMLButtonElement).disabled).toBe(true);
+  // While it runs the button says so (LAB-18).
+  expect(
+    (screen.getByRole('button', { name: 'Submitting…' }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
 
   answer(json(201, NEW_ORDER));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -395,6 +399,124 @@ it('shows a server error with its request id and keeps the modal open with the c
   expect((submitButton() as HTMLButtonElement).disabled).toBe(false);
   await user.click(submitButton());
   expect(posts(fetch)).toHaveLength(2);
+});
+
+// Double-submit protection (LAB-18): the Idempotency-Key of each POST.
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const keys = (fetch: ReturnType<typeof fakeApi>) =>
+  posts(fetch).map(
+    ([, init]) => (init!.headers as Record<string, string>)['Idempotency-Key'],
+  );
+
+async function addCbcAndSubmit(user: ReturnType<typeof userEvent.setup>) {
+  await choosePatient(user);
+  await user.type(quickAdd(), 'cbc{ArrowDown}{Enter}');
+  await user.click(submitButton());
+}
+
+const serverError = () =>
+  Promise.resolve(
+    json(500, {
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Something went wrong',
+        requestId: 'req-place-2',
+      },
+    }),
+  );
+
+it('sends one request with an Idempotency-Key on a double click, the button disabled and saying "Submitting…" while it runs', async () => {
+  let answer: (response: Response) => void = () => {};
+  const fetch = fakeApi({
+    place: () => new Promise<Response>((resolve) => (answer = resolve)),
+  });
+  const { user } = await openModal();
+  await choosePatient(user);
+  await user.type(quickAdd(), 'cbc{ArrowDown}{Enter}');
+
+  await user.dblClick(submitButton());
+  expect(posts(fetch)).toHaveLength(1);
+  expect(keys(fetch)[0]).toMatch(UUID);
+  const pending = screen.getByRole('button', { name: 'Submitting…' });
+  expect((pending as HTMLButtonElement).disabled).toBe(true);
+  await user.click(pending);
+  expect(posts(fetch)).toHaveLength(1);
+
+  answer(json(201, NEW_ORDER));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+it('sends the same key again when the user retries after a failed submit', async () => {
+  const fetch = fakeApi({ place: serverError });
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await screen.findByRole('alert');
+  // The user tries again in the same modal.
+  await user.click(submitButton());
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(first).toMatch(UUID);
+  expect(second).toBe(first);
+});
+
+it('keeps the key when the choices change after a failure (the accepted limitation)', async () => {
+  const fetch = fakeApi({ place: serverError });
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await screen.findByRole('alert');
+  await user.type(quickAdd(), 'lipid{ArrowDown}{Enter}');
+  await user.click(submitButton());
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(second).toBe(first);
+});
+
+it('makes a new key when the modal is closed and opened again', async () => {
+  const fetch = fakeApi({ place: serverError });
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await screen.findByRole('alert');
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await user.click(screen.getByRole('button', { name: 'Place new order' }));
+  await addCbcAndSubmit(user);
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(first).toMatch(UUID);
+  expect(second).toMatch(UUID);
+  expect(second).not.toBe(first);
+});
+
+it('makes a new key for the next order after a successful submit', async () => {
+  const fetch = fakeApi();
+  const { user } = await openModal();
+  await addCbcAndSubmit(user);
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+  await user.click(screen.getByRole('button', { name: 'Place new order' }));
+  await addCbcAndSubmit(user);
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+
+  const [first, second] = keys(fetch);
+  expect(second).not.toBe(first);
+});
+
+it('treats a 200 (the order this key already placed) as a success: it closes and shows the order', async () => {
+  fakeApi({ place: () => Promise.resolve(json(200, NEW_ORDER)) });
+  const { user } = await openModal();
+  expect(await screen.findByText('No orders yet')).toBeTruthy();
+  await addCbcAndSubmit(user);
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(
+    await screen.findByRole('link', {
+      name: 'Demo Example (born Feb 29, 2020)',
+    }),
+  ).toBeTruthy();
 });
 
 it('shows loading and then an error with Try again when the catalog cannot be loaded', async () => {
