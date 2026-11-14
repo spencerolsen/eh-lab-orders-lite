@@ -22,7 +22,6 @@ export function MenuBar() {
           ))}
         </ul>
       </nav>
-      {/* LAB-20 puts the "New order" button here, at the end of the bar. */}
     </header>
   );
 }

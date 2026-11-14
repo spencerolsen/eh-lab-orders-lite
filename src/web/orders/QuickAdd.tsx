@@ -36,10 +36,13 @@ export function QuickAdd({
   // The highlighted suggestion's index, or -1 for none.
   const [highlight, setHighlight] = useState(-1);
 
-  // Once a patient is chosen, the focus moves here: the next step.
+  // Once a patient is chosen and the tests are loaded, the focus moves here:
+  // the next step (with the patient already chosen, as on the patient page,
+  // the box is first usable when the catalog arrives).
+  const usable = !disabled && catalog.data !== undefined;
   useEffect(() => {
-    if (!disabled) input.current?.focus();
-  }, [disabled, input]);
+    if (usable) input.current?.focus();
+  }, [usable, input]);
 
   const suggestions = catalog.data
     ? matchTests(text, catalog.data, selectedIds).slice(0, MAX_SUGGESTIONS)
