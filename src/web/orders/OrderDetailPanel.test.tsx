@@ -94,15 +94,22 @@ function fakeApi(order: () => Response = () => json(200, DETAIL)) {
   return fetch;
 }
 
-const panel = () => screen.findByRole('dialog', { name: 'Order' });
+const panel = () => screen.findByRole('dialog', { name: /^Order/ });
 
 it('opens from the address and shows the order', async () => {
   fakeApi();
   renderApp(`/?order=${ID}`);
   const dialog = within(await panel());
+  // The heading is the dialog's name; the patient is shown by name only.
+  expect(await dialog.findByText('Sample Person')).toBeTruthy();
   expect(
-    await dialog.findByText('Sample Person (born Dec 31, 1990)'),
+    dialog.getByRole('heading', { name: 'Order for Sample Person' }),
   ).toBeTruthy();
+  expect(
+    screen.getByRole('dialog', { name: 'Order for Sample Person' }),
+  ).toBeTruthy();
+  expect(dialog.queryByText(/born/)).toBeNull();
+  expect(dialog.queryByText(/1990/)).toBeNull();
   expect(dialog.getByText('Collected')).toBeTruthy();
   expect(dialog.getByText('CBC')).toBeTruthy();
   expect(dialog.getByText('Lipid Panel')).toBeTruthy();
@@ -278,5 +285,5 @@ it('stays open under StrictMode', async () => {
   const dialog = within(await panel());
   expect(await dialog.findByText('Total $56.00')).toBeTruthy();
   await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(screen.getByRole('dialog', { name: 'Order' })).toBeTruthy();
+  expect(screen.getByRole('dialog', { name: /^Order/ })).toBeTruthy();
 });

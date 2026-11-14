@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { ApiError } from '../api/client';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
 import { fetchPatient, patientKey } from '../patients/api';
@@ -77,7 +78,12 @@ function ChosenPatient({
       {patient.isError && (
         <ErrorMessage
           error={patient.error}
-          onRetry={() => void patient.refetch()}
+          // A patient that does not exist will not appear on a retry.
+          onRetry={
+            patient.error instanceof ApiError && patient.error.status === 404
+              ? undefined
+              : () => void patient.refetch()
+          }
         />
       )}
       {patient.data && <PatientLabel patient={patient.data} />}

@@ -6,7 +6,7 @@ import type pg from 'pg';
 import { seedLabTests } from '../../../db/seeds/lab-tests';
 import { SEED_ORDERS, seedOrders } from '../../../db/seeds/orders';
 import { seedPatients } from '../../../db/seeds/patients';
-import { orderListSchema } from '../../shared/orders';
+import { orderDetailSchema, orderListSchema } from '../../shared/orders';
 import {
   startTestApp,
   type TestApp,
@@ -40,8 +40,8 @@ beforeAll(async () => {
   try {
     await seedLabTests(client);
     await seedPatients(client);
-    // 4 orders with 1 + 3 + 2 + 3 items.
-    expect(await seedOrders(client, options)).toBe(13);
+    // 5 orders with 1 + 3 + 2 + 3 + 1 items.
+    expect(await seedOrders(client, options)).toBe(15);
     first = await read(client);
     expect(await seedOrders(client, options)).toBe(0);
   } finally {
@@ -53,12 +53,12 @@ afterAll(async () => {
   await t.close();
 });
 
-it('seeding twice leaves the same 4 orders and the same items', async () => {
+it('seeding twice leaves the same 5 orders and the same items', async () => {
   expect(await read(t.pool)).toEqual(first);
   expect(first.orders.map((order) => (order as { id: string }).id)).toEqual(
     SEED_ORDERS.map((order) => order.id),
   );
-  expect(first.items).toHaveLength(9);
+  expect(first.items).toHaveLength(10);
 });
 
 it('orders only active tests', async () => {
@@ -124,6 +124,7 @@ it('stores the ready date estimateReadyDate gives for the order time and its ite
     '2026-11-09', // Wednesday 11-04, longest 3 (VITD)
     '2026-11-03', // Friday 10-30, longest 2 (LIPID)
     '2026-10-28', // Monday 10-26, longest 2
+    '2026-11-04', // Tuesday 11-03, UA (1)
   ]);
 });
 
@@ -141,7 +142,21 @@ it('lists the seeded orders newest first, with their totals and statuses', async
   ).toEqual([
     ['1', 'ordered', 1, 5250, '2026-11-07 11:00'],
     ['2', 'collected', 3, 13200, '2026-11-04 14:30'],
+    ['5', 'cancelled', 1, 1800, '2026-11-03 10:00'],
     ['3', 'ordered', 2, 5600, '2026-10-30 12:00'],
     ['4', 'completed', 3, 12250, '2026-10-26 10:00'],
   ]);
+});
+
+it('seeds one cancelled order with its note, name and time, readable through the API', async () => {
+  const response = await t.inject({
+    method: 'GET',
+    url: '/api/orders/5eed0011-0000-4000-8000-000000000005',
+  });
+  const order = orderDetailSchema.parse(response.json());
+  expect(order.status).toBe('cancelled');
+  expect(order.cancellation).toMatchObject({
+    note: 'Sample note',
+    cancelledBy: 'Sample Staff',
+  });
 });

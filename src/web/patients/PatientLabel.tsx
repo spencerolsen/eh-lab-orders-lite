@@ -13,7 +13,7 @@ export function patientName(patient: Named): string {
 // patient is named: the patient page (LAB-09) and the order screens.
 export function PatientLabel({ patient }: { patient: Named }) {
   return (
-    <span>
+    <span className="wrap">
       {patientName(patient)} (born {formatDate(patient.dateOfBirth)})
     </span>
   );

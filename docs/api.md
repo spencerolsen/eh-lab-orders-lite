@@ -150,7 +150,7 @@ The body may also carry `"confirmDuplicate": true` (see the duplicate check belo
 | Field | Rule |
 |---|---|
 | `firstName`, `lastName` | Required. Trimmed, then 1 to 100 characters, with no control characters (a NUL, tab or line break). |
-| `dateOfBirth` | Required. `YYYY-MM-DD`, a real calendar date (`2020-02-29` yes, `2020-02-30` and `1984-13-01` no), and not after today in the clinic's time zone (`CLINIC_TIMEZONE`, by the server's clock). |
+| `dateOfBirth` | Required. `YYYY-MM-DD`, a real calendar date (`2020-02-29` yes, `2020-02-30` and `1984-13-01` no), not before `1900-01-01` (reason "cannot be before 1900-01-01"), and not after today in the clinic's time zone (`CLINIC_TIMEZONE`, by the server's clock). |
 | `email` | Optional. Empty text or `null` counts as absent. Trimmed and lower-cased, then it must look like an email address (at most 254 characters). |
 | `phone` | Optional. Empty text or `null` counts as absent. It may contain only digits, spaces, dashes, dots, parentheses and a leading `+`; a letter is refused, not dropped (`801 555 01OO` is a typo). The formatting is removed, and what remains must be a US number with its area code: 10 digits, or 11 starting with 1, whose 1 is dropped. `(801) 555-0100`, `801.555.0100` and `+1 801 555 0100` are all stored as `8015550100`; `555-0100` (no area code) is refused with "must be a 10-digit number, including the area code". International numbers are not supported. The API returns the 10 digits; the screen formats them. |
 | `email` or `phone` | At least one of the two must be present. If neither is, `details` names both, `email` and `phone`. |
@@ -218,7 +218,7 @@ Changes some of a patient's details. The body has any of the create fields, at l
 | Field | Rule |
 |---|---|
 | a field left out | Unchanged. |
-| `firstName`, `lastName`, `dateOfBirth` | The same rules as on create (one shared definition, `patientFields`), including "not after the clinic's today". `null` is a 400. |
+| `firstName`, `lastName`, `dateOfBirth` | The same rules as on create (one shared definition, `patientFields`), including "not before 1900-01-01" and "not after the clinic's today". `null` is a 400. |
 | `email`, `phone` | The same rules and normalization as on create. `null` or empty text removes the value. |
 
 `updated_at` is set on every successful edit. The update is one `UPDATE ... RETURNING`, with no read first.
@@ -432,6 +432,8 @@ When both the tests and the patient are wrong, the tests are reported: they are 
 The server logs `order.created` at `info` with `orderId`, `patientId` and `itemCount` (not on a replay, which created nothing: that is `order.create_replayed` at `warn`, with `orderId` and `idempotencyKey`, a random id that is not patient data), and `order.ready_date_estimated` at `debug` with `itemCount`, `longestTurnaroundDays` and `estimatedReadyDate`. A refusal is logged at `warn` by the error handler, with the code and a count of `details`. No name, date of birth or test name is logged.
 
 An order's tests and patient cannot be edited after it is placed (a future version may allow it); only its status moves, with the endpoints below. Sending the same request twice without an `Idempotency-Key` places two orders.
+
+**Known limit: the preview can differ from the saved order.** The request carries only the patient and the test ids, so the order is saved with the price and turnaround each test has when the request arrives. If someone changes a test's price or turnaround while the New order dialog is open, the saved total and ready date can differ from the preview the person saw. The response and the orders list show the saved numbers. A fuller fix is on the [backlog](plan/backlog.md).
 
 ### `POST /api/orders/:id/transitions`
 

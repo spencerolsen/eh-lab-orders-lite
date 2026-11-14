@@ -165,6 +165,19 @@ describe('the clinic time zone decides "today"', () => {
   });
 });
 
+describe('the earliest date of birth', () => {
+  it('accepts 1900-01-01 and refuses the day before, with the reason on the field', async () => {
+    expect(
+      (await post({ ...valid, dateOfBirth: '1900-01-01' })).statusCode,
+    ).toBe(201);
+    const early = await post({ ...valid, dateOfBirth: '1899-12-31' });
+    expect(early.statusCode).toBe(400);
+    expect(early.json<ErrorBody>().error.details).toEqual([
+      { field: 'dateOfBirth', reason: 'cannot be before 1900-01-01' },
+    ]);
+  });
+});
+
 describe('GET /api/patients', () => {
   it('lists patients by last name, then first name', async () => {
     for (const [firstName, lastName] of [

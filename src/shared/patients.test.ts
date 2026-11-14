@@ -133,6 +133,9 @@ describe('dateOfBirthProblem', () => {
     ['2020-02-30', 'must be a real calendar date'],
     ['1984-13-01', 'must be a real calendar date'],
     ['2026-01-15', 'cannot be in the future'],
+    ['1900-01-01', undefined],
+    ['1899-12-31', 'cannot be before 1900-01-01'],
+    ['0001-01-01', 'cannot be before 1900-01-01'],
     ['31/12/1990', 'must be a date written YYYY-MM-DD'],
     ['', 'is required'],
   ])('%s gives %s', (value, reason) => {
@@ -143,6 +146,12 @@ describe('dateOfBirthProblem', () => {
     expect(problems({ ...valid, dateOfBirth: '2026-01-15' })).toEqual({
       dateOfBirth: 'cannot be in the future',
     });
+  });
+});
+
+it('the schema refuses a date of birth before 1900-01-01, as the form does', () => {
+  expect(problems({ ...valid, dateOfBirth: '1899-12-31' })).toEqual({
+    dateOfBirth: 'cannot be before 1900-01-01',
   });
 });
 

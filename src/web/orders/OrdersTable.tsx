@@ -100,11 +100,13 @@ export function OrdersTable({
               )}
               <td className="numeric">{order.testCount}</td>
               <td className="numeric">{formatCents(order.totalCents)}</td>
-              <td>{formatDate(order.estimatedReadyDate)}</td>
+              <td className="nowrap">{formatDate(order.estimatedReadyDate)}</td>
               <td>
                 <StatusBadge status={order.status} />
               </td>
-              <td>{formatDateTime(order.createdAtClinic)}</td>
+              <td className="nowrap">
+                {formatDateTime(order.createdAtClinic)}
+              </td>
               <td>
                 <button
                   type="button"

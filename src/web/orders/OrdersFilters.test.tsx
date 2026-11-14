@@ -64,7 +64,17 @@ function fakeApi(orders: OrderListItem[]) {
     const byId = /^\/api\/patients\/(.+)$/.exec(pathname);
     if (byId) {
       const found = [JANE_1, JANE_2].find((p) => p.id === byId[1]);
-      return Promise.resolve(found ? json(200, found) : json(404, {}));
+      return Promise.resolve(
+        found
+          ? json(200, found)
+          : json(404, {
+              error: {
+                code: 'NOT_FOUND',
+                message: 'There is no patient with this id',
+                requestId: 'req-none',
+              },
+            }),
+      );
     }
     if (pathname.startsWith('/api/orders/')) {
       return Promise.resolve(json(404, {}));
@@ -252,4 +262,12 @@ it('keeps the filters when an order is opened and closed', async () => {
   await user.click(await screen.findByRole('button', { name: 'Close' }));
   await waitFor(() => expect(address()).not.toMatch(/order=/));
   expect(address()).toBe('?status=ordered');
+});
+
+it('says there is no such patient, without a Try again that cannot help', async () => {
+  fakeApi([order(1, JANE_1)]);
+  renderApp('/?patientId=20000000-0000-4000-8000-0000000000ff');
+  const alert = await screen.findByRole('alert');
+  expect(alert.textContent).toContain('There is no patient with this id');
+  expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
 });

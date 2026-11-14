@@ -163,3 +163,20 @@ it('shows the error with its reference, and Try again loads the list', async () 
     fetch.mock.calls.filter(([url]) => url === '/api/orders'),
   ).toHaveLength(2);
 });
+
+it('keeps the ready date and the created time on one line each', async () => {
+  fakeApi(list([FRIDAY_NOON]));
+  renderApp('/');
+  await screen.findByRole('table');
+  const row = screen.getAllByRole('row')[1]!;
+  for (const text of ['Nov 3, 2026', 'Oct 30, 2026, 12:00 pm']) {
+    expect(within(row).getByText(text).className).toBe('nowrap');
+  }
+});
+
+it('lets a long unbroken patient name wrap inside its cell', async () => {
+  fakeApi(list([FRIDAY_NOON]));
+  renderApp('/');
+  const label = await screen.findByText('Sample Person (born Dec 31, 1990)');
+  expect(label.className).toBe('wrap');
+});

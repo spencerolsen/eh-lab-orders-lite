@@ -112,7 +112,7 @@ function LabTestTable({
           // the colour.
           <tr key={test.id} className={test.isActive ? undefined : 'muted'}>
             <td>{test.code}</td>
-            <td>{test.name}</td>
+            <td className="wrap">{test.name}</td>
             <td className="numeric">{formatCents(test.priceCents)}</td>
             <td>{formatTurnaround(test.turnaroundDays)}</td>
             <td>{test.isActive ? 'Active' : 'Inactive'}</td>

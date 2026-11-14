@@ -122,7 +122,7 @@ function fakeApi(
 }
 
 const panel = async () =>
-  within(await screen.findByRole('dialog', { name: 'Order' }));
+  within(await screen.findByRole('dialog', { name: /^Order/ }));
 
 // The buttons in the panel, by their text.
 function buttons(dialog: Awaited<ReturnType<typeof panel>>): string[] {
@@ -230,7 +230,7 @@ it('on 409 says the order changed and reloads it to show its real status', async
   );
 
   expect((await dialog.findByRole('alert')).textContent).toBe(
-    'This order was changed by someone else. Reference: req-409',
+    'This order has changed. It is now Collected.',
   );
   // Reloaded: the real status and the move allowed from it.
   expect(await dialog.findByText('Collected')).toBeTruthy();
@@ -242,7 +242,7 @@ it('on 409 says the order changed and reloads it to show its real status', async
   await waitFor(() => expect(listStatus()).toBe('Collected'));
 });
 
-it("on 422 shows the server's message and reloads the order", async () => {
+it('on 422 says the order changed, not the server’s sentence, and reloads the order', async () => {
   // Another tab marked it collected after this panel loaded it as ordered:
   // the server reads collected, and the table refuses collected to collected.
   const { fetch } = fakeApi('ordered', (_to, state) => {
@@ -262,7 +262,7 @@ it("on 422 shows the server's message and reloads the order", async () => {
   );
 
   expect((await dialog.findByRole('alert')).textContent).toBe(
-    'An order cannot move from collected to collected. Reference: req-422',
+    'This order has changed. It is now Collected.',
   );
   // Reloaded: the real status and the move allowed from it.
   expect(await dialog.findByText('Collected')).toBeTruthy();
@@ -270,4 +270,87 @@ it("on 422 shows the server's message and reloads the order", async () => {
   expect(
     fetch.mock.calls.filter(([url]) => url === `/api/orders/${ID}`),
   ).toHaveLength(2);
+});
+
+// A move the server refuses with this status and message, then (calls after
+// the first) whatever `later` answers.
+function refuseOnce(status: number, message: string) {
+  return (_to: OrderStatus, state: { status: OrderStatus }) => {
+    state.status = 'collected';
+    return json(status, {
+      error: { code: 'ILLEGAL_TRANSITION', message, requestId: 'req-x' },
+    });
+  };
+}
+
+it('shows only the latest error: a new action clears the one before', async () => {
+  let calls = 0;
+  fakeApi('ordered', (to, state) => {
+    calls += 1;
+    if (calls === 1) return refuseOnce(422, 'old')(to, state);
+    return json(500, {
+      error: { code: 'INTERNAL_ERROR', message: 'x', requestId: 'req-500' },
+    });
+  });
+  renderApp(`/?order=${ID}`);
+  const dialog = await panel();
+  await userEvent.click(
+    await dialog.findByRole('button', { name: 'Mark collected' }),
+  );
+  expect((await dialog.findByRole('alert')).textContent).toBe(
+    'This order has changed. It is now Collected.',
+  );
+
+  await userEvent.click(
+    await dialog.findByRole('button', { name: 'Mark completed' }),
+  );
+
+  await waitFor(() =>
+    expect(dialog.getByRole('alert').textContent).toContain('req-500'),
+  );
+  expect(dialog.getAllByRole('alert')).toHaveLength(1);
+  expect(dialog.queryByText(/has changed/)).toBeNull();
+});
+
+it('clears the error when the cancel form is opened', async () => {
+  fakeApi('ordered', refuseOnce(422, 'old'));
+  renderApp(`/?order=${ID}`);
+  const dialog = await panel();
+  await userEvent.click(
+    await dialog.findByRole('button', { name: 'Mark collected' }),
+  );
+  await dialog.findByRole('alert');
+
+  await userEvent.click(
+    await dialog.findByRole('button', { name: 'Cancel order' }),
+  );
+
+  expect(dialog.queryByRole('alert')).toBeNull();
+});
+
+it('clears the error when the next action succeeds', async () => {
+  let calls = 0;
+  fakeApi('ordered', (to, state) => {
+    calls += 1;
+    if (calls === 1) {
+      return json(500, {
+        error: { code: 'INTERNAL_ERROR', message: 'x', requestId: 'req-500' },
+      });
+    }
+    state.status = to;
+    return json(200, detail(to));
+  });
+  renderApp(`/?order=${ID}`);
+  const dialog = await panel();
+  await userEvent.click(
+    await dialog.findByRole('button', { name: 'Mark collected' }),
+  );
+  await dialog.findByRole('alert');
+
+  await userEvent.click(
+    await dialog.findByRole('button', { name: 'Mark collected' }),
+  );
+
+  expect(await dialog.findByText('Collected')).toBeTruthy();
+  expect(dialog.queryByRole('alert')).toBeNull();
 });

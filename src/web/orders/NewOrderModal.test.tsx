@@ -2,7 +2,7 @@
 // closing, the patient step, the quick-add box and its keyboard, submitting.
 import { screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { LabTest } from '../../shared/lab-tests';
 import type { OrderListItem } from '../../shared/orders';
@@ -403,6 +403,70 @@ it('shows a server error with its request id and keeps the modal open with the c
   expect((submitButton() as HTMLButtonElement).disabled).toBe(false);
   await user.click(submitButton());
   expect(posts(fetch)).toHaveLength(2);
+});
+
+// A 422 for the test at the given position of the list that was sent.
+function refusedAt(position: number) {
+  return () =>
+    Promise.resolve(
+      json(422, {
+        error: {
+          code: 'INVALID_ORDER_TESTS',
+          message: 'Some of the chosen tests cannot be ordered',
+          requestId: 'req-refused',
+          details: [
+            {
+              field: `labTestIds.${position}`,
+              reason: `Lab test ${CBC.id} is inactive`,
+            },
+          ],
+        },
+      }),
+    );
+}
+
+it('names the refused test, with its code and name', async () => {
+  fakeApi({ place: refusedAt(1) });
+  const { user } = await openModal();
+  await choosePatient(user);
+  await user.type(quickAdd(), 'lipid{ArrowDown}{Enter}');
+  await user.type(quickAdd(), 'cbc{ArrowDown}{Enter}');
+  await user.click(submitButton());
+  // Position 1 of the list sent is the second test chosen: CBC.
+  expect((await screen.findByRole('alert')).textContent).toBe(
+    'Some of the chosen tests cannot be ordered. Reference: req-refused' +
+      'Cannot be ordered: CBC (Complete Blood Count)',
+  );
+});
+
+describe('an error from a failed submit is cleared by a change of choices', () => {
+  async function failedSubmit() {
+    fakeApi({ place: refusedAt(0) });
+    const { user } = await openModal();
+    await choosePatient(user);
+    await user.type(quickAdd(), 'cbc{ArrowDown}{Enter}');
+    await user.click(submitButton());
+    await screen.findByRole('alert');
+    return user;
+  }
+
+  it('when a test is removed', async () => {
+    const user = await failedSubmit();
+    await user.click(screen.getByRole('button', { name: 'Remove CBC' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('when a test is added', async () => {
+    const user = await failedSubmit();
+    await user.type(quickAdd(), 'lipid{ArrowDown}{Enter}');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('when the patient is changed', async () => {
+    const user = await failedSubmit();
+    await user.click(screen.getByRole('button', { name: 'Change' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });
 
 // Double-submit protection (LAB-18): the Idempotency-Key of each POST.
