@@ -60,6 +60,46 @@ export const orderListSchema = z.object({
   clinicTimezone: z.string(),
 });
 
+// The query of GET /api/orders. Every value arrives as text, so the numbers
+// are checked as text first: only digits count, which refuses "1.5", "-1",
+// "1e1" and "". Strict: an unknown parameter is a 400. The default and the
+// largest page are named here so the server and the screen share them.
+export const DEFAULT_ORDER_LIMIT = 25;
+export const MAX_ORDER_LIMIT = 100;
+
+const limitText = `Must be a whole number from 1 to ${MAX_ORDER_LIMIT}`;
+const offsetText = 'Must be a whole number, 0 or more';
+
+export const listOrdersQuery = z.strictObject({
+  status: z
+    .enum(ORDER_STATUSES, {
+      error: `Must be one of ${ORDER_STATUSES.join(', ')}`,
+    })
+    .optional(),
+  patientId: z
+    .uuid({ error: 'Must be a patient id (a uuid)' })
+    .toLowerCase()
+    .optional(),
+  limit: z
+    .string({ error: limitText })
+    .regex(/^\d{1,9}$/, { error: limitText })
+    .transform(Number)
+    .pipe(
+      z
+        .number()
+        .min(1, { error: limitText })
+        .max(MAX_ORDER_LIMIT, { error: limitText }),
+    )
+    .default(DEFAULT_ORDER_LIMIT),
+  offset: z
+    .string({ error: offsetText })
+    .regex(/^\d{1,9}$/, { error: offsetText })
+    .transform(Number)
+    .default(0),
+});
+
+export type ListOrdersQuery = z.output<typeof listOrdersQuery>;
+
 export type OrderListItem = z.infer<typeof orderListItemSchema>;
 export type OrderList = z.infer<typeof orderListSchema>;
 

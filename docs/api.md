@@ -238,7 +238,18 @@ The server logs `patient.updated` at `info` with `patientId` and `changedFields`
 
 ### `GET /api/orders`
 
-Every order, newest first (`created_at` descending, then `id` descending, so orders placed at the same moment always come back in the same order). No query parameters yet: any parameter is a 400 `VALIDATION_ERROR` (LAB-14 adds the filters and real paging).
+Orders, newest first (`created_at` descending, then `id` descending, so orders placed at the same moment always come back in the same order, and every page is the same on every call), one page at a time, optionally narrowed by status and patient.
+
+| Query parameter | Rule |
+|---|---|
+| `status` | One of `ordered`, `collected`, `completed`, `cancelled` (`ORDER_STATUSES`). Optional. |
+| `patientId` | A uuid. Optional. A well-formed id that no patient has is not an error: the list is simply empty (it is a filter, not a resource in the path). |
+| `limit` | A whole number from 1 to 100. Default 25. |
+| `offset` | A whole number, 0 or more. Default 0. |
+
+The filters combine with AND. No other parameter is allowed.
+
+Paging: the server asks the database for `limit + 1` rows. Getting the extra row means there is a next page: `hasMore` is `true` and the extra row is dropped. There is no count of all the matching orders (a `COUNT` would read every matching row on every request), so a screen cannot say "page 3 of 12"; it asks for the next page with `offset` = the number of rows it already has. Offset paging is not stable against new orders: see `docs/architecture.md`, "Scaling the orders list".
 
 ```json
 {
@@ -274,15 +285,15 @@ Every order, newest first (`created_at` descending, then `id` descending, so ord
 | `estimatedReadyDate` | `YYYY-MM-DD`, stored when the order was placed. |
 | `createdAt` | When the order was placed, an ISO 8601 instant in UTC. |
 | `createdAtClinic` | The same moment on the clinic's wall clock, `YYYY-MM-DD HH:mm` (24-hour) in `CLINIC_TIMEZONE`. Screens show this, so every browser shows the clinic's time whatever its own time zone. |
-| `hasMore` | Always `false` for now; LAB-14 adds paging. |
+| `hasMore` | `true` when more orders match after this page; see paging above. |
 | `clinicTimezone` | The IANA name of `CLINIC_TIMEZONE`, for labelling the created time ("Created (America/Denver)"). |
 
 | Status | Body |
 |---|---|
 | 200 | The list above (`{ "items": [], ... }` when there are no orders). |
-| 400 | `VALIDATION_ERROR` for any query parameter. |
+| 400 | `VALIDATION_ERROR` for a `status` that is not one of the statuses, a `patientId` that is not a uuid, a `limit` or `offset` that is out of range or not a whole number (`1.5`, `abc`, empty), a parameter given twice, or an unknown parameter. `details` names each field. |
 
-Logged: only the request line. Nothing about the patients is logged.
+Logged: the request line, and `debug` `orders.listed` with `filters` (the names of the filters that were present, such as `["status"]`, never their values), `rowCount` and `hasMore`. Nothing about the patients is logged.
 
 ### `GET /api/orders/:id`
 

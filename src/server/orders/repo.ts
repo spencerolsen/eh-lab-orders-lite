@@ -1,6 +1,7 @@
 // The SQL for orders. Values are always bound parameters.
 import { clinicDateTime } from '../../shared/dates';
 import {
+  type ListOrdersQuery,
   type OrderDetail,
   orderDetailSchema,
   type OrderListItem,
@@ -11,6 +12,7 @@ import type { OrderItem } from '../../shared/order-items';
 import type { LabTestRow } from '../catalog/repo';
 import type { Db } from '../db/query';
 import { BusinessRuleError } from '../errors';
+import { toPage } from './domain/page';
 import { calculateTotal } from './domain/total';
 import { allowedNextStatuses, canCancel } from './domain/transitions';
 
@@ -71,19 +73,43 @@ const LIST_ROW_SELECT = `
   join patients p on p.id = o.patient_id
   left join order_items i on i.order_id = o.id`;
 
-// Every order, newest first; the id breaks ties between orders placed at the
-// same moment, so the order is the same on every call. One query for the
-// whole list.
+// One page of orders, newest first; the id breaks ties between orders placed
+// at the same moment, so the order (and so every page) is the same on every
+// call. The filters combine with AND. One query: it asks for limit + 1 rows,
+// and toPage turns the extra one into hasMore, so there is no COUNT.
 export async function listOrders(
   db: Db,
   clinicTimezone: string,
-): Promise<OrderListItem[]> {
+  query: Pick<ListOrdersQuery, 'status' | 'patientId' | 'limit' | 'offset'>,
+): Promise<{ items: OrderListItem[]; hasMore: boolean }> {
+  // The where clause is built from fixed fragments; the values are always
+  // bound parameters.
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (query.status !== undefined) {
+    params.push(query.status);
+    conditions.push('o.status = $' + params.length);
+  }
+  if (query.patientId !== undefined) {
+    params.push(query.patientId);
+    conditions.push('o.patient_id = $' + params.length);
+  }
+  params.push(query.limit + 1, query.offset);
+  const where =
+    conditions.length > 0 ? 'where ' + conditions.join(' and ') : '';
   const { rows } = await db.query<OrderListRow>(
     `${LIST_ROW_SELECT}
+     ${where}
      group by o.id, p.id
-     order by o.created_at desc, o.id desc`,
+     order by o.created_at desc, o.id desc
+     limit $${params.length - 1} offset $${params.length}`,
+    params,
   );
-  return rows.map((row) => toOrderListItem(row, clinicTimezone));
+  const page = toPage(rows, query.limit);
+  return {
+    items: page.items.map((row) => toOrderListItem(row, clinicTimezone)),
+    hasMore: page.hasMore,
+  };
 }
 
 type OrderDetailRow = {

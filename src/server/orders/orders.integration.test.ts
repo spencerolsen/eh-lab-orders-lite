@@ -209,17 +209,6 @@ describe('GET /api/orders', () => {
     expect(queries).toHaveLength(1);
   });
 
-  it('refuses query parameters, which LAB-14 adds', async () => {
-    const response = await t.inject({
-      method: 'GET',
-      url: '/api/orders?status=ordered',
-    });
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({
-      error: { code: 'VALIDATION_ERROR' },
-    });
-  });
-
   it('logs no patient name or date of birth', async () => {
     await insertOrder(t.pool, {
       id: '40000000-0000-4000-8000-000000000001',

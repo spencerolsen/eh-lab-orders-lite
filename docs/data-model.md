@@ -115,7 +115,15 @@ One row per order (LAB-11, `db/migrations/0004_orders.sql`). Orders are never de
 | `estimated_ready_date` | `date` | Not null. Worked out once by `estimateReadyDate` when the order is placed, then stored. The rule: the ready date is the Nth business day after the day the order was placed (in `CLINIC_TIMEZONE`), where N is the longest turnaround among the order's tests. Saturday and Sunday are not business days. The order day itself is never counted. |
 | `created_at`, `updated_at` | `timestamptz` | Not null, `now()` by default. Placing an order (LAB-12) sets `created_at` from the same clock reading that gave the ready date. |
 
-The index `orders_created_at_id` on (`created_at desc`, `id desc`) serves the list, newest first.
+Three indexes serve the list (`GET /api/orders`), one per filter, each ending in the list's own order (`created_at desc`, `id desc`) so Postgres reads the rows already sorted and stops after `limit + 1`:
+
+| Index | Columns | Query it serves |
+|---|---|---|
+| `orders_created_at_id` (0004) | `created_at desc`, `id desc` | No filter: `order by created_at desc, id desc limit n`. |
+| `orders_status_created_at_id` (0006) | `status`, `created_at desc`, `id desc` | The status filter: `where status = $1 order by created_at desc, id desc`. |
+| `orders_patient_id_created_at_id` (0006) | `patient_id`, `created_at desc`, `id desc` | The patient filter (and, in LAB-19, the patient page's order history): `where patient_id = $1 order by ...`. Both filters together use this one too: a patient has few orders, so checking the status on them is cheap. |
+
+Without them each filtered page would read and sort every order as the table grows. `explain` on 50,000 generated orders showed each query reading its own index and stopping after 26 rows.
 
 - **The statuses are written in two places only:** `ORDER_STATUSES` in `src/shared/orders.ts`, from which every schema and screen label derives, and the CHECK above. An integration test reads the CHECK's definition and asserts it lists exactly `ORDER_STATUSES`, in order. To add a status, follow "Adding an order status" in `AGENTS.md`.
 - **The total is derived, the ready date is stored.** The total is the sum of the items' frozen prices, so it can never disagree with them, and storing it would only add a copy that could. The ready date depends on the moment the order was placed and on the clinic's calendar; working it out again later would need that moment and the same rule version, and a change to the rule (holidays, say) must not move the date of an order already promised to a patient.
