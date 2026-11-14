@@ -84,6 +84,8 @@ describe('GET /api/orders/:id', () => {
       clinicTimezone: 'America/Denver',
       allowedNextStatuses: ['completed'],
       canCancel: true,
+      // Not cancelled (LAB-17).
+      cancellation: null,
     });
   });
 

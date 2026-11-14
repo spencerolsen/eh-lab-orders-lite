@@ -1,5 +1,6 @@
 // The order requests the pages make, each checked with the shared schema.
 import {
+  type CancelOrderBody,
   type CreateOrderBody,
   type OrderDetail,
   orderDetailSchema,
@@ -14,8 +15,8 @@ import {
 import { apiFetch } from '../api/client';
 import type { OrderFilters } from './filters';
 
-// The TanStack Query key of the order list; placing an order (LAB-12) and
-// changing a status (LAB-16) refresh it.
+// The TanStack Query key of the order list; placing an order (LAB-12),
+// changing a status (LAB-16) and cancelling (LAB-17) refresh it.
 export const ORDERS_KEY = ['orders'] as const;
 
 // The list's key: every filter combination is its own cache entry.
@@ -83,5 +84,16 @@ export async function changeOrderStatus(
 ): Promise<OrderDetail> {
   return orderDetailSchema.parse(
     await apiFetch(`/api/orders/${id}/transitions`, { method: 'POST', body }),
+  );
+}
+
+// POST /api/orders/:id/cancel: the cancelled order, as GET /api/orders/:id
+// returns it.
+export async function cancelOrder(
+  id: string,
+  body: CancelOrderBody,
+): Promise<OrderDetail> {
+  return orderDetailSchema.parse(
+    await apiFetch(`/api/orders/${id}/cancel`, { method: 'POST', body }),
   );
 }

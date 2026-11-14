@@ -1,6 +1,6 @@
 # LAB-17: Orders: cancel an order with a note and a name
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Vertical slice
 - **Depends on:** LAB-14 (Orders: filter the list by status and patient), LAB-16 (Orders: mark an order collected or completed)
 - **Unblocks:** LAB-21 (Browser tests for the main journeys), LAB-22 (Docs and README, final pass)

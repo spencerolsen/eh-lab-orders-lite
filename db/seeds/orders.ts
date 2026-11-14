@@ -7,9 +7,9 @@
 // is never typed in by hand, and never depends on when the seed runs.
 //
 // Statuses: ordered, collected and completed. No order is seeded as
-// cancelled: LAB-17 adds the cancellation note, name and time, with a CHECK
-// that a cancelled order has all three, and a cancelled row seeded now would
-// have none.
+// cancelled: a cancelled row needs a note, a name and a time (the CHECK
+// orders_cancellation_complete, migration 0007), and cancelling one from its
+// panel shows the whole flow.
 import type pg from 'pg';
 
 import type { OrderStatus } from '../../src/shared/orders';

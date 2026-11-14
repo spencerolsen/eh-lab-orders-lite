@@ -246,3 +246,37 @@ sequenceDiagram
 - **The 422 and the 409 are different paths.** The check refuses an illegal move before any update is tried; the 409 only ever comes from an update that changed no row.
 - **Two tabs, one after the other.** If one tab marks the order collected and a tab still showing `ordered` presses the same button a moment later, the server reads `collected` and the check refuses `collected` to `collected`: a 422, not a 409. The 409 is only for two requests whose read and update overlap. Either way the panel reloads the order, so the second tab shows the real status. The owner accepted this for this version; the alternative is in `docs/plan/backlog.md`.
 - **What changes.** Only `status` and `updated_at`; the stored ready date stays.
+
+## Cancelling an order, from the panel to the database
+
+`POST /api/orders/:id/cancel` (LAB-17): the same read, check and conditional update as a status change (the service's `moveOrder`, shared by both), with the note, the name and the time written in the same update.
+
+```mermaid
+sequenceDiagram
+  participant P as OrderDetailPanel
+  participant R as Route
+  participant S as Service (cancelOrder)
+  participant D as Postgres
+
+  Note over P: "Cancel order" only when canCancel;<br/>the form checks note and name with cancelOrderBody
+  P->>R: { note, cancelledBy } (useMutation; Confirm cancel is disabled)
+  Note over R: parse: 400 for a non-uuid id, a missing, blank or<br/>too long note or name, or an extra field
+  R->>S: cancelOrder(deps, log, id, body)
+  S->>D: select the order (getOrder)
+  D-->>S: none: 404 NOT_FOUND
+  Note over S: assertTransition(status read, cancelled)<br/>completed or cancelled: 422 ILLEGAL_TRANSITION, nothing written
+  S->>D: update orders set status = cancelled, note, name,<br/>cancelled_at = now(), updated_at = now()<br/>where id = id and status = status read
+  alt one row changed
+    S->>D: select the order again
+    R-->>P: 200 the order with its cancellation; log order.cancelled (id, from)
+    Note over P: set ['orders', id]; invalidate ['orders'] so the list refreshes;<br/>the panel shows "Cancelled by NAME on DATE: NOTE"
+  else no row changed (someone else changed it first)
+    R-->>P: 409 ORDER_CHANGED; log order.cancel_lost_race
+    Note over P: the message; invalidate ['orders'], so the panel reloads the real state
+  end
+```
+
+- **One list of what can be cancelled.** The transition table says `ordered` and `collected` may go to `cancelled`; `canCancel` in the response and the check in the service both read it.
+- **All at once.** The status, note, name and time change in one statement, which the database's CHECK requires: there is never a cancelled row without its reason and name.
+- **What is kept.** The order row and its items stay as they were; only the status, the three cancellation fields and `updated_at` change. A cancelled order shows in the list under the cancelled filter.
+- **What is not logged.** The note and the name, which are free text typed by staff.

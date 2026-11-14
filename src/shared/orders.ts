@@ -127,6 +127,18 @@ export const orderDetailSchema = z.object({
   // The forward moves only; cancelling is canCancel.
   allowedNextStatuses: z.array(orderStatusSchema),
   canCancel: z.boolean(),
+  // Who cancelled the order, when and why (LAB-17); null unless cancelled.
+  // cancelledAt is the moment as an ISO 8601 string in UTC, and
+  // cancelledAtClinic the same moment on the clinic's clock, in
+  // clinicTimezone, as createdAtClinic is.
+  cancellation: z
+    .object({
+      note: z.string(),
+      cancelledBy: z.string(),
+      cancelledAt: z.string(),
+      cancelledAtClinic: z.string(),
+    })
+    .nullable(),
 });
 
 export type OrderDetail = z.infer<typeof orderDetailSchema>;
@@ -176,3 +188,41 @@ export const orderTransitionBody = z.strictObject({
 });
 
 export type OrderTransitionBody = z.infer<typeof orderTransitionBody>;
+
+// POST /api/orders/:id/cancel (LAB-17): why the order is cancelled and who is
+// cancelling it. There is no login, so the name is typed in. Both are
+// trimmed, then required; the panel checks its form with this same schema.
+// Every reason is fixed text and never repeats what was typed.
+export const CANCEL_NOTE_MAX_LENGTH = 500;
+export const CANCELLED_BY_MAX_LENGTH = 100;
+
+const cancelText = z.string({
+  error: (issue) =>
+    issue.input === undefined ? 'is required' : 'must be text',
+});
+
+export const cancelOrderBody = z.strictObject({
+  // Free text, so line breaks and tabs are allowed; other control characters (a NUL
+  // cannot be stored in Postgres text) are not.
+  note: cancelText
+    .trim()
+    .min(1, 'is required')
+    .max(
+      CANCEL_NOTE_MAX_LENGTH,
+      `must be ${CANCEL_NOTE_MAX_LENGTH} characters or fewer`,
+    )
+    .regex(
+      /^(?:[^\p{Cc}]|[\t\n\r])*$/u,
+      'must not contain control characters other than line breaks and tabs',
+    ),
+  cancelledBy: cancelText
+    .trim()
+    .min(1, 'is required')
+    .max(
+      CANCELLED_BY_MAX_LENGTH,
+      `must be ${CANCELLED_BY_MAX_LENGTH} characters or fewer`,
+    )
+    .regex(/^[^\p{Cc}]*$/u, 'must not contain control characters'),
+});
+
+export type CancelOrderBody = z.output<typeof cancelOrderBody>;

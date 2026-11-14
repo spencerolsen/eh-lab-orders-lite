@@ -54,6 +54,15 @@ function detail(status: OrderStatus): OrderDetail {
     clinicTimezone: 'America/Denver',
     allowedNextStatuses: NEXT[status],
     canCancel: status === 'ordered' || status === 'collected',
+    cancellation:
+      status === 'cancelled'
+        ? {
+            note: 'Duplicate order',
+            cancelledBy: 'Sample Staff',
+            cancelledAt: '2026-10-31T16:00:00.000Z',
+            cancelledAtClinic: '2026-10-31 10:00',
+          }
+        : null,
   };
 }
 
@@ -131,7 +140,7 @@ it('offers only Mark collected for an ordered order, then only Mark completed', 
   renderApp(`/?order=${ID}`);
   const dialog = await panel();
   await dialog.findByText('Ordered');
-  expect(buttons(dialog)).toEqual(['Mark collected', 'Close']);
+  expect(buttons(dialog)).toEqual(['Mark collected', 'Cancel order', 'Close']);
   await waitFor(() => expect(listStatus()).toBe('Ordered'));
   const listReads = () =>
     fetch.mock.calls.filter(([url]) => url === '/api/orders').length;
@@ -140,7 +149,7 @@ it('offers only Mark collected for an ordered order, then only Mark completed', 
   await userEvent.click(dialog.getByRole('button', { name: 'Mark collected' }));
 
   expect(await dialog.findByText('Collected')).toBeTruthy();
-  expect(buttons(dialog)).toEqual(['Mark completed', 'Close']);
+  expect(buttons(dialog)).toEqual(['Mark completed', 'Cancel order', 'Close']);
   expect(fetch).toHaveBeenCalledWith(
     `/api/orders/${ID}/transitions`,
     expect.objectContaining({
@@ -225,7 +234,7 @@ it('on 409 says the order changed and reloads it to show its real status', async
   );
   // Reloaded: the real status and the move allowed from it.
   expect(await dialog.findByText('Collected')).toBeTruthy();
-  expect(buttons(dialog)).toEqual(['Mark completed', 'Close']);
+  expect(buttons(dialog)).toEqual(['Mark completed', 'Cancel order', 'Close']);
   const orderReads = fetch.mock.calls.filter(
     ([url]) => url === `/api/orders/${ID}`,
   );
@@ -257,7 +266,7 @@ it("on 422 shows the server's message and reloads the order", async () => {
   );
   // Reloaded: the real status and the move allowed from it.
   expect(await dialog.findByText('Collected')).toBeTruthy();
-  expect(buttons(dialog)).toEqual(['Mark completed', 'Close']);
+  expect(buttons(dialog)).toEqual(['Mark completed', 'Cancel order', 'Close']);
   expect(
     fetch.mock.calls.filter(([url]) => url === `/api/orders/${ID}`),
   ).toHaveLength(2);

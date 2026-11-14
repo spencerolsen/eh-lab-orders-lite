@@ -67,6 +67,9 @@ describe('orders', () => {
       'estimated_ready_date',
       'created_at',
       'updated_at',
+      'cancellation_note',
+      'cancelled_by',
+      'cancelled_at',
     ]);
   });
 
@@ -101,6 +104,98 @@ describe('orders', () => {
     ).rejects.toMatchObject({
       code: '23514',
       constraint: 'orders_status_known',
+    });
+  });
+
+  // The CHECK orders_cancellation_complete (migration 0007): a cancelled
+  // order has a note, a name and a time, none blank; any other has none.
+  describe('the cancellation fields', () => {
+    const full = {
+      note: 'Duplicate order',
+      by: 'Sample Staff',
+      at: '2026-11-11T16:00:00Z',
+    };
+
+    function insertWith(
+      status: string,
+      fields: { note?: string | null; by?: string | null; at?: string | null },
+    ) {
+      return t.pool.query(
+        `insert into orders (id, patient_id, status, estimated_ready_date,
+                             cancellation_note, cancelled_by, cancelled_at)
+         values ($1, $2, $3, '2026-11-20', $4, $5, $6)`,
+        [
+          ORDER,
+          PATIENT_A,
+          status,
+          fields.note ?? null,
+          fields.by ?? null,
+          fields.at ?? null,
+        ],
+      );
+    }
+
+    const refused = {
+      code: '23514',
+      constraint: 'orders_cancellation_complete',
+    };
+
+    it('accepts a cancelled order with all three', async () => {
+      await insertWith('cancelled', full);
+    });
+
+    it.each([
+      { name: 'the note', fields: { ...full, note: null } },
+      { name: 'the name', fields: { ...full, by: null } },
+      { name: 'the time', fields: { ...full, at: null } },
+      { name: 'all three', fields: {} },
+    ])('rejects a cancelled order without $name', async ({ fields }) => {
+      await expect(insertWith('cancelled', fields)).rejects.toMatchObject(
+        refused,
+      );
+    });
+
+    it.each([
+      { name: 'a blank note', fields: { ...full, note: '   ' } },
+      { name: 'a blank name', fields: { ...full, by: '' } },
+    ])('rejects a cancelled order with $name', async ({ fields }) => {
+      await expect(insertWith('cancelled', fields)).rejects.toMatchObject(
+        refused,
+      );
+    });
+
+    it.each(['ordered', 'collected', 'completed'])(
+      'rejects a %s order with any of the three set',
+      async (status) => {
+        for (const fields of [
+          { note: full.note },
+          { by: full.by },
+          { at: full.at },
+        ]) {
+          await expect(insertWith(status, fields)).rejects.toMatchObject(
+            refused,
+          );
+        }
+      },
+    );
+
+    it('rejects an update to cancelled that does not set all three', async () => {
+      await insertWith('collected', {});
+      await expect(
+        t.pool.query(
+          `update orders set status = 'cancelled', cancellation_note = 'x',
+                             cancelled_by = 'y'
+           where id = $1`,
+          [ORDER],
+        ),
+      ).rejects.toMatchObject(refused);
+      await expect(
+        t.pool.query(`update orders set status = 'cancelled' where id = $1`, [
+          ORDER,
+        ]),
+      ).rejects.toMatchObject(refused);
+      const { rows } = await t.pool.query('select status from orders');
+      expect(rows).toEqual([{ status: 'collected' }]);
     });
   });
 

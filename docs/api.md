@@ -328,7 +328,8 @@ One order with its patient and the tests it holds (LAB-15). Read-only.
   "createdAtClinic": "2026-10-30 12:00",
   "clinicTimezone": "America/Denver",
   "allowedNextStatuses": ["completed"],
-  "canCancel": true
+  "canCancel": true,
+  "cancellation": null
 }
 ```
 
@@ -340,6 +341,7 @@ One order with its patient and the tests it holds (LAB-15). Read-only.
 | `createdAtClinic`, `clinicTimezone` | As in the list: the clinic's wall clock and the zone it is in, for the label "Created (America/Denver)". |
 | `allowedNextStatuses` | The forward moves the status transition table allows from the current status: `["collected"]` for `ordered`, `["completed"]` for `collected`, `[]` for `completed` and `cancelled`. |
 | `canCancel` | `true` when the table allows `cancelled` from the current status (`ordered` and `collected`). |
+| `cancellation` | `null` unless the order is cancelled (LAB-17). Then `{ "note", "cancelledBy", "cancelledAt", "cancelledAtClinic" }`: why, who (typed in; there is no login), the moment as ISO 8601 in UTC, and the same moment on the clinic's clock (`YYYY-MM-DD HH:mm` in `clinicTimezone`), as `createdAtClinic` is. |
 
 | Status | Body |
 |---|---|
@@ -421,7 +423,7 @@ When both the tests and the patient are wrong, the tests are reported: they are 
 
 The server logs `order.created` at `info` with `orderId`, `patientId` and `itemCount`, and `order.ready_date_estimated` at `debug` with `itemCount`, `longestTurnaroundDays` and `estimatedReadyDate`. A refusal is logged at `warn` by the error handler, with the code and a count of `details`. No name, date of birth or test name is logged.
 
-An order's tests and patient cannot be edited after it is placed (a future version may allow it); only its status moves, with the endpoint above. Sending the same request twice places two orders; LAB-18 adds an `Idempotency-Key`.
+An order's tests and patient cannot be edited after it is placed (a future version may allow it); only its status moves, with the endpoints below. Sending the same request twice places two orders; LAB-18 adds an `Idempotency-Key`.
 
 ### `POST /api/orders/:id/transitions`
 
@@ -452,3 +454,34 @@ Only `status` and `updated_at` change; the stored ready date stays as it is.
 | 422 | `ILLEGAL_TRANSITION`: the table does not allow the move from the status the server read, for example "An order cannot move from ordered to completed", or any move from `completed` or `cancelled`. | The rules forbid it; trying again will not help. A screen that offered the move from an older status gets this too (the order moved since it loaded) and reloads the order. |
 
 Logged: `info` `order.status_changed` with `orderId`, `from` and `to`; `warn` `order.transition_refused` with `code`, `orderId`, `from` and `to` for an illegal move; `warn` `order.transition_lost_race` with `code`, `orderId`, `expected` (the status read) and `to` for a lost race. Nothing about the patient.
+
+### `POST /api/orders/:id/cancel`
+
+Cancels an order that is `ordered` or `collected` (LAB-17), keeping why and who. The order is never deleted and its items stay as they were. Cancelling is its own endpoint, not a `to` value of the transitions endpoint, because it carries data the other moves do not.
+
+```json
+{ "note": "Patient asked to reschedule", "cancelledBy": "Sample Staff" }
+```
+
+| Field | Rule |
+|---|---|
+| `note` | Why the order is cancelled. Required text, trimmed, then 1 to 500 characters. Line breaks and tabs are kept; other control characters (NUL included) are refused. |
+| `cancelledBy` | The name of the person cancelling, typed in (there is no login; with one it would come from the signed-in user). Required text, trimmed, then 1 to 100 characters, no control characters. |
+
+No other field is allowed.
+
+The same steps as a transition, in the same order:
+
+1. Reads the order. None: 404.
+2. Checks the move to `cancelled` with `assertTransition`, the same transition table, against the status just read. From `completed` or `cancelled`: 422, and nothing is written.
+3. Updates with a condition on the status it read, setting everything at once: `update orders set status = 'cancelled', cancellation_note = <note>, cancelled_by = <name>, cancelled_at = now(), updated_at = now() where id = <id> and status = <status read>`. No row changed: someone else changed the order after step 1, 409, and nothing is overwritten. As with transitions, a change that landed before step 1 is judged by step 2 (a 422).
+
+| Status | Body | What the user does |
+|---|---|---|
+| 200 | The cancelled order, in the same shape as `GET /api/orders/:id`, with `status: "cancelled"`, `allowedNextStatuses: []`, `canCancel: false` and its `cancellation`. | |
+| 400 | `VALIDATION_ERROR`: `:id` is not a uuid; `note` or `cancelledBy` is missing, not text, blank, or over its limit; or an unknown extra field. `details` names each field. | Fix the field; the panel checks the same rules before sending. |
+| 404 | `NOT_FOUND`: no order has that id. | The order is not there. |
+| 409 | `ORDER_CHANGED`: "This order was changed by someone else". | Reload the order and look at its real status. |
+| 422 | `ILLEGAL_TRANSITION`: "An order cannot move from completed to cancelled" (or from `cancelled`). | The order cannot be cancelled. The panel reloads it. |
+
+Logged: `info` `order.cancelled` with `orderId` and `from`; `warn` `order.cancel_refused` with `code`, `orderId`, `from` and `to`; `warn` `order.cancel_lost_race` with `code`, `orderId`, `expected` and `to`. Never the note or the name: both are free text typed by staff and can hold anything about the patient.

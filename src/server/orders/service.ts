@@ -1,5 +1,5 @@
-// Placing an order (POST /api/orders) and changing its status (POST
-// /api/orders/:id/transitions). A service, unlike the other features, because
+// Placing an order (POST /api/orders), changing its status (POST
+// /api/orders/:id/transitions) and cancelling it (POST /api/orders/:id/cancel). A service, unlike the other features, because
 // each combines the rules (which tests may be ordered, the ready date, the
 // legal moves) with several queries, and placing an order needs a transaction.
 import type { FastifyBaseLogger } from 'fastify';
@@ -7,10 +7,12 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { FieldProblem } from '../../shared/api-error';
 import type { OrderItem } from '../../shared/order-items';
 import type {
+  CancelOrderBody,
   CreateOrderBody,
   OrderDetail,
   OrderListItem,
   OrderQuote,
+  OrderStatus,
   OrderTransitionBody,
   QuoteOrderBody,
 } from '../../shared/orders';
@@ -30,6 +32,7 @@ import {
   insertOrderItem,
   type OrderableTest,
   updateOrderStatus,
+  updateOrderStatusAndCancellation,
 } from './repo';
 
 // The test-list rules: an order needs at least one test, each test once, and
@@ -185,17 +188,26 @@ export async function createOrder(
 // The message of every 409 ORDER_CHANGED; the panel shows it as is.
 export const ORDER_CHANGED_MESSAGE = 'This order was changed by someone else';
 
-// Moves an order one step forward and returns it as GET /api/orders/:id does.
-// Read, check, then a conditional update, in this order, so each failure has
-// its own answer and means one thing to the user:
+// The warn events of one kind of status change: the move refused by the
+// table, and the update that found the order already changed.
+type MoveEvents = { refused: string; lostRace: string };
+
+// The steps every status change shares (LAB-16 moves it forward, LAB-17
+// cancels it). Read, check, then a conditional update, in this order, so each
+// failure has its own answer and means one thing to the user:
 // 404 the order is not there; 422 the rules do not allow this move from its
 // status; 409 the move was allowed, but someone changed the order first.
-export async function changeOrderStatus(
+// `update` runs the conditional update from the status read and reports
+// whether it changed the row. Returns the order as it is now, and the status
+// it was moved from. The caller logs the change itself.
+async function moveOrder(
   deps: AppDeps,
   log: FastifyBaseLogger,
   id: string,
-  { to }: OrderTransitionBody,
-): Promise<OrderDetail> {
+  to: OrderStatus,
+  update: (db: Db, from: OrderStatus) => Promise<boolean>,
+  events: MoveEvents,
+): Promise<{ order: OrderDetail; from: OrderStatus }> {
   const db = withQueryLog(deps.pool, log);
 
   // 1. READ: the order as it is now. Missing: 404 NOT_FOUND.
@@ -205,15 +217,15 @@ export async function changeOrderStatus(
 
   // 2. CHECK: the transition table decides, against the status just read.
   // Only ordered -> collected -> completed, no skipping, no going back;
-  // completed and cancelled are final. Refused: 422 ILLEGAL_TRANSITION, and
-  // the update is never tried.
+  // ordered and collected may be cancelled; completed and cancelled are
+  // final. Refused: 422 ILLEGAL_TRANSITION, and the update is never tried.
   try {
     assertTransition(from, to);
   } catch (error) {
     if (!(error instanceof InvalidTransitionError)) throw error;
     log.warn(
       {
-        event: 'order.transition_refused',
+        event: events.refused,
         code: 'ILLEGAL_TRANSITION',
         orderId: id,
         from,
@@ -227,11 +239,10 @@ export async function changeOrderStatus(
   // 3. UPDATE, only if the order is still at the status the check saw. Zero
   // rows: someone else changed it between the read and here (two people
   // clicking at once). Nothing is overwritten: 409 ORDER_CHANGED, reload.
-  const updated = await updateOrderStatus(db, id, from, to);
-  if (!updated) {
+  if (!(await update(db, from))) {
     log.warn(
       {
-        event: 'order.transition_lost_race',
+        event: events.lostRace,
         code: 'ORDER_CHANGED',
         orderId: id,
         expected: from,
@@ -241,13 +252,59 @@ export async function changeOrderStatus(
     );
     throw new ConflictError('ORDER_CHANGED', ORDER_CHANGED_MESSAGE);
   }
-  log.info(
-    { event: 'order.status_changed', orderId: id, from, to },
-    'Order status changed',
-  );
 
   // The order as it is now, with its new allowedNextStatuses and canCancel.
   const changed = await getOrder(db, id, deps.clinicTimezone);
   if (changed === null) throw new Error('The changed order could not be read');
-  return changed;
+  return { order: changed, from };
+}
+
+// Moves an order one step forward (POST /api/orders/:id/transitions) and
+// returns it as GET /api/orders/:id does.
+export async function changeOrderStatus(
+  deps: AppDeps,
+  log: FastifyBaseLogger,
+  id: string,
+  { to }: OrderTransitionBody,
+): Promise<OrderDetail> {
+  const { order, from } = await moveOrder(
+    deps,
+    log,
+    id,
+    to,
+    (db, from) => updateOrderStatus(db, id, from, to),
+    {
+      refused: 'order.transition_refused',
+      lostRace: 'order.transition_lost_race',
+    },
+  );
+  log.info(
+    { event: 'order.status_changed', orderId: id, from, to },
+    'Order status changed',
+  );
+  return order;
+}
+
+// Cancels an order (POST /api/orders/:id/cancel) with why and who, and
+// returns it as GET /api/orders/:id does. The same steps as a forward move:
+// the transition table alone says which statuses can be cancelled. The note
+// and the name are free text typed by staff, so they are never logged.
+export async function cancelOrder(
+  deps: AppDeps,
+  log: FastifyBaseLogger,
+  id: string,
+  cancellation: CancelOrderBody,
+): Promise<OrderDetail> {
+  const to: OrderStatus = 'cancelled';
+  const { order, from } = await moveOrder(
+    deps,
+    log,
+    id,
+    to,
+    (db, from) =>
+      updateOrderStatusAndCancellation(db, id, from, to, cancellation),
+    { refused: 'order.cancel_refused', lostRace: 'order.cancel_lost_race' },
+  );
+  log.info({ event: 'order.cancelled', orderId: id, from }, 'Order cancelled');
+  return order;
 }
