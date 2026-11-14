@@ -26,6 +26,7 @@ Every failure, from any endpoint, has this shape:
 - `code` is one of the codes in the table below, always upper snake case. Clients decide what to do from the status and the code, never from the message.
 - `message` is a short sentence that can be shown to the user.
 - `details` is present for validation errors and for `CONTACT_REQUIRED`: one entry per field, with the field's path (`address.city`) and a short reason. An unknown field is reported under its own name with the reason `is not an allowed field`.
+- `matches` is present only for `POSSIBLE_DUPLICATE` (`POST /api/patients`): the existing patients the new one may duplicate. It sits beside `details`, which always holds field problems.
 - `requestId` is the request id above.
 
 The one exception is a request the HTTP layer cannot parse at all, such as headers over 16 KB or a body shorter than its `content-length`: Node and Fastify answer it with a plain 400 or 431 and no request id, before the app sees it.
@@ -57,6 +58,7 @@ Every code the API can return. The list is defined once, as `ERROR_CODES` in `sr
 | `SERVICE_UNAVAILABLE` | 503 | The server is shutting down; the request was not run. Try again. |
 | `DUPLICATE_TEST_CODE` | 409 | A lab test with this code already exists (codes are compared after upper-casing). |
 | `CONTACT_REQUIRED` | 422 | An edit would leave a patient with neither an email nor a phone; `details` names `email` and `phone`. |
+| `POSSIBLE_DUPLICATE` | 409 | A new patient looks like existing ones; nothing was created, and `matches` lists them. Send again with `confirmDuplicate: true` to create anyway. |
 
 ## Endpoints
 
@@ -139,6 +141,8 @@ Adds a patient. Body (unknown fields are a 400):
 { "firstName": "Test", "lastName": "Patient", "dateOfBirth": "1984-03-09", "email": "test.patient@example.test", "phone": "(801) 555-0100" }
 ```
 
+The body may also carry `"confirmDuplicate": true` (see the duplicate check below).
+
 | Field | Rule |
 |---|---|
 | `firstName`, `lastName` | Required. Trimmed, then 1 to 100 characters, with no control characters (a NUL, tab or line break). |
@@ -146,15 +150,29 @@ Adds a patient. Body (unknown fields are a 400):
 | `email` | Optional. Empty text or `null` counts as absent. Trimmed and lower-cased, then it must look like an email address (at most 254 characters). |
 | `phone` | Optional. Empty text or `null` counts as absent. It may contain only digits, spaces, dashes, dots, parentheses and a leading `+`; a letter is refused, not dropped (`801 555 01OO` is a typo). The formatting is removed, and what remains must be a US number with its area code: 10 digits, or 11 starting with 1, whose 1 is dropped. `(801) 555-0100`, `801.555.0100` and `+1 801 555 0100` are all stored as `8015550100`; `555-0100` (no area code) is refused with "must be a 10-digit number, including the area code". International numbers are not supported. The API returns the 10 digits; the screen formats them. |
 | `email` or `phone` | At least one of the two must be present. If neither is, `details` names both, `email` and `phone`. |
+| `confirmDuplicate` | Optional. `true` or `false` (anything else, `"yes"` for example, is a 400 "must be true or false"). `true` skips the duplicate check. Never stored. |
 
-The rules are one schema, `createPatientBody` in `src/shared/patients.ts`, which the New patient form also uses. There is no duplicate check (LAB-10): two identical bodies create two patients.
+The rules are one schema, `createPatientBody` in `src/shared/patients.ts`, which the New patient form also uses. The body is checked first: an invalid body is a 400 even when it would also match an existing patient.
+
+**Duplicate check (LAB-10).** Unless `confirmDuplicate` is `true`, the server looks for existing patients the new one may duplicate. An existing patient matches if any one of these holds:
+
+| Rule (as logged) | Matches when |
+|---|---|
+| `email` | The same email, compared trimmed and lower-cased (`TEST.Person@Example.test` is `test.person@example.test`). Only when the new patient has an email: a missing email never matches a missing email. |
+| `phone` | The same phone, compared as the stored 10 digits (`(801) 555-0100` is `8015550100`). Only when the new patient has a phone. |
+| `name_dob` | The same first name, last name and date of birth. Names are compared trimmed and ignoring letter case (` test ` is `TEST`); the date exactly. |
+
+Every comparison is exact: `Jon` is not `John`, `Zoe` is not `Zoë`, and a last name alone, or a name with another date of birth, is never a match. The check warns and never blocks, because two real people can share a name and birthday or a household phone. It is not locked together with the insert, so two identical requests at the same moment can both create a patient; that is accepted for this version. Editing a patient (`PATCH`) runs no duplicate check.
 
 | Status | Body |
 |---|---|
 | 201 | The patient: `{ "id", "firstName", "lastName", "dateOfBirth", "email", "phone" }`, with the stored (normalized) values; an absent `email` or `phone` is `null`. |
 | 400 | `VALIDATION_ERROR`, one `details` entry per failed field, for example `{ "field": "dateOfBirth", "reason": "cannot be in the future" }`. |
+| 409 | `POSSIBLE_DUPLICATE`: nothing was created. Message: "This patient may already exist. Open the existing patient, or create a new one anyway." `error.matches` lists the matching patients, at most 10, sorted by last name, then first name, each `{ "id", "firstName", "lastName", "dateOfBirth", "email", "phone" }` and nothing else. Sending the same body with `"confirmDuplicate": true` creates the patient (201). |
 
-The server logs `patient.created` with the `patientId` only.
+There is no login in this version, so the matches go to any caller of the API. With logins, returning another patient's details here would need a permission check (`docs/plan/backlog.md`).
+
+Logged: `patient.created` at `info` with the `patientId`, plus `duplicateConfirmed: true` when the request carried `confirmDuplicate: true`. On a 409, `patient.possible_duplicate` at `warn` with `code`, `matchCount` and `rules` (the rule names that matched, from `email`, `phone`, `name_dob`), then `patient.possible_duplicate.matches` at `debug` with each matched `patientId` and its rules. Never a name, date of birth, email or phone.
 
 ### `GET /api/patients`
 
@@ -211,6 +229,8 @@ Changes some of a patient's details. The body has any of the create fields, at l
 **400 or 422.** A 400 means the request is wrong on its own. On create, a body without email and phone is a 400, because the body is the whole patient. On edit, `{ "email": null }` is well formed and is wrong only together with what is stored (a patient with no phone), so it is a 422. The database decides it: the `patients_contact_required` check refuses the updated row and the server turns that violation into the 422, so there is no gap between a read and a write in which another request could change the row. Sending `email` and `phone` both as `null` is a 422 too: there is one rule for edits, and the database enforces it.
 
 Two people saving the same patient at once: the last save wins (a future version may add a version check).
+
+An edit runs no duplicate check (LAB-10): changing a patient's email to another patient's email is saved with no warning. `confirmDuplicate` is not an edit field, so sending it is a 400 like any unknown field.
 
 The server logs `patient.updated` at `info` with `patientId` and `changedFields` (the names of the fields the request set, never their values). Rejections are logged at `warn` by the error handler, with the code and a count of fields.
 

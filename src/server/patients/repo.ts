@@ -4,6 +4,7 @@ import pg from 'pg';
 import {
   CONTACT_REQUIRED_REASONS,
   type CreatePatientBody,
+  DUPLICATE_MATCH_LIMIT,
   type Patient,
   SEARCH_RESULT_LIMIT,
   type UpdatePatientBody,
@@ -81,6 +82,39 @@ export async function searchPatients(db: Db, text: string): Promise<Patient[]> {
      ${ORDER_BY}
      limit $2`,
     [`%${escapeLike(text)}%`, SEARCH_RESULT_LIMIT],
+  );
+  return rows.map(toPatient);
+}
+
+// The stored patients that may duplicate a new one (LAB-10), in one query:
+// the same email, or the same phone, or the same first name, last name and
+// date of birth. It compares lower(email), phone (the stored 10 digits),
+// lower(first_name), lower(last_name) and date_of_birth, each against a bound
+// parameter, with the indexes of 0005_patient_duplicate_indexes.sql. A null
+// email or phone is never equal to anything in SQL, so missing never matches
+// missing. In the list's order, at most DUPLICATE_MATCH_LIMIT. matchRules
+// (domain/duplicates.ts) then says which rule each row matched.
+export async function findDuplicateCandidates(
+  db: Db,
+  input: CreatePatientBody,
+): Promise<Patient[]> {
+  const { rows } = await db.query<PatientRow>(
+    `select ${COLUMNS} from patients
+     where lower(email) = lower($1)
+        or phone = $2
+        or (lower(first_name) = lower($3)
+            and lower(last_name) = lower($4)
+            and date_of_birth = $5)
+     ${ORDER_BY}
+     limit $6`,
+    [
+      input.email ?? null,
+      input.phone ?? null,
+      input.firstName,
+      input.lastName,
+      input.dateOfBirth,
+      DUPLICATE_MATCH_LIMIT,
+    ],
   );
   return rows.map(toPatient);
 }

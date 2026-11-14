@@ -25,11 +25,13 @@ const base = {
   email: 'test.patient@example.test',
 };
 
+// The patients these tests create share an email on purpose, so each request
+// skips the duplicate check (confirmDuplicate); it has its own tests.
 async function create(body: Record<string, unknown> = {}): Promise<Patient> {
   const response = await t.inject({
     method: 'POST',
     url: '/api/patients',
-    payload: { ...base, ...body },
+    payload: { ...base, ...body, confirmDuplicate: true },
   });
   expect(response.statusCode).toBe(201);
   return response.json<Patient>();
