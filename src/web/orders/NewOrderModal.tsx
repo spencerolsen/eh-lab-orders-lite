@@ -6,6 +6,7 @@ import type { CreateOrderBody } from '../../shared/orders';
 import { formatCents } from '../../shared/money';
 import type { Patient } from '../../shared/patients';
 import { formatTurnaround } from '../catalog/CatalogPage';
+import { ApiError } from '../api/client';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { createOrder, ORDERS_KEY } from './api';
@@ -69,6 +70,12 @@ export function NewOrderModal({
     },
   });
 
+  // An error from a failed submit is about the patient and tests as they were
+  // then, so changing either clears it (never while a submit is in flight).
+  function clearError() {
+    if (submit.isError) submit.reset();
+  }
+
   // Open as a modal, move the focus to the first field that can be used,
   // and give it back to the opener on close.
   useEffect(() => {
@@ -129,16 +136,26 @@ export function NewOrderModal({
         }}
       >
         <h2 id="new-order-title">New order</h2>
-        <PatientPicker patient={patient} onChange={setPatient} />
+        <PatientPicker
+          patient={patient}
+          onChange={(chosen) => {
+            clearError();
+            setPatient(chosen);
+          }}
+        />
         <QuickAdd
           disabled={patient === null}
           selectedIds={tests.map((test) => test.id)}
-          onAdd={(test) => setTests((chosen) => [...chosen, test])}
+          onAdd={(test) => {
+            clearError();
+            setTests((chosen) => [...chosen, test]);
+          }}
           inputRef={quickAdd}
         />
         <ChosenTests
           tests={tests}
           onRemove={(id) => {
+            clearError();
             setTests((chosen) => chosen.filter((test) => test.id !== id));
             // The Remove button disappears with its row; the focus goes back
             // to the box, the next place to add a test.
@@ -146,7 +163,11 @@ export function NewOrderModal({
           }}
         />
         <OrderPreview testIds={tests.map((test) => test.id)} />
-        {submit.isError && <ErrorMessage error={submit.error} />}
+        {submit.isError && (
+          <ErrorMessage error={submit.error}>
+            <RefusedTests error={submit.error} tests={tests} />
+          </ErrorMessage>
+        )}
         <div className="form-actions">
           <button type="submit" disabled={!canSubmit}>
             {submit.isPending ? 'Submitting…' : 'Submit order'}
@@ -163,6 +184,22 @@ export function NewOrderModal({
       </form>
     </dialog>
   );
+}
+
+// The server's 422 INVALID_ORDER_TESTS says which positions of the list it
+// sent are refused ("labTestIds.1"); the list on screen is that list, so the
+// message can name those tests.
+function RefusedTests({ error, tests }: { error: unknown; tests: LabTest[] }) {
+  if (!(error instanceof ApiError) || error.code !== 'INVALID_ORDER_TESTS') {
+    return null;
+  }
+  const names = (error.details ?? []).flatMap(({ field }) => {
+    const position = /^labTestIds\.(\d+)$/.exec(field)?.[1];
+    const test = position === undefined ? undefined : tests[Number(position)];
+    return test ? [`${test.code} (${test.name})`] : [];
+  });
+  if (names.length === 0) return null;
+  return <p>Cannot be ordered: {names.join(', ')}</p>;
 }
 
 function ChosenTests({
