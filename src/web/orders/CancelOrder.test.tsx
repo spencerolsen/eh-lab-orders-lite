@@ -324,6 +324,54 @@ it('disables Confirm cancel while the request is in flight', async () => {
   expect(await screen.findByText(/^Cancelled by Sample Staff/)).toBeTruthy();
 });
 
+it('disables the status buttons while a cancel is in flight', async () => {
+  let answer: (response: Response) => void = () => {};
+  const { state } = fakeApi(
+    'collected',
+    () => new Promise((resolve) => (answer = resolve)),
+  );
+  renderApp(`/?order=${ID}`);
+  const dialog = await panel();
+  const form = await openForm(dialog);
+  await userEvent.type(form.getByLabelText('Note'), 'Duplicate order');
+  await userEvent.type(form.getByLabelText('Your name'), 'Sample Staff');
+
+  await userEvent.click(form.getByRole('button', { name: 'Confirm cancel' }));
+
+  expect(dialog.getByRole('button', { name: 'Mark completed' })).toHaveProperty(
+    'disabled',
+    true,
+  );
+  state.status = 'cancelled';
+  state.cancellation = CANCELLATION;
+  answer(json(200, detail(state)));
+  expect(await screen.findByText(/^Cancelled by Sample Staff/)).toBeTruthy();
+});
+
+it('Keep order after a refused cancel clears the old message', async () => {
+  // The server refuses, and the order stays collected, so the form stays.
+  fakeApi('collected', () =>
+    json(409, {
+      error: {
+        code: 'ORDER_CHANGED',
+        message: 'This order was changed by someone else',
+        requestId: 'req-409',
+      },
+    }),
+  );
+  renderApp(`/?order=${ID}`);
+  const dialog = await panel();
+  const form = await openForm(dialog);
+  await userEvent.type(form.getByLabelText('Note'), 'Duplicate order');
+  await userEvent.type(form.getByLabelText('Your name'), 'Sample Staff');
+  await userEvent.click(form.getByRole('button', { name: 'Confirm cancel' }));
+  await dialog.findByRole('alert');
+
+  await userEvent.click(form.getByRole('button', { name: 'Keep order' }));
+
+  expect(dialog.queryByRole('alert')).toBeNull();
+});
+
 it.each([
   {
     status: 409,
