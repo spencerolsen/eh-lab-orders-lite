@@ -18,6 +18,7 @@ import { QuickAdd } from './QuickAdd';
 // server's message with the request id.
 export function NewOrderModal({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const quickAdd = useRef<HTMLInputElement>(null);
   // Whatever had the focus when the modal opened (the button that opened
   // it), read while rendering: by the time effects run, a field inside has
   // taken the focus.
@@ -84,12 +85,16 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
           disabled={patient === null}
           selectedIds={tests.map((test) => test.id)}
           onAdd={(test) => setTests((chosen) => [...chosen, test])}
+          inputRef={quickAdd}
         />
         <ChosenTests
           tests={tests}
-          onRemove={(id) =>
-            setTests((chosen) => chosen.filter((test) => test.id !== id))
-          }
+          onRemove={(id) => {
+            setTests((chosen) => chosen.filter((test) => test.id !== id));
+            // The Remove button disappears with its row; the focus goes back
+            // to the box, the next place to add a test.
+            quickAdd.current?.focus();
+          }}
         />
         {submit.isError && <ErrorMessage error={submit.error} />}
         <div className="form-actions">

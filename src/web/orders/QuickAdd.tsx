@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type RefObject, useEffect, useState } from 'react';
 
 import type { LabTest } from '../../shared/lab-tests';
 import { matchTests } from '../../shared/match-tests';
@@ -19,16 +19,18 @@ export function QuickAdd({
   disabled,
   selectedIds,
   onAdd,
+  inputRef: input,
 }: {
   disabled: boolean;
   selectedIds: string[];
   onAdd: (test: LabTest) => void;
+  // The box itself, so the modal can move the focus back to it.
+  inputRef: RefObject<HTMLInputElement | null>;
 }) {
   const catalog = useQuery({
     queryKey: LAB_TESTS_KEY,
     queryFn: ({ signal }) => fetchLabTests(signal),
   });
-  const input = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   // The highlighted suggestion's index, or -1 for none.
@@ -37,7 +39,7 @@ export function QuickAdd({
   // Once a patient is chosen, the focus moves here: the next step.
   useEffect(() => {
     if (!disabled) input.current?.focus();
-  }, [disabled]);
+  }, [disabled, input]);
 
   const suggestions = catalog.data
     ? matchTests(text, catalog.data, selectedIds).slice(0, MAX_SUGGESTIONS)

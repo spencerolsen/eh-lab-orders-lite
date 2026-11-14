@@ -73,6 +73,8 @@ describe('matchTests', () => {
     // CBC-DIFF's code starts with "cbc" and its name contains "cbc".
     const found = codes('cbc');
     expect(found.filter((code) => code === 'CBC-DIFF')).toHaveLength(1);
+    // CBC's code equals "cbc" and also starts with it: listed once, as exact.
+    expect(found.filter((code) => code === 'CBC')).toHaveLength(1);
     expect(found.indexOf('CBC-DIFF')).toBeLessThan(found.indexOf('ACBC'));
   });
 

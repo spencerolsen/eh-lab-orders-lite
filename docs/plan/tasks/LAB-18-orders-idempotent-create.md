@@ -40,6 +40,8 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 **Tooling**
 - Concurrency tests fire two real simultaneous requests at Postgres, not a mock.
 
+**Note from the LAB-12 review:** today Cancel or Escape during a pending submit closes the modal, but the order is still placed and appears after the refetch; decide whether the modal should wait for the reply.
+
 ## Acceptance criteria
 
 - [ ] Sending the same `POST /api/orders` twice with the same key returns 201 then 200, with the same order id.

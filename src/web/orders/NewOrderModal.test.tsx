@@ -325,6 +325,7 @@ it('adds a test on a click, and Remove takes it off and offers it again', async 
   ]);
   await user.click(screen.getByRole('button', { name: 'Remove CBC' }));
   expect(chosenCodes()).toEqual([]);
+  expect(document.activeElement).toBe(quickAdd());
   expect(screen.getByText('No tests added yet')).toBeTruthy();
   await user.type(quickAdd(), 'cbc');
   expect(options()).toEqual(['CBC Complete Blood Count']);

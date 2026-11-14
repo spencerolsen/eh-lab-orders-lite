@@ -31,6 +31,8 @@ LAB-12 lets a user place an order but hides what it costs and when it will be re
 **Logging**
 - `debug` with the item count only. A refused quote logs `warn`. Nothing is logged at `info`, because nothing happened.
 
+**Note from the LAB-12 review:** reuse `readOrderTests` from `src/server/orders/service.ts` (its `FOR SHARE` is harmless outside a transaction), and move the items-to-ready-date lines of `createOrder` into one small function both call, so the preview and the stored order cannot drift.
+
 ## Acceptance criteria
 
 - [ ] Adding CBC to an empty order shows CBC's catalog price as the total and a ready date.
