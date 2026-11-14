@@ -64,7 +64,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-18](tasks/LAB-18-orders-idempotent-create.md) | Orders: a double-click or retry cannot create a duplicate order | Hardening | LAB-13 | Done |
 | [LAB-19](tasks/LAB-19-patient-order-history.md) | Patient page: order history | Vertical slice | LAB-14, LAB-15 | Done |
 | [LAB-20](tasks/LAB-20-new-order-entry-points.md) | New order from the patient page | Vertical slice | LAB-18, LAB-19 | Done |
-| [LAB-21](tasks/LAB-21-browser-journeys.md) | Browser tests for the main journeys | Hardening | LAB-10, LAB-13, LAB-14, LAB-17, LAB-18, LAB-20 | Not started |
+| [LAB-21](tasks/LAB-21-browser-journeys.md) | Browser tests for the main journeys | Hardening | LAB-10, LAB-13, LAB-14, LAB-17, LAB-18, LAB-20 | Done |
 | [LAB-22](tasks/LAB-22-docs-and-readme.md) | Docs and README, final pass | Docs | LAB-07, LAB-10, LAB-17, LAB-20, LAB-21 | Not started |
 | [LAB-23](tasks/LAB-23-submission-readiness.md) | Submission readiness | Hardening | LAB-05, LAB-22 | Not started |
 | [LAB-24](tasks/LAB-24-visual-theme.md) | Visual theme | Groundwork | LAB-04 | Done |

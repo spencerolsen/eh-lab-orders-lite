@@ -21,7 +21,7 @@ Test files run in file-path order (a small sequencer in `vitest.config.ts`), so 
 
 ## In the automated checks (CI)
 
-`.github/workflows/ci.yml` runs on every pull request and every push to `main`: install, lint, type check, formatting, build, then `pnpm test`, so every unit, component and integration test runs there (the calendar-day tests twice: in the runner's UTC and in `Pacific/Honolulu`). Browser tests (LAB-21) do not: they are the slowest and most fragile layer, so they run locally only.
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`: install, lint, type check, formatting, build, then `pnpm test`, so every unit, component and integration test runs there (the calendar-day tests twice: in the runner's UTC and in `Pacific/Honolulu`). Browser tests (LAB-21) do not: they are the slowest and most fragile layer, and they need a browser, so they run locally only (see "Browser tests" below).
 
 In CI the test database is a Postgres 16 service container on the runner's port 5432 (5433 is the local Compose setup). The workflow sets `TEST_DATABASE_URL` (`lab_orders_test` on 5432) and `DATABASE_URL` (`lab_orders` on 5432) in the job environment, creates `lab_orders_test` with `createdb` in the service container before the tests, and GitHub sets `CI`, so the integration setup does not start Docker Compose.
 
@@ -32,8 +32,9 @@ In CI the test database is a Postgres 16 service container on the runner's port 
 | Unit | `<name>.test.ts`, next to the code | Pure functions and single modules: the error mapper, `parse`, the request id check, the logger, config, the guards, domain rules. | No |
 | Component | `<name>.test.tsx`, next to the component | React components rendered in jsdom with Testing Library: the menu bar (navigation only), the routes, the shared states, the error boundary, the server status line. `fetch` is replaced with a fake, so no API runs. | No |
 | Integration | `<name>.integration.test.ts`, next to the code | The app through `inject` (real routing, error handler and logging) and repositories on a real Postgres. | The test database |
+| Browser (end to end) | `e2e/<journey>.spec.ts` | Journeys through the real screens, API and database in Chromium: that they work together. | The e2e database |
 
-Unit tests also cover the web code that has no React in it: `apiFetch` (with a fake `fetch`), `describeError` and the retry rule. LAB-21 adds browser tests. Each rule is tested in one layer only: a rule that is a pure function is unit tested; what needs React and the DOM is a component test; what needs HTTP or SQL is an integration test.
+Unit tests also cover the web code that has no React in it: `apiFetch` (with a fake `fetch`), `describeError` and the retry rule. Browser tests (below) prove only that the screens, the API and the database work together. Each rule is tested in one layer only: a rule that is a pure function is unit tested; what needs React and the DOM is a component test; what needs HTTP or SQL is an integration test.
 
 The file name decides the project: Vitest's `unit` project takes every `*.test.ts` except `*.integration.test.ts`, the `component` project takes every `*.test.tsx`, and the `integration` project takes `*.integration.test.ts`.
 
@@ -65,3 +66,43 @@ Tests find elements the way a user does: by role and accessible name (`getByRole
 - **`pnpm dev`** (LAB-04): from a fresh clone with no `.env`; a second run; a malformed setting; Docker not running; Ctrl-C leaving no process behind; the proxy; the page with the API stopped; keyboard use. The steps are in `docs/acceptance-checklist.md`, Checkpoint 1.
 
 - **Shutdown** (LAB-03): start the server, send a slow request, send `SIGTERM` while it runs: the request finishes, `app.shutting_down` is logged and the process exits 0. Send the signal twice: the second one is ignored, with the same result. A request longer than 10 seconds is cut off and the process exits 1.
+
+## Browser tests
+
+`pnpm test:e2e` runs the journeys in `e2e/` with Playwright, in Chromium only. They are local only: the CI workflow does not run them (it would need a browser download, and they are the slowest and most fragile layer; the rules they pass through are already proved by the unit, component and integration tests). `pnpm test` does not pick them up: Vitest only includes `src/**` and `eslint-rules/**`, and the Playwright files are named `*.spec.ts` in `e2e/`.
+
+**One-time setup** after `pnpm install` (downloads the browser, about 100 MB):
+
+```sh
+corepack pnpm exec playwright install chromium
+```
+
+Then `corepack pnpm test:e2e` is the only command. It needs `.env` and Docker, and:
+
+1. checks the settings, that Docker runs, and that `PORT` and `WEB_PORT` are free (it never reuses a server that is already there, so a `pnpm dev` on other ports is left alone; on these ports it stops with one line);
+2. starts the database container, creates the database `lab_orders_e2e` if it is missing, then drops and recreates its tables, migrates and seeds it, so every run starts from the same rows;
+3. starts the API and the web app on `PORT` and `WEB_PORT` against that database, waits until `/healthz` answers through Vite, and runs Playwright (extra arguments are passed on, for example `corepack pnpm test:e2e -g "double click"`);
+4. stops the API and the web app, whatever the result, and exits with Playwright's exit code. The database container stays up, as after `pnpm test`.
+
+**Its own database.** The browser tests use `lab_orders_e2e` rather than `lab_orders_test`, so a run never empties what an integration run or a `pnpm dev` session holds, and the integration harness's "tables are empty at the start of each file" rule is untouched. The name is fixed in `src/server/db/guards.ts` (`e2eDatabaseUrl`: the server and login of `DATABASE_URL`, the name `lab_orders_e2e`); no setting can change it, and the reset goes through the same `assertResettable` as `pnpm db:reset`, whose list now has three names. The script creates the database itself, because the container's init script only runs when the volume is first created.
+
+**The journeys.** Each creates its own patients (unique fake names, `@example.test` emails) and, when an order is only the starting point, creates it through the API (`e2e/helpers.ts`), so any journey runs alone or in any order. What a journey is about it does through the screens. Elements are found by role, label and visible text; waits are on visible outcomes, never a fixed pause. No journey asserts a calendar date: the ready date is read from the dialog's preview and compared with the saved order.
+
+| File | Journey |
+|---|---|
+| `patients.spec.ts` | Add a patient; a second one with the same email shows the duplicate warning naming the first; Create anyway saves it. |
+| `place-order.spec.ts` | Place an order from the orders page (pick the patient, quick-add by code and by name, see the live total and ready date, submit) and see the same total and ready date on the list row and in the panel. A double click on Submit order creates one order. "New order for this patient" opens with the patient chosen and the order joins the patient's history. |
+| `order-status.spec.ts` | Advance ordered, collected, completed, and a completed order offers no actions. Cancel: an empty note is refused, then the note and name show on the cancelled order, which the status filter finds. |
+| `filters.spec.ts` | Filter the list by status and by patient; both filters survive a reload. |
+| `menu.spec.ts` | The menu bar has only Orders, Patients and Catalog. |
+
+**Seeing why one failed.** Every failed test keeps a trace (`trace: 'retain-on-failure'`) in `test-results/`, and the HTML report is in `playwright-report/` (both are git-ignored):
+
+```sh
+corepack pnpm exec playwright show-report
+corepack pnpm exec playwright show-trace test-results/<test folder>/trace.zip
+```
+
+The trace is a recording of each step with the page as it was, the network calls and the console. The API's warnings and errors also appear in the terminal during the run (`LOG_LEVEL=warn`).
+
+**Deliberately not tested in a browser:** every validation message (component and unit tests own them), ready-date edge cases (unit tests), other browsers and narrow screens (the app is desktop only), accessibility audits, load, and the crash fallback screen (a component test). New journeys are added only for something that can only go wrong in a real browser.

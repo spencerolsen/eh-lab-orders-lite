@@ -46,6 +46,7 @@ corepack pnpm typecheck
 corepack pnpm test           # unit, component and integration tests; needs .env (pnpm dev creates it), starts the database container itself
 corepack pnpm format:check
 corepack pnpm build
+corepack pnpm test:e2e       # browser tests, local only; one-time before: corepack pnpm exec playwright install chromium
 ```
 
 The same checks run automatically on GitHub for every pull request and every push to `main` (`.github/workflows/ci.yml`, the badge above): install with the frozen lockfile, lint, type check, formatting, build, then all unit, component and integration tests against a Postgres 16 service container. Browser tests are not part of them; they run locally (LAB-21).
