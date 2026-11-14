@@ -48,18 +48,29 @@ export type ApiFetchOptions = {
   signal?: AbortSignal;
   // Extra request headers (the Idempotency-Key of placing an order).
   headers?: Record<string, string>;
+  // Give up after this many milliseconds, with the same ApiError as a server
+  // that cannot be reached. Only placing an order uses it (LAB-18).
+  timeoutMs?: number;
 };
 
 export async function apiFetch(
   path: string,
-  { method = 'GET', body, signal, headers }: ApiFetchOptions = {},
+  { method = 'GET', body, signal, headers, timeoutMs }: ApiFetchOptions = {},
 ): Promise<unknown> {
+  // The timeout aborts the request as a cancel would, but is reported below
+  // as "can't reach the server". A plain timer, not AbortSignal.timeout, so
+  // tests can run it on fake timers.
+  const timeout = timeoutMs === undefined ? undefined : new AbortController();
+  const timer = timeout && setTimeout(() => timeout.abort(), timeoutMs);
   let response: Response;
   let text: string;
   try {
     response = await fetch(path, {
       method,
-      signal,
+      signal:
+        signal && timeout
+          ? AbortSignal.any([signal, timeout.signal])
+          : (signal ?? timeout?.signal),
       headers: {
         Accept: 'application/json',
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
@@ -70,8 +81,11 @@ export async function apiFetch(
     text = await response.text();
   } catch (error) {
     // A cancelled request is not a failure to show: let the abort through.
+    // A timeout is: it falls through to the "can't reach the server" error.
     if (signal?.aborted) throw error;
     throw unreachable(0);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (response.ok) {

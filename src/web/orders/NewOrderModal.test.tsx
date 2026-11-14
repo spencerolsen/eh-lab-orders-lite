@@ -8,6 +8,7 @@ import type { LabTest } from '../../shared/lab-tests';
 import type { OrderListItem } from '../../shared/orders';
 import { SEEDED } from '../testing/fake-patients-api';
 import { renderApp } from '../testing/render';
+import { CREATE_ORDER_TIMEOUT_MS } from './api';
 
 const id = (n: number) =>
   `30000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -57,11 +58,12 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-// A fake API. POST /api/orders answers with `place()` (a promise, so a test
-// can hold it); the order list holds what has been placed.
+// A fake API. POST /api/orders answers with `place(init)` (a promise, so a
+// test can hold it); the order list holds what has been placed.
 function fakeApi({
   catalog = (): Promise<Response> => Promise.resolve(json(200, CATALOG)),
-  place = (): Promise<Response> => Promise.resolve(json(201, NEW_ORDER)),
+  place = (_init?: RequestInit): Promise<Response> =>
+    Promise.resolve(json(201, NEW_ORDER)),
 } = {}) {
   const orders: OrderListItem[] = [];
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
@@ -78,7 +80,7 @@ function fakeApi({
       );
     }
     if (pathname === '/api/orders' && init?.method === 'POST') {
-      const response = await place();
+      const response = await place(init);
       if (response.ok) orders.unshift(NEW_ORDER);
       return response;
     }
@@ -599,6 +601,39 @@ it('is closable again after a network failure, keeping the key for a retry', asy
   const [first, second] = keys(fetch);
   expect(second).toBe(first);
   expect(cancelButton().disabled).toBe(true);
+});
+
+it('gives up after CREATE_ORDER_TIMEOUT_MS: says it cannot reach the server, is closable again, and the retry sends the same key', async () => {
+  // Fake timers that also follow real time, so the user events still run.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    // A server that takes the request and never answers.
+    const hang = (init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(init.signal?.reason),
+        );
+      });
+    const { user, fetch } = await submitAndHold(hang);
+
+    await vi.advanceTimersByTimeAsync(CREATE_ORDER_TIMEOUT_MS - 1000);
+    expect(cancelButton().disabled).toBe(true);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      "Can't reach the server. Try again.",
+    );
+    expect(cancelButton().disabled).toBe(false);
+    expect(isOpen()).toBe(true);
+
+    await user.click(submitButton());
+    await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+    const [first, second] = keys(fetch);
+    expect(second).toBe(first);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it('Cancel closes the modal again once the reply came back with an error', async () => {

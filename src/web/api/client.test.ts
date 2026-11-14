@@ -169,3 +169,50 @@ describe('apiFetch', () => {
     ).rejects.toBe(abort);
   });
 });
+
+// A fetch that never answers, and ends with the abort when its signal fires.
+function hangUntilAborted() {
+  const fetch = vi.fn(
+    (_path: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(init.signal?.reason),
+        );
+      }),
+  );
+  vi.stubGlobal('fetch', fetch);
+  return fetch;
+}
+
+describe('apiFetch with a timeout (LAB-18)', () => {
+  it('gives up after timeoutMs with the "can\'t reach the server" ApiError', async () => {
+    hangUntilAborted();
+    const error = await caught(apiFetch('/api/orders', { timeoutMs: 20 }));
+    expect(error).toMatchObject({
+      status: 0,
+      code: UNREACHABLE_CODE,
+      message: UNREACHABLE_MESSAGE,
+    });
+  });
+
+  it('still ends with the abort when the caller cancels before the timeout', async () => {
+    hangUntilAborted();
+    const controller = new AbortController();
+    const request = apiFetch('/api/orders', {
+      signal: controller.signal,
+      timeoutMs: 10_000,
+    });
+    controller.abort();
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(request).rejects.not.toBeInstanceOf(ApiError);
+  });
+
+  it("passes the caller's own signal through unchanged when no timeout is given", async () => {
+    const fetch = hangUntilAborted();
+    const controller = new AbortController();
+    const request = apiFetch('/api/orders', { signal: controller.signal });
+    expect(fetch.mock.calls[0]![1]?.signal).toBe(controller.signal);
+    controller.abort();
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});

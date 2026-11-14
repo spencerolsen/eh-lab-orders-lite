@@ -53,6 +53,12 @@ export async function fetchOrder(
   );
 }
 
+// How long placing an order may take before the modal gives up and shows
+// "Can't reach the server. Try again." (LAB-18). The modal cannot be closed
+// while the request runs, so a server that never answers must not lock it.
+// The order may still have been placed: a retry sends the same key and gets it.
+export const CREATE_ORDER_TIMEOUT_MS = 30_000;
+
 // POST /api/orders: the new order, as a row of the list. The key names this
 // attempt to place an order: sent again, it returns the order it placed
 // (200) instead of a second one (LAB-18).
@@ -65,6 +71,7 @@ export async function createOrder(
       method: 'POST',
       body,
       headers: { [IDEMPOTENCY_KEY_HEADER]: idempotencyKey },
+      timeoutMs: CREATE_ORDER_TIMEOUT_MS,
     }),
   );
 }
