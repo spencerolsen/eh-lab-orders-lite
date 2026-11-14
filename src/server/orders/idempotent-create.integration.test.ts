@@ -219,7 +219,7 @@ describe('two requests with the same key at once', () => {
     }
 
     expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 201]);
-    expect(orderIdOf(responses[0]!)).toBe(orderIdOf(responses[1]!));
+    expect(orderIdOf(responses[0])).toBe(orderIdOf(responses[1]));
     expect(await counts()).toEqual({ orders: 1, items: 2 });
     expect(event('order.created')).toHaveLength(1);
     expect(event('order.create_replayed')).toHaveLength(1);

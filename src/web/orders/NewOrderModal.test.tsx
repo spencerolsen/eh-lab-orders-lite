@@ -359,7 +359,7 @@ it('submits the patient and the tests, is disabled while the request runs, then 
   });
   // While it runs the button says so (LAB-18).
   expect(
-    (screen.getByRole('button', { name: 'Submitting…' }) as HTMLButtonElement)
+    screen.getByRole<HTMLButtonElement>('button', { name: 'Submitting…' })
       .disabled,
   ).toBe(true);
 
