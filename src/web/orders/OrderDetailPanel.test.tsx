@@ -53,6 +53,7 @@ const DETAIL: OrderDetail = {
   clinicTimezone: 'Pacific/Honolulu',
   allowedNextStatuses: ['completed'],
   canCancel: true,
+  cancellation: null,
 };
 
 const LIST: OrderList = {
@@ -111,9 +112,11 @@ it('opens from the address and shows the order', async () => {
   // The clinic's zone, as the API sent it, labels the created time.
   expect(dialog.getByText('Created (Pacific/Honolulu)')).toBeTruthy();
   expect(dialog.getByText('Oct 30, 2026, 12:00 pm')).toBeTruthy();
-  // The one move a collected order allows (LAB-16), and Close.
+  // The one move a collected order allows (LAB-16), cancelling (LAB-17),
+  // and Close.
   expect(dialog.getAllByRole('button').map((b) => b.textContent)).toEqual([
     'Mark completed',
+    'Cancel order',
     'Close',
   ]);
 });

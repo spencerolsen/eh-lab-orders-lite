@@ -385,6 +385,12 @@ dialog h2 {
   margin: 0 0 var(--space-3);
 }
 
+/* Who cancelled an order, when and why (the order panel): the note keeps
+   the line breaks it was typed with. */
+.cancellation {
+  white-space: pre-line;
+}
+
 /* A table row that opens something when clicked. */
 .table tr.clickable {
   cursor: pointer;
