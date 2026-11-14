@@ -31,6 +31,9 @@ erDiagram
     date estimated_ready_date "stored once"
     timestamptz created_at
     timestamptz updated_at
+    text cancellation_note "only when cancelled"
+    text cancelled_by "only when cancelled"
+    timestamptz cancelled_at "only when cancelled"
   }
   order_items {
     uuid order_id PK, FK
@@ -113,7 +116,12 @@ One row per order (LAB-11, `db/migrations/0004_orders.sql`). Orders are never de
 | `patient_id` | `uuid` | Not null, references `patients`. A patient with orders cannot be deleted. |
 | `status` | `text` | Not null, `ordered` by default, one of `ordered`, `collected`, `completed`, `cancelled` (`orders_status_known`). |
 | `estimated_ready_date` | `date` | Not null. Worked out once by `estimateReadyDate` when the order is placed, then stored. The rule: the ready date is the Nth business day after the day the order was placed (in `CLINIC_TIMEZONE`), where N is the longest turnaround among the order's tests. Saturday and Sunday are not business days. The order day itself is never counted. |
-| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` by default. Placing an order (LAB-12) sets `created_at` from the same clock reading that gave the ready date. A status change (LAB-16) sets `updated_at = now()` in its conditional update; there is no trigger. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` by default. Placing an order (LAB-12) sets `created_at` from the same clock reading that gave the ready date. A status change (LAB-16) and a cancel (LAB-17) set `updated_at = now()` in their conditional update; there is no trigger. |
+| `cancellation_note` | `text` | Why the order was cancelled (LAB-17, `db/migrations/0007_order_cancellation.sql`). Null unless cancelled. |
+| `cancelled_by` | `text` | The name typed by the person who cancelled it (there is no login). Null unless cancelled. |
+| `cancelled_at` | `timestamptz` | When it was cancelled, set to `now()` by the same update as the status. Null unless cancelled. |
+
+The CHECK `orders_cancellation_complete` ties the three to the status: when `status = 'cancelled'` all three are non-null and the note and the name are not blank (`btrim(...) <> ''`, which trims spaces); for any other status all three are null. The API trims and checks the note and the name first (`cancelOrderBody` in `src/shared/orders.ts`); the CHECK is the backstop for a row written any other way, so a cancelled order without its reason or its name cannot exist. Because the CHECK is not deferred, the cancel sets the status and the three fields in one `UPDATE`.
 
 Three indexes serve the list (`GET /api/orders`), one per filter, each ending in the list's own order (`created_at desc`, `id desc`) so Postgres reads the rows already sorted and stops after `limit + 1`:
 
@@ -125,7 +133,7 @@ Three indexes serve the list (`GET /api/orders`), one per filter, each ending in
 
 Without them each filtered page would read and sort every order as the table grows. The list query cuts the page from `orders` alone (filter, order, `limit`, `offset`) before it joins the patients and items, so Postgres can read that page from the filter's index and stop after `limit + 1` rows; joining and grouping first would force it to aggregate every matching order. On 50,000 orders with 100,000 items, `explain analyze` showed each filter reading its own index and returning 26 rows in under a millisecond (the patient-and-status pair about 8 ms); on a table of a few dozen rows, as in the seed, Postgres prefers a plain scan, which is just as fast.
 
-- **The statuses are written in two places only:** `ORDER_STATUSES` in `src/shared/orders.ts`, from which every schema and screen label derives, and the CHECK above. An integration test reads the CHECK's definition and asserts it lists exactly `ORDER_STATUSES`, in order. To add a status, follow "Adding an order status" in `AGENTS.md`.
+- **The statuses are written in two places only:** `ORDER_STATUSES` in `src/shared/orders.ts`, from which every schema and screen label derives, and the CHECKs above (`orders_cancellation_complete` names `cancelled` too). An integration test reads the CHECK's definition and asserts it lists exactly `ORDER_STATUSES`, in order. To add a status, follow "Adding an order status" in `AGENTS.md`.
 - **The total is derived, the ready date is stored.** The total is the sum of the items' frozen prices, so it can never disagree with them, and storing it would only add a copy that could. The ready date depends on the moment the order was placed and on the clinic's calendar; working it out again later would need that moment and the same rule version, and a change to the rule (holidays, say) must not move the date of an order already promised to a patient.
 - **"At least one item" is not a database rule.** A CHECK cannot look at other rows, and a trigger would be the only way. Placing an order (LAB-12) refuses an empty test list with a 422 before anything is written, and `estimateReadyDate` throws on an empty list, so the service cannot store an order without items. An order written by hand with no items still shows in the list, as 0 tests and $0.00.
 
@@ -143,7 +151,7 @@ One row per test on an order (LAB-11). Each row is a snapshot: the test's code, 
 
 The primary key (`order_items_pkey`) is (`order_id`, `lab_test_id`), so a test appears at most once on an order. The rows have no id of their own.
 
-Seed (`db/seeds/orders.ts`): 4 orders for seeded patients with fixed ids `5eed0011-0000-4000-8000-00000000000N`, statuses `ordered` (two), `collected` and `completed`, with 1, 3, 2 and 3 items. Each order has a fixed order time, one of them Friday 2026-10-30 at 12:00 in Denver. The seed reads each test from `lab_tests` and copies it onto the item, and stores the ready date `estimateReadyDate` gives for that fixed time in `CLINIC_TIMEZONE`, so it never depends on when the seed runs. No order is seeded as `cancelled`: LAB-17 adds the cancellation note, name and time with a CHECK that a cancelled order has all three, and a cancelled row seeded before those columns exist would break that migration.
+Seed (`db/seeds/orders.ts`): 4 orders for seeded patients with fixed ids `5eed0011-0000-4000-8000-00000000000N`, statuses `ordered` (two), `collected` and `completed`, with 1, 3, 2 and 3 items. Each order has a fixed order time, one of them Friday 2026-10-30 at 12:00 in Denver. The seed reads each test from `lab_tests` and copies it onto the item, and stores the ready date `estimateReadyDate` gives for that fixed time in `CLINIC_TIMEZONE`, so it never depends on when the seed runs. No order is seeded as `cancelled`; cancel one from its panel to see one (the CHECK above requires a seeded cancelled order to carry a note, a name and a time).
 
 ## Rules for every table
 
