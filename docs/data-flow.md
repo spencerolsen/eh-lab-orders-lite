@@ -186,3 +186,31 @@ sequenceDiagram
 - **One `now`.** The clock is read once; the same instant is `created_at` and the moment the ready date counts from.
 - **On a refusal** the modal stays open with the patient and the tests as they were, and shows the server's message with the request id (`ErrorMessage`).
 
+## The live total and ready date, while building an order
+
+`POST /api/orders/quote` (LAB-13): the summary under the chosen tests in the New order modal.
+
+```mermaid
+sequenceDiagram
+  participant M as NewOrderModal / OrderPreview
+  participant R as Route (POST /api/orders/quote)
+  participant S as Service (quoteOrder)
+  participant D as Postgres
+
+  Note over M: the set of chosen tests changes (add or remove)
+  M->>R: { labTestIds } (useQuery, key = the sorted ids)
+  R->>S: quoteOrder(deps, request.log, body)
+  Note over S: now = clock()
+  S->>D: select the tests by id (readOrderTests, no transaction)
+  Note over S: checkOrderTests: the same function as create<br/>-> 422 INVALID_ORDER_TESTS
+  Note over S: calculateTotal(items), readyDateFor(now, items)
+  R-->>M: 200 { items, totalCents, estimatedReadyDate } (nothing saved)
+  Note over M: show the total and ready date
+```
+
+- **Nothing is calculated in the browser.** The summary shows what the server sent; the rules live in `domain/total.ts` and `domain/ready-date.ts` only.
+- **One request per change of the chosen tests**, none while typing in quick-add, none with no tests (the summary says "Add a test to see the total").
+- **While a new quote loads**, the previous numbers stay but are dimmed and marked "Updating…", so they are not read as current.
+- **A failed quote** shows a quiet line with the request id. "Submit order" stays usable: the server recalculates on submit and decides.
+- **Preview equals saved** when placed at the same moment: both call `checkOrderTests`, `calculateTotal` and `readyDateFor` with the same clock and clinic time zone. If the day rolls over between the preview and the submit, the saved order has the later date.
+

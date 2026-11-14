@@ -1,6 +1,6 @@
 # LAB-13: Orders: live total and ready date while building an order
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Vertical slice
 - **Depends on:** LAB-12 (Orders: place an order)
 - **Unblocks:** LAB-18 (Orders: a double-click or retry cannot create a duplicate order), LAB-21 (Browser tests for the main journeys)
