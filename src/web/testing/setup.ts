@@ -8,27 +8,33 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// jsdom has no showModal(), close() or Escape handling for <dialog>. This
-// stands in for the three, enough for the panel and dialog tests: showModal
-// sets `open` and moves focus in, close clears it and queues "close", and Escape closes the last
-// opened modal dialog, as a browser does.
+// jsdom has the <dialog> element but none of its behaviour. This stand-in
+// does what a browser does, no more:
+// - showModal() opens it and puts it on top of the open-dialog stack;
+// - close() closes it and then fires `close` on a later task, as a browser
+//   queues it;
+// - Escape, unless a handler prevented it (the quick-add box does, to close
+//   its suggestions), fires a cancelable `cancel` on the most recently opened
+//   dialog and then closes it.
+// Focus is not moved: the app moves it itself, so the tests check the app.
 const openModals: HTMLDialogElement[] = [];
 HTMLDialogElement.prototype.showModal = function showModal(
   this: HTMLDialogElement,
 ) {
-  this.setAttribute('open', '');
+  this.open = true;
   openModals.push(this);
-  // A browser moves focus inside; the first button stands in for that.
-  this.querySelector('button')?.focus();
 };
 HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
   if (!this.open) return;
-  this.removeAttribute('open');
+  this.open = false;
   const at = openModals.indexOf(this);
   if (at >= 0) openModals.splice(at, 1);
-  // A browser queues the event as a task; it does not run it at once.
   setTimeout(() => this.dispatchEvent(new Event('close')));
 };
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') openModals.at(-1)?.close();
+  if (event.key !== 'Escape' || event.defaultPrevented) return;
+  const top = openModals.at(-1);
+  if (top && top.dispatchEvent(new Event('cancel', { cancelable: true }))) {
+    top.close();
+  }
 });

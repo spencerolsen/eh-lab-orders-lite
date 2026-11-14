@@ -17,6 +17,7 @@ it('the styles page renders every shared style without throwing', () => {
     'Table',
     'Status badges',
     'Loading, empty and error',
+    'Pick from a list',
     'Dialog and panel',
   ]) {
     expect(
