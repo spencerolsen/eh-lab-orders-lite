@@ -176,7 +176,7 @@ function hangUntilAborted() {
     (_path: string, init?: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () =>
-          reject(init.signal?.reason),
+          reject(new DOMException('The request was aborted', 'AbortError')),
         );
       }),
   );

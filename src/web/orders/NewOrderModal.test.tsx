@@ -61,9 +61,11 @@ function json(status: number, body: unknown): Response {
 // A fake API. POST /api/orders answers with `place(init)` (a promise, so a
 // test can hold it); the order list holds what has been placed.
 function fakeApi({
-  catalog = (): Promise<Response> => Promise.resolve(json(200, CATALOG)),
-  place = (_init?: RequestInit): Promise<Response> =>
-    Promise.resolve(json(201, NEW_ORDER)),
+  catalog = () => Promise.resolve(json(200, CATALOG)),
+  place = () => Promise.resolve(json(201, NEW_ORDER)),
+}: {
+  catalog?: () => Promise<Response>;
+  place?: (init?: RequestInit) => Promise<Response>;
 } = {}) {
   const orders: OrderListItem[] = [];
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
@@ -611,7 +613,7 @@ it('gives up after CREATE_ORDER_TIMEOUT_MS: says it cannot reach the server, is 
     const hang = (init?: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () =>
-          reject(init.signal?.reason),
+          reject(new DOMException('The request was aborted', 'AbortError')),
         );
       });
     const { user, fetch } = await submitAndHold(hang);
