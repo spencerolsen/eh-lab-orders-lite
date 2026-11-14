@@ -144,17 +144,25 @@ describe('POST /api/orders/:id/transitions: refusals', () => {
     expect(await stored()).toEqual(before);
   });
 
-  it.each(['collected', 'completed'])(
-    'refuses %s from a completed order with 422 ILLEGAL_TRANSITION',
-    async (to) => {
-      await givenOrder('completed');
+  // completed and cancelled are both final.
+  it.each([
+    { from: 'completed', to: 'collected' },
+    { from: 'completed', to: 'completed' },
+    { from: 'cancelled', to: 'collected' },
+    { from: 'cancelled', to: 'completed' },
+  ])(
+    'refuses $to from a $from order with 422 ILLEGAL_TRANSITION',
+    async ({ from, to }) => {
+      await givenOrder(from);
       const before = await stored();
 
       const response = await move(to);
 
       expect(response.statusCode).toBe(422);
       expect(errorOf(response).code).toBe('ILLEGAL_TRANSITION');
-      expect(errorOf(response).message).toContain('from completed to');
+      expect(errorOf(response).message).toBe(
+        `An order cannot move from ${from} to ${to}`,
+      );
       expect(await stored()).toEqual(before);
     },
   );

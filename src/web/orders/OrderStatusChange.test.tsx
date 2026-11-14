@@ -133,6 +133,9 @@ it('offers only Mark collected for an ordered order, then only Mark completed', 
   await dialog.findByText('Ordered');
   expect(buttons(dialog)).toEqual(['Mark collected', 'Close']);
   await waitFor(() => expect(listStatus()).toBe('Ordered'));
+  const listReads = () =>
+    fetch.mock.calls.filter(([url]) => url === '/api/orders').length;
+  const listReadsBefore = listReads();
 
   await userEvent.click(dialog.getByRole('button', { name: 'Mark collected' }));
 
@@ -147,6 +150,8 @@ it('offers only Mark collected for an ordered order, then only Mark completed', 
   );
   // The list behind the panel refreshed, with no reload.
   await waitFor(() => expect(listStatus()).toBe('Collected'));
+  // Refreshed by invalidation: the list was fetched again, not patched.
+  expect(listReads()).toBeGreaterThan(listReadsBefore);
   // Focus stays inside the panel, on the new status.
   expect(document.activeElement?.textContent).toBe('Collected');
 });
