@@ -5,8 +5,11 @@
 // /api/patients, with a 409 POSSIBLE_DUPLICATE when the email is already
 // taken and the body has no confirmDuplicate: true. (The real duplicate rule
 // is tested on the server; one rule is enough for the screens.)
+// GET /api/orders (the patient page's order history) answers `orders`: an
+// empty list unless a test gives one.
 import { vi } from 'vitest';
 
+import type { OrderList } from '../../shared/orders';
 import type { Patient } from '../../shared/patients';
 
 export const SEEDED: Patient[] = [
@@ -78,12 +81,22 @@ function create(patients: Patient[], init: RequestInit): Response {
   return json(201, patient);
 }
 
-export function fakePatientsApi(patients: Patient[] = structuredClone(SEEDED)) {
+const NO_ORDERS: OrderList = {
+  items: [],
+  hasMore: false,
+  clinicTimezone: 'America/Denver',
+};
+
+export function fakePatientsApi(
+  patients: Patient[] = structuredClone(SEEDED),
+  orders: () => Response = () => json(200, NO_ORDERS),
+) {
   const fetch = vi.fn((url: string, init?: RequestInit) => {
     const { pathname, searchParams } = new URL(url, 'http://localhost');
     if (pathname === '/healthz') {
       return Promise.resolve(json(200, { status: 'ok' }));
     }
+    if (pathname === '/api/orders') return Promise.resolve(orders());
     if (pathname === '/api/patients' && init?.method === 'POST') {
       return Promise.resolve(create(patients, init));
     }
