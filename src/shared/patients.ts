@@ -7,6 +7,8 @@ import { normalizePhone, phoneProblem } from './phone';
 
 export const NAME_MAX_LENGTH = 100;
 export const EMAIL_MAX_LENGTH = 254;
+// The earliest date of birth accepted, so a typo like 0001-01-01 is caught.
+export const EARLIEST_DATE_OF_BIRTH = '1900-01-01';
 // The reasons given on email and on phone when neither is present.
 export const CONTACT_REQUIRED_REASONS = {
   email: 'is required when there is no phone number',
@@ -45,6 +47,9 @@ export function dateOfBirthProblem(
   if (value.trim() === '') return 'is required';
   if (!DATE_PATTERN.test(value)) return 'must be a date written YYYY-MM-DD';
   if (!isRealDate(value)) return 'must be a real calendar date';
+  if (isAfterDay(EARLIEST_DATE_OF_BIRTH, value)) {
+    return `cannot be before ${EARLIEST_DATE_OF_BIRTH}`;
+  }
   if (isAfterDay(value, today)) return 'cannot be in the future';
   return undefined;
 }

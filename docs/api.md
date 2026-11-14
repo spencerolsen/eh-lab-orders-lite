@@ -150,7 +150,7 @@ The body may also carry `"confirmDuplicate": true` (see the duplicate check belo
 | Field | Rule |
 |---|---|
 | `firstName`, `lastName` | Required. Trimmed, then 1 to 100 characters, with no control characters (a NUL, tab or line break). |
-| `dateOfBirth` | Required. `YYYY-MM-DD`, a real calendar date (`2020-02-29` yes, `2020-02-30` and `1984-13-01` no), and not after today in the clinic's time zone (`CLINIC_TIMEZONE`, by the server's clock). |
+| `dateOfBirth` | Required. `YYYY-MM-DD`, a real calendar date (`2020-02-29` yes, `2020-02-30` and `1984-13-01` no), not before `1900-01-01` (reason "cannot be before 1900-01-01"), and not after today in the clinic's time zone (`CLINIC_TIMEZONE`, by the server's clock). |
 | `email` | Optional. Empty text or `null` counts as absent. Trimmed and lower-cased, then it must look like an email address (at most 254 characters). |
 | `phone` | Optional. Empty text or `null` counts as absent. It may contain only digits, spaces, dashes, dots, parentheses and a leading `+`; a letter is refused, not dropped (`801 555 01OO` is a typo). The formatting is removed, and what remains must be a US number with its area code: 10 digits, or 11 starting with 1, whose 1 is dropped. `(801) 555-0100`, `801.555.0100` and `+1 801 555 0100` are all stored as `8015550100`; `555-0100` (no area code) is refused with "must be a 10-digit number, including the area code". International numbers are not supported. The API returns the 10 digits; the screen formats them. |
 | `email` or `phone` | At least one of the two must be present. If neither is, `details` names both, `email` and `phone`. |
@@ -218,7 +218,7 @@ Changes some of a patient's details. The body has any of the create fields, at l
 | Field | Rule |
 |---|---|
 | a field left out | Unchanged. |
-| `firstName`, `lastName`, `dateOfBirth` | The same rules as on create (one shared definition, `patientFields`), including "not after the clinic's today". `null` is a 400. |
+| `firstName`, `lastName`, `dateOfBirth` | The same rules as on create (one shared definition, `patientFields`), including "not before 1900-01-01" and "not after the clinic's today". `null` is a 400. |
 | `email`, `phone` | The same rules and normalization as on create. `null` or empty text removes the value. |
 
 `updated_at` is set on every successful edit. The update is one `UPDATE ... RETURNING`, with no read first.
