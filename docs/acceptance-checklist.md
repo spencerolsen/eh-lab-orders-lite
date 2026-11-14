@@ -149,7 +149,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 ### Order detail panel (LAB-15)
 
 - [ ] Click a row in the Orders list: a panel slides in from the right and the address bar shows `?order=<id>`. Focus is inside the panel.
-- [ ] The panel shows the status badge, the patient's name and date of birth, the ready date, the created time labelled "Created (America/Denver)", each test's code, name and price, and the total, and no buttons other than Close.
+- [ ] The panel shows the status badge, the patient's name and date of birth, the ready date, the created time labelled "Created (America/Denver)", each test's code, name and price, and the total, and no buttons other than Close and the status button for the order's status (LAB-16, below).
 - [ ] Change the computer's time zone and reload: the created time is unchanged.
 - [ ] Press Escape: the panel closes, `?order=` is gone from the address and focus is back on that row's View button. The list behind it still works.
 - [ ] Open a panel, then press the browser's back button: the panel closes and you stay on the Orders list. Close it with the Close button and with a click on the dark backdrop too.
@@ -158,6 +158,17 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Open `/?order=5eed0011-0000-4000-8000-0000000000ff`: the panel says "Order not found" with a Close button, and the list is behind it. Open `/?order=nonsense`: the same, and nothing crashes.
 - [ ] `curl localhost:3000/api/orders/nonsense` gives 400 `VALIDATION_ERROR`; a well-formed unknown id gives 404 `NOT_FOUND`.
 - [ ] The API's log for opening a panel has the request line, the query lines and `order.loaded` with an id and a count, and nothing with a patient's name, date of birth or contact detail.
+
+### Mark an order collected or completed (LAB-16)
+
+- [ ] Open an `ordered` order: the only status button is "Mark collected". Press it: the panel shows Collected and only "Mark completed", focus is still inside the panel, and the row's badge in the list behind it shows Collected without a reload.
+- [ ] Press "Mark completed": the panel shows Completed and no status buttons (only Close). A cancelled order shows none either.
+- [ ] Open the same `ordered` order in two tabs. Press "Mark collected" in the first, then in the second: the second shows the server's refusal ("An order cannot move from collected to collected", a 422, because the server reads the order as it is now) with a reference, and reloads to show Collected and "Mark completed".
+- [ ] The 409: in `docker compose exec db psql -U lab_orders lab_orders`, run `begin; lock table orders in share mode;`, press "Mark collected" on the same `ordered` order in two tabs, then `commit;`. One tab shows Collected; the other says "This order was changed by someone else" with a reference, and reloads to show Collected and "Mark completed".
+- [ ] `curl -X POST localhost:3000/api/orders/<an ordered order's id>/transitions -H 'content-type: application/json' -d '{"to":"completed"}'` gives 422 `ILLEGAL_TRANSITION` and the status stays `ordered`; on a completed order both `collected` and `completed` give 422.
+- [ ] The same with an unknown well-formed id gives 404 `NOT_FOUND`; with `{}`, `{"to":"shipped"}` or `{"to":"cancelled"}` it gives 400 `VALIDATION_ERROR`.
+- [ ] After a change, `select status, updated_at, estimated_ready_date from orders where id = '<id>'` shows the new status and a new `updated_at`, and the same ready date as before.
+- [ ] The API's log has `order.status_changed` at info for a change, `order.transition_refused` and `order.transition_lost_race` at warn for a refusal and a lost race, each with the order id and statuses, and nothing with a patient's name, date of birth or contact detail.
 
 ## Checkpoint 3
 

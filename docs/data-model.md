@@ -113,7 +113,7 @@ One row per order (LAB-11, `db/migrations/0004_orders.sql`). Orders are never de
 | `patient_id` | `uuid` | Not null, references `patients`. A patient with orders cannot be deleted. |
 | `status` | `text` | Not null, `ordered` by default, one of `ordered`, `collected`, `completed`, `cancelled` (`orders_status_known`). |
 | `estimated_ready_date` | `date` | Not null. Worked out once by `estimateReadyDate` when the order is placed, then stored. The rule: the ready date is the Nth business day after the day the order was placed (in `CLINIC_TIMEZONE`), where N is the longest turnaround among the order's tests. Saturday and Sunday are not business days. The order day itself is never counted. |
-| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` by default. Placing an order (LAB-12) sets `created_at` from the same clock reading that gave the ready date. |
+| `created_at`, `updated_at` | `timestamptz` | Not null, `now()` by default. Placing an order (LAB-12) sets `created_at` from the same clock reading that gave the ready date. A status change (LAB-16) sets `updated_at = now()` in its conditional update; there is no trigger. |
 
 Three indexes serve the list (`GET /api/orders`), one per filter, each ending in the list's own order (`created_at desc`, `id desc`) so Postgres reads the rows already sorted and stops after `limit + 1`:
 

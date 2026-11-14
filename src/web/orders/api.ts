@@ -9,6 +9,7 @@ import {
   orderListSchema,
   type OrderQuote,
   orderQuoteSchema,
+  type OrderTransitionBody,
 } from '../../shared/orders';
 import { apiFetch } from '../api/client';
 import type { OrderFilters } from './filters';
@@ -71,5 +72,16 @@ export async function fetchQuote(
       body: { labTestIds },
       signal,
     }),
+  );
+}
+
+// POST /api/orders/:id/transitions: the order in its new status, as GET
+// /api/orders/:id returns it.
+export async function changeOrderStatus(
+  id: string,
+  body: OrderTransitionBody,
+): Promise<OrderDetail> {
+  return orderDetailSchema.parse(
+    await apiFetch(`/api/orders/${id}/transitions`, { method: 'POST', body }),
   );
 }

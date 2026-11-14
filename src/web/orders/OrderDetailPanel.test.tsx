@@ -95,7 +95,7 @@ function fakeApi(order: () => Response = () => json(200, DETAIL)) {
 
 const panel = () => screen.findByRole('dialog', { name: 'Order' });
 
-it('opens from the address and shows the order read-only', async () => {
+it('opens from the address and shows the order', async () => {
   fakeApi();
   renderApp(`/?order=${ID}`);
   const dialog = within(await panel());
@@ -111,8 +111,9 @@ it('opens from the address and shows the order read-only', async () => {
   // The clinic's zone, as the API sent it, labels the created time.
   expect(dialog.getByText('Created (Pacific/Honolulu)')).toBeTruthy();
   expect(dialog.getByText('Oct 30, 2026, 12:00 pm')).toBeTruthy();
-  // Read-only: only the Close button.
+  // The one move a collected order allows (LAB-16), and Close.
   expect(dialog.getAllByRole('button').map((b) => b.textContent)).toEqual([
+    'Mark completed',
     'Close',
   ]);
 });
