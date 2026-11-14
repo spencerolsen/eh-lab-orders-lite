@@ -214,3 +214,34 @@ sequenceDiagram
 - **A failed quote** shows a quiet line with the request id. "Submit order" stays usable: the server recalculates on submit and decides.
 - **Preview equals saved** when placed at the same moment: both call `checkOrderTests`, `calculateTotal` and `readyDateFor` with the same clock and clinic time zone. If the day rolls over between the preview and the submit, the saved order has the later date.
 
+## Changing an order's status, from the panel to the database
+
+`POST /api/orders/:id/transitions` (LAB-16): read, check, then a conditional update.
+
+```mermaid
+sequenceDiagram
+  participant P as OrderDetailPanel
+  participant R as Route
+  participant S as Service (changeOrderStatus)
+  participant D as Postgres
+
+  P->>R: { to: "collected" } (useMutation; the button is disabled)
+  Note over R: parse: 400 for a non-uuid id, a missing or<br/>unknown to, to: "cancelled", or an extra field
+  R->>S: changeOrderStatus(deps, log, id, body)
+  S->>D: select the order (getOrder)
+  D-->>S: none: 404 NOT_FOUND
+  Note over S: assertTransition(status read, to)<br/>not allowed: 422 ILLEGAL_TRANSITION, nothing written
+  S->>D: update orders set status = to, updated_at = now()<br/>where id = id and status = status read
+  alt one row changed
+    S->>D: select the order again
+    R-->>P: 200 the order (new allowedNextStatuses); log order.status_changed
+    Note over P: set ['orders', id]; invalidate ['orders'] so the list refreshes
+  else no row changed (someone else changed it first)
+    R-->>P: 409 ORDER_CHANGED; log order.transition_lost_race
+    Note over P: "This order was changed by someone else";<br/>invalidate ['orders'], so the panel reloads the real status
+  end
+```
+
+- **Two people at once.** Both requests can read `ordered` and pass the check. The update's `status = <status read>` condition lets only the first change the row; the second finds no row at `ordered`, changes nothing and gets the 409. Without the condition both would succeed, and the second would silently write over the first.
+- **The 422 and the 409 are different paths.** The check refuses an illegal move before any update is tried; the 409 only ever comes from an update that changed no row.
+- **What changes.** Only `status` and `updated_at`; the stored ready date stays.
