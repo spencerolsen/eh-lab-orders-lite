@@ -24,7 +24,7 @@ sequenceDiagram
   V->>A: POST /api/lab-tests
   Note over A: onRequest: request id taken from x-request-id or a new UUID
   A->>A: insert hits the unique constraint (23505), repo throws ConflictError('DUPLICATE_TEST_CODE', 'This code already exists')
-  Note over A: route: warn line lab_test.duplicate_code; error handler: toErrorResponse, warn line request.rejected
+  Note over A: route: warn line lab_test.duplicate_code, error handler: toErrorResponse, warn line request.rejected
   A-->>V: 409 { error: { code, message, requestId } }
   V-->>C: 409, same body
   Note over C: body matches errorBodySchema (src/shared)
@@ -81,9 +81,9 @@ sequenceDiagram
   Note over A: parse(createPatientBody): 400 VALIDATION_ERROR if wrong
   A->>D: findDuplicateCandidates: lower(email) = $1 or phone = $2 or (names, date of birth), no limit
   D-->>A: candidate rows
-  Note over A: matchRules(body, row) for each: email, phone, name_dob; keep the matches, list the first 10
+  Note over A: matchRules(body, row) for each: email, phone, name_dob, keep the matches, list the first 10
   alt at least one match
-    Note over A: warn patient.possible_duplicate (count, rule names); debug the ids
+    Note over A: warn patient.possible_duplicate (count, rule names), debug the ids
     A-->>F: 409 POSSIBLE_DUPLICATE, error.matches, nothing inserted
     Note over F: DuplicateWarning above the form, which keeps its values
     alt Open this patient
@@ -93,7 +93,7 @@ sequenceDiagram
       A->>D: insert (no check)
       A-->>F: 201, info patient.created duplicateConfirmed: true
     else the user edits a field
-      Note over F: the warning goes away; the next Save checks again
+      Note over F: the warning goes away, the next Save checks again
     end
   else no match
     A->>D: insert
@@ -118,7 +118,7 @@ sequenceDiagram
   D-->>A: one row per order with item_prices [2500, 3800]
   Note over A: toOrderListItem: testCount = item_prices.length,<br/>totalCents = calculateTotal(item_prices),<br/>createdAtClinic = clinicDateTime(CLINIC_TIMEZONE, created_at)
   A-->>P: { items, hasMore: false, clinicTimezone }
-  Note over P: orderListSchema.parse; PatientLabel, formatCents,<br/>formatDate, StatusBadge, formatDateTime(createdAtClinic)
+  Note over P: orderListSchema.parse, PatientLabel, formatCents,<br/>formatDate, StatusBadge, formatDateTime(createdAtClinic)
 ```
 
 - **One query, however many orders.** The patient comes by a join and the item prices as one array per order, so there is no query per row.
@@ -143,7 +143,7 @@ sequenceDiagram
   D-->>A: code, name, price, turnaround per item
   Note over A: totalCents = calculateTotal(items),<br/>allowedNextStatuses and canCancel from the transition table,<br/>createdAtClinic = clinicDateTime(CLINIC_TIMEZONE, created_at)
   A-->>P: the order
-  Note over P: orderDetailSchema.parse; StatusBadge, PatientLabel,<br/>formatCents, formatDate, formatDateTime(createdAtClinic)
+  Note over P: orderDetailSchema.parse, StatusBadge, PatientLabel,<br/>formatCents, formatDate, formatDateTime(createdAtClinic)
 ```
 
 - **Two reads, no catalog.** The items are the frozen `order_items` rows, so a later price change in the catalog cannot change what the panel shows.
@@ -173,7 +173,7 @@ sequenceDiagram
   opt the key already placed an order (a replay)
     S->>D: select the order by its key, read it as a list row
     S->>D: commit (nothing written, the body not checked)
-    R-->>M: 200 that order; log warn order.create_replayed
+    R-->>M: 200 that order, log warn order.create_replayed
   end
   S->>D: select the tests by id ... for share
   Note over S: checkOrderTests: empty, repeated, unknown, inactive<br/>-> 422 INVALID_ORDER_TESTS (rollback, nothing saved)
@@ -184,13 +184,13 @@ sequenceDiagram
     S->>D: insert one item per test (code, name, price, turnaround copied)
     S->>D: read the order back as a list row
     S->>D: commit
-    R-->>M: 201 the list row (total from calculateTotal); log order.created
+    R-->>M: 201 the list row (total from calculateTotal), log order.created
   else no row: a request with the same key inserted first (a lost race)
     S->>D: find that order by its key, read it as a list row
     S->>D: commit (nothing was written)
-    R-->>M: 200 that order; log warn order.create_replayed
+    R-->>M: 200 that order, log warn order.create_replayed
   end
-  Note over M: close; invalidate ['orders'], so the list shows it first
+  Note over M: close, invalidate ['orders'], so the list shows it first
 ```
 
 - **All or nothing.** The catalog read, the order and its items run on one connection in one transaction. A refusal or any failure (a constraint on an item, a lost connection) rolls everything back: there is never an order without all of its items.
@@ -240,7 +240,7 @@ sequenceDiagram
   participant S as Service (changeOrderStatus)
   participant D as Postgres
 
-  P->>R: { to: "collected" } (useMutation; the button is disabled)
+  P->>R: { to: "collected" } (useMutation, the button is disabled)
   Note over R: parse: 400 for a non-uuid id, a missing or<br/>unknown to, to: "cancelled", or an extra field
   R->>S: changeOrderStatus(deps, log, id, body)
   S->>D: select the order (getOrder)
@@ -249,11 +249,11 @@ sequenceDiagram
   S->>D: update orders set status = to, updated_at = now()<br/>where id = id and status = status read
   alt one row changed
     S->>D: select the order again
-    R-->>P: 200 the order (new allowedNextStatuses); log order.status_changed
-    Note over P: set ['orders', id]; invalidate ['orders'] so the list refreshes
+    R-->>P: 200 the order (new allowedNextStatuses), log order.status_changed
+    Note over P: set ['orders', id], invalidate ['orders'] so the list refreshes
   else no row changed (someone else changed it first)
-    R-->>P: 409 ORDER_CHANGED; log order.transition_lost_race
-    Note over P: "This order was changed by someone else";<br/>invalidate ['orders'], so the panel reloads the real status
+    R-->>P: 409 ORDER_CHANGED, log order.transition_lost_race
+    Note over P: "This order was changed by someone else",<br/>invalidate ['orders'], so the panel reloads the real status
   end
 ```
 
@@ -273,8 +273,8 @@ sequenceDiagram
   participant S as Service (cancelOrder)
   participant D as Postgres
 
-  Note over P: "Cancel order" only when canCancel;<br/>the form checks note and name with cancelOrderBody
-  P->>R: { note, cancelledBy } (useMutation; Confirm cancel is disabled)
+  Note over P: "Cancel order" only when canCancel,<br/>the form checks note and name with cancelOrderBody
+  P->>R: { note, cancelledBy } (useMutation, Confirm cancel is disabled)
   Note over R: parse: 400 for a non-uuid id, a missing, blank or<br/>too long note or name, or an extra field
   R->>S: cancelOrder(deps, log, id, body)
   S->>D: select the order (getOrder)
@@ -283,11 +283,11 @@ sequenceDiagram
   S->>D: update orders set status = cancelled, note, name,<br/>cancelled_at = now(), updated_at = now()<br/>where id = id and status = status read
   alt one row changed
     S->>D: select the order again
-    R-->>P: 200 the order with its cancellation; log order.cancelled (id, from)
-    Note over P: set ['orders', id]; invalidate ['orders'] so the list refreshes;<br/>the panel shows "Cancelled by NAME on DATE: NOTE"
+    R-->>P: 200 the order with its cancellation, log order.cancelled (id, from)
+    Note over P: set ['orders', id], invalidate ['orders'] so the list refreshes,<br/>the panel shows "Cancelled by NAME on DATE: NOTE"
   else no row changed (someone else changed it first)
-    R-->>P: 409 ORDER_CHANGED; log order.cancel_lost_race
-    Note over P: the message; invalidate ['orders'], so the panel reloads the real state
+    R-->>P: 409 ORDER_CHANGED, log order.cancel_lost_race
+    Note over P: the message, invalidate ['orders'], so the panel reloads the real state
   end
 ```
 
