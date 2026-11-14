@@ -30,9 +30,10 @@ import { QuickAdd } from './QuickAdd';
 //
 // NO CLOSING WHILE A SUBMIT IS IN FLIGHT: Cancel is disabled and Escape does
 // nothing until the reply arrives, so the user always sees whether the order
-// was placed. Any reply ends it: a success closes the modal; an error (or the
-// server not answering) shows the message and makes it closable again, with
-// the same key for a retry. There is no close button, and a click on the
+// was placed. Any reply ends it: a success closes the modal; an error, the
+// server not being reached, or no answer within CREATE_ORDER_TIMEOUT_MS (30
+// seconds) shows the message and makes it closable again, with the same key
+// for a retry. There is no close button, and a click on the
 // backdrop never closes this dialog.
 export function NewOrderModal({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
