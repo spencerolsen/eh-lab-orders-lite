@@ -61,7 +61,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-15](tasks/LAB-15-orders-detail-panel.md) | Orders: order detail slide-out panel | Vertical slice | LAB-11 | Done |
 | [LAB-16](tasks/LAB-16-orders-advance-status.md) | Orders: mark an order collected or completed | Vertical slice | LAB-15 | Done |
 | [LAB-17](tasks/LAB-17-orders-cancel.md) | Orders: cancel an order with a note and a name | Vertical slice | LAB-14, LAB-16 | In progress |
-| [LAB-18](tasks/LAB-18-orders-idempotent-create.md) | Orders: a double-click or retry cannot create a duplicate order | Hardening | LAB-13 | Not started |
+| [LAB-18](tasks/LAB-18-orders-idempotent-create.md) | Orders: a double-click or retry cannot create a duplicate order | Hardening | LAB-13 | In progress |
 | [LAB-19](tasks/LAB-19-patient-order-history.md) | Patient page: order history | Vertical slice | LAB-14, LAB-15 | Done |
 | [LAB-20](tasks/LAB-20-new-order-entry-points.md) | New order from the menu bar and the patient page | Vertical slice | LAB-18, LAB-19 | Not started |
 | [LAB-21](tasks/LAB-21-browser-journeys.md) | Browser tests for the main journeys | Hardening | LAB-10, LAB-13, LAB-14, LAB-17, LAB-18, LAB-20 | Not started |

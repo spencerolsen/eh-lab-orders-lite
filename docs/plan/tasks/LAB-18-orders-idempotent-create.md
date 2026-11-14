@@ -1,6 +1,6 @@
 # LAB-18: Orders: a double-click or retry cannot create a duplicate order
 
-- **Status:** Not started
+- **Status:** In progress
 - **Type:** Hardening
 - **Depends on:** LAB-13 (Orders: live total and ready date while building an order)
 - **Unblocks:** LAB-20 (New order from the menu bar and the patient page), LAB-21 (Browser tests for the main journeys)
@@ -40,7 +40,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 **Tooling**
 - Concurrency tests fire two real simultaneous requests at Postgres, not a mock.
 
-**Note from the LAB-12 review:** today Cancel or Escape during a pending submit closes the modal, but the order is still placed and appears after the refetch; decide whether the modal should wait for the reply.
+**Note from the LAB-12 review:** today Cancel or Escape during a pending submit closes the modal, but the order is still placed and appears after the refetch; decide whether the modal should wait for the reply. **Decided (owner):** keep it. Closing during a submit still closes at once and the order appears after the refetch; no duplicate can result. Recorded in `docs/plan/backlog.md` with the alternative (block closing while the request runs).
 
 ## Acceptance criteria
 
