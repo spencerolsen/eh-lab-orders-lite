@@ -79,9 +79,9 @@ sequenceDiagram
 
   F->>A: POST { firstName, lastName, dateOfBirth, email, phone }
   Note over A: parse(createPatientBody): 400 VALIDATION_ERROR if wrong
-  A->>D: findDuplicateCandidates: lower(email) = $1 or phone = $2 or (names, date of birth), limit 10
+  A->>D: findDuplicateCandidates: lower(email) = $1 or phone = $2 or (names, date of birth), no limit
   D-->>A: candidate rows
-  Note over A: matchRules(body, row) for each: email, phone, name_dob
+  Note over A: matchRules(body, row) for each: email, phone, name_dob; keep the matches, list the first 10
   alt at least one match
     Note over A: warn patient.possible_duplicate (count, rule names); debug the ids
     A-->>F: 409 POSSIBLE_DUPLICATE, error.matches, nothing inserted

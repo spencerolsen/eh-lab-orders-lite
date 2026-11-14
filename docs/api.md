@@ -162,7 +162,7 @@ The rules are one schema, `createPatientBody` in `src/shared/patients.ts`, which
 | `phone` | The same phone, compared as the stored 10 digits (`(801) 555-0100` is `8015550100`). Only when the new patient has a phone. |
 | `name_dob` | The same first name, last name and date of birth. Names are compared trimmed and ignoring letter case (` test ` is `TEST`); the date exactly. |
 
-Every comparison is exact: `Jon` is not `John`, `Zoe` is not `Zoë`, and a last name alone, or a name with another date of birth, is never a match. The check warns and never blocks, because two real people can share a name and birthday or a household phone. It is not locked together with the insert, so two identical requests at the same moment can both create a patient; that is accepted for this version. Editing a patient (`PATCH`) runs no duplicate check.
+Every comparison is exact: `Jon` is not `John`, `Zoe` is not `Zoë`, and a last name alone, or a name with another date of birth, is never a match. Ignoring letter case relies on Postgres `lower()` to find candidates and JavaScript `toLowerCase()` to decide; for a few non-English letters (Greek final sigma, Turkish dotted I) the two differ, so such names may not match. The check warns and never blocks, because two real people can share a name and birthday or a household phone. It is not locked together with the insert, so two identical requests at the same moment can both create a patient; that is accepted for this version. Editing a patient (`PATCH`) runs no duplicate check.
 
 | Status | Body |
 |---|---|
