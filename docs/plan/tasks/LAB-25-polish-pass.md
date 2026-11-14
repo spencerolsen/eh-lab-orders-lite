@@ -1,6 +1,6 @@
 # LAB-25: Polish pass
 
-- **Status:** In progress
+- **Status:** Done
 - **Type:** Hardening
 - **Depends on:** LAB-20 (New order from the patient page)
 - **Unblocks:** nothing
@@ -28,12 +28,12 @@ Two hands-on browser checkpoints, run after the feature tickets were merged, fou
 
 ## Acceptance criteria
 
-- [ ] Each of items 1 to 11 behaves as written above, and each has a test that fails without the fix where a test can check it (for pure layout, a test of the class or attribute that carries the fix, plus a look in a real browser at 1280 and 1024 wide).
-- [ ] No colour literal is added outside the custom properties; no media query is added.
-- [ ] `/styles` shows the shared select and the wrapping rule.
-- [ ] No business rule, API shape or migration changes.
-- [ ] `docs/api.md` and `docs/data-model.md` state the date of birth limit where they state the date rules; `docs/api.md` states the known limit of item 12.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` and `pnpm test` pass.
+- [x] Each of items 1 to 11 behaves as written above, and each has a test that fails without the fix where a test can check it (for pure layout, a test of the class or attribute that carries the fix, plus a look in a real browser at 1280 and 1024 wide).
+- [x] No colour literal is added outside the custom properties; no media query is added.
+- [x] `/styles` shows the shared select and the wrapping rule.
+- [x] No business rule, API shape or migration changes.
+- [x] `docs/api.md` and `docs/data-model.md` state the date of birth limit where they state the date rules; `docs/api.md` states the known limit of item 12.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` and `pnpm test` pass.
 
 ## Tests
 
@@ -50,4 +50,9 @@ Component tests for the panel (heading, no date of birth, error clearing, the ch
 
 ## Notes from the build
 
-(Filled in when the task is built.)
+- **Wrapping (item 3).** `body` has `overflow-wrap: break-word`, which fixes the order panel's note and name. In a table cell that does not let a column get narrower than the word, so text that can be long and unbroken (a patient name through `PatientLabel` and the Patients table, a test name) also gets the shared class `wrap` (`overflow-wrap: anywhere`). `anywhere` on every cell (or on `body`) was tried first and squeezed the other columns until the Edit button's word broke into letters. Date cells use the `nowrap` class (item 5), including the date of birth in the Patients table.
+- **Panel errors (item 4).** One `problem` state holds the latest error together with the order object it belongs to, so it disappears when the order reloads as something else. A 409 or 422 waits for the reload and then says "This order has changed. It is now <status>."; if the reload shows nothing new, the server's own message is shown. `ErrorMessage` gained optional `children` for the extra lines.
+- **Item 10.** The 422 `INVALID_ORDER_TESTS` response already says which positions are refused (`labTestIds.N`), so the dialog names the tests from the list on screen: no server change.
+- **Item 9.** The limit is `EARLIEST_DATE_OF_BIRTH` in `src/shared/patients.ts`; the database has no lower bound.
+- **Item 11.** The cancelled seed order has an id ending 5, belongs to the patient with id ending 3, and sits third in the list (placed 2026-11-03).
+- **Checked by eye** in the built-in browser at 1280 and 1024 wide: the select arrow, a long patient name in the Patients and Orders tables, a long cancel note and name in the panel (no horizontal overflow), dates on one line at 1024, the New order dialog near the top with the tests list scrolling and the total and buttons in view at 1024 by 768. Not checked by eye: the error wording in a second tab (covered by component tests), and any browser other than the built-in one.
