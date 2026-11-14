@@ -95,3 +95,8 @@ Optional review findings and ideas that were deliberately not applied, kept as a
 | `AGENTS.md` says logs never carry headers; `order.create_replayed` carries the `Idempotency-Key` value, by owner decision (a random id, not patient data). | LAB-18 review (O7) | A one-line exception in `AGENTS.md` would remove the apparent contradiction. |
 | A database stall longer than 5 s turns requests queued for a pool connection into 500s (`connectionTimeoutMillis`). | LAB-18 review (O8) | Pre-existing, not LAB-18; with a key a retry is safe and returns the order. |
 | The client gives up after 30 s, but the server has no statement timeout, so a held create can still commit later. | LAB-18 review (O9) | Intended and documented: the retry with the same key returns that order. A server-side `statement_timeout` would bound it. |
+| LAB-20 ticks its acceptance boxes `[x]`, while LAB-12 to LAB-19 are Done with every box still `[ ]`. | LAB-20 review | One convention is wanted; not decided. |
+| The LAB-17 and LAB-18 "Done" status change rode in LAB-20's branch as its own commit. | LAB-20 review | Harmless; a status change unrelated to LAB-20. |
+| The commit author is the owner's GitHub no-reply address. | LAB-20 review | Not a leak; to confirm it is the identity wanted on the public repo. |
+| `QuickAdd` now takes the focus when the catalog has loaded as well as when it is enabled; the LAB-12 notes do not say so. | LAB-20 review | Correct as built; a one-line mention in the LAB-12 notes would help the next reader. |
+| `docs/plan/README.md` ordering ("8. LAB-17, LAB-20") and the LAB-20 filename `new-order-entry-points` still say "entry points" while the title says "patient page". | LAB-20 review | Fine as is; a rename would break links for no gain. |

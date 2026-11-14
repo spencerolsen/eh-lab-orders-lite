@@ -60,10 +60,10 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-14](tasks/LAB-14-orders-list-filters.md) | Orders: filter the list by status and patient | Vertical slice | LAB-09, LAB-11 | Done |
 | [LAB-15](tasks/LAB-15-orders-detail-panel.md) | Orders: order detail slide-out panel | Vertical slice | LAB-11 | Done |
 | [LAB-16](tasks/LAB-16-orders-advance-status.md) | Orders: mark an order collected or completed | Vertical slice | LAB-15 | Done |
-| [LAB-17](tasks/LAB-17-orders-cancel.md) | Orders: cancel an order with a note and a name | Vertical slice | LAB-14, LAB-16 | In progress |
-| [LAB-18](tasks/LAB-18-orders-idempotent-create.md) | Orders: a double-click or retry cannot create a duplicate order | Hardening | LAB-13 | In progress |
+| [LAB-17](tasks/LAB-17-orders-cancel.md) | Orders: cancel an order with a note and a name | Vertical slice | LAB-14, LAB-16 | Done |
+| [LAB-18](tasks/LAB-18-orders-idempotent-create.md) | Orders: a double-click or retry cannot create a duplicate order | Hardening | LAB-13 | Done |
 | [LAB-19](tasks/LAB-19-patient-order-history.md) | Patient page: order history | Vertical slice | LAB-14, LAB-15 | Done |
-| [LAB-20](tasks/LAB-20-new-order-entry-points.md) | New order from the menu bar and the patient page | Vertical slice | LAB-18, LAB-19 | Not started |
+| [LAB-20](tasks/LAB-20-new-order-entry-points.md) | New order from the patient page | Vertical slice | LAB-18, LAB-19 | Done |
 | [LAB-21](tasks/LAB-21-browser-journeys.md) | Browser tests for the main journeys | Hardening | LAB-10, LAB-13, LAB-14, LAB-17, LAB-18, LAB-20 | Not started |
 | [LAB-22](tasks/LAB-22-docs-and-readme.md) | Docs and README, final pass | Docs | LAB-07, LAB-10, LAB-17, LAB-20, LAB-21 | Not started |
 | [LAB-23](tasks/LAB-23-submission-readiness.md) | Submission readiness | Hardening | LAB-05, LAB-22 | Not started |
@@ -103,7 +103,7 @@ flowchart TD
     L14 --> L17
     L14 --> L19[LAB-19 Patient order history]
     L15 --> L19
-    L18 --> L20[LAB-20 New order from anywhere]
+    L18 --> L20[LAB-20 New order from the patient page]
     L19 --> L20
   end
 
@@ -139,7 +139,7 @@ Automated tests guard what must not break. At three points in the build, the AI 
 |---|---|---|---|
 | 1 | Once LAB-04 and LAB-06 to LAB-12 have all merged | App start and menu, catalog, patients, orders home page, placing an order | Adding and editing tests; deactivated tests cannot be ordered; patient form errors; date of birth shown correctly; the duplicate warning and both ways out of it; quick-add by keyboard; an order appears with the right total and ready date; error messages show a request id |
 | 2 | Once LAB-13 to LAB-17 have all merged | Live preview, filters, detail panel, status changes, cancel | Total and ready date update as tests are added and match the saved order; filters and the back button; the panel opens from a link; only allowed status buttons appear; cancel needs a note and a name; a completed order cannot be cancelled; two tabs changing the same order |
-| 3 | In LAB-23 | Everything, including no duplicate orders, patient order history, New order from every entry point | The full checklist from a fresh clone; double-clicking submit; New order from the menu bar, the orders page and a patient page; keyboard-only use; empty, loading and error states on every page |
+| 3 | In LAB-23 | Everything, including no duplicate orders, patient order history, New order from both entry points | The full checklist from a fresh clone; double-clicking submit; New order from the orders page and from a patient page; keyboard-only use; empty, loading and error states on every page |
 
 Each ticket adds its own checks to the checklist section for its checkpoint, so the list of what to test is written as the features are built.
 

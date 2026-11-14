@@ -23,7 +23,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] `PORT=5173 corepack pnpm dev` (a `PORT` in the shell overrides `.env`) prints one line saying `PORT` and `WEB_PORT` are both 5173 and must differ, and exits with an error before starting anything.
 - [ ] `DB_PORT=5434 corepack pnpm dev`, with the URLs in `.env` still on 5433, prints one line saying `DATABASE_URL` uses port 5433 but the container listens on `DB_PORT` 5434, and exits with an error before starting anything.
 - [ ] http://localhost:5173/healthz returns the API's `{"status":"ok"}` (the proxy works).
-- [ ] The menu bar shows Orders, Patients and Catalog on every page. Clicking each changes the URL and the page without a full reload; the current one is highlighted and has `aria-current="page"`.
+- [ ] The menu bar shows Orders, Patients and Catalog on every page, and nothing else (no "New order" button: orders are placed from the orders page and the patient page). Clicking each changes the URL and the page without a full reload; the current one is highlighted and has `aria-current="page"`.
 - [ ] http://localhost:5173/does-not-exist shows "Page not found" with a link back to the orders page.
 - [ ] The footer says "Server: connected". Then stop `pnpm dev` with Ctrl-C and run `pnpm dev:web` on its own, so Vite runs without the API, and reload the page: the footer shows "Can't reach the server. Try again." with a "Try again" button, not a blank page. Stop `pnpm dev:web` with Ctrl-C afterwards.
 - [ ] In a desktop browser window (at least 1024 px wide), Tab reaches every link and button in order, each with a visible focus outline, and Enter follows a focused link.
@@ -187,7 +187,7 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 **Runs:** in LAB-23.
 
-**Covers:** everything, including idempotent create, patient order history and the New order entry points.
+**Covers:** everything, including idempotent create, patient order history and New order from the orders page and the patient page.
 
 ### Patient page: order history (LAB-19)
 
@@ -209,3 +209,10 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] Press "Submit order" on a throttled network: while "Submitting…" shows, Cancel is disabled, Escape (pressed several times) and a click outside the dialog do nothing, and the modal stays open. When the reply arrives it closes with the new order in the list.
 - [ ] The timeout: in `docker compose exec db psql -U lab_orders lab_orders`, run `begin; lock table orders in share mode;`, then press "Submit order". The modal stays locked with "Submitting…" for 30 seconds, then shows "Can't reach the server. Try again." with Cancel enabled again. Run `commit;` in psql (the held request now places the order), then press "Submit order" again: the modal closes and the list shows that one order, not two.
 - [ ] With the API stopped (Ctrl-C on `dev:api`), press "Submit order": "Can't reach the server. Try again." appears, Cancel and Escape close the modal again, and after restarting the API, "Submit order" in the same modal places one order.
+
+### New order from the orders page and the patient page (LAB-20)
+
+- [ ] The menu bar has no "New order" button on any page (orders, patients, a patient, new patient, catalog).
+- [ ] On a patient's page, "New order for this patient" sits next to the Orders heading and opens the New order dialog with that patient's name and date of birth shown and the focus in "Add a test". "Change" shows the patient search and disables "Add a test"; picking another patient enables it again, and tests already added stay.
+- [ ] Add CBC and press "Submit order": the dialog closes and the new order is first in the patient's Orders, with no reload. Open the dialog again and place the same tests: two orders (a new opening is a new key).
+- [ ] On the Orders page, "Place new order" opens the dialog with no patient chosen and "Add a test" disabled ("Choose a patient first"), as before.

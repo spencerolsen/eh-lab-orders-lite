@@ -2,7 +2,7 @@
 
 - **Status:** Not started
 - **Type:** Hardening
-- **Depends on:** LAB-10 (Patients: duplicate warning on create), LAB-13 (Orders: live total and ready date while building an order), LAB-14 (Orders: filter the list by status and patient), LAB-17 (Orders: cancel an order with a note and a name), LAB-18 (Orders: a double-click or retry cannot create a duplicate order), LAB-20 (New order from the menu bar and the patient page)
+- **Depends on:** LAB-10 (Patients: duplicate warning on create), LAB-13 (Orders: live total and ready date while building an order), LAB-14 (Orders: filter the list by status and patient), LAB-17 (Orders: cancel an order with a note and a name), LAB-18 (Orders: a double-click or retry cannot create a duplicate order), LAB-20 (New order from the patient page)
 - **Unblocks:** LAB-22 (Docs and README, final pass)
 - **Branch:** `lab-21-browser-journeys`
 
@@ -21,11 +21,11 @@ The rules are already proved by the unit and integration layers. This layer only
 - The tests use a database named `lab_orders_e2e`. A global setup creates it if it is missing, runs the migrations, truncates all tables, and loads the seed (CBC, CMP, LIPID, A1C, TSH, UA, VITD, CULT and the fake patients). It stops with a clear message, and touches nothing, if the database name in use does not end in `_e2e`.
 - Each journey creates its own data with unique names and does not depend on the order the journeys run in.
 - No `page.clock`. No assertion on a specific calendar date.
-- Elements are found by role and accessible name, matched exactly (the names "New order", "Place new order" and "New order for this patient" are different buttons). Where a role is not enough, use `data-testid`, and list each one in `docs/testing.md`.
+- Elements are found by role and accessible name, matched exactly (the names "Place new order" and "New order for this patient" are different buttons; there is no "New order" button in the menu bar). Where a role is not enough, use `data-testid`, and list each one in `docs/testing.md`.
 
 **Journey 1: place an order and find it**
 1. Go to Patients and create a new patient with unique fake details.
-2. Click "Place new order" on the orders page (the orders-page button, not the menu bar's "New order"), choose that patient, and use quick-add to add `CBC` and `LIPID`.
+2. Click "Place new order" on the orders page (the orders-page button), choose that patient, and use quick-add to add `CBC` and `LIPID`.
 3. Read the total and the ready date shown in the modal preview.
 4. Click "Submit order". The order shows on the home list. Filter by that patient and by status "ordered". Check the row's total and ready date equal the modal preview's.
 5. Open the row. Check the panel shows both tests, and the same total and ready date.

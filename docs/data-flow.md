@@ -163,6 +163,7 @@ sequenceDiagram
   participant D as Postgres
 
   Note over M: patient from usePatientSearch, tests from the catalog<br/>(GET /api/lab-tests) through matchTests
+  Note over M: opened from the orders page (no patient)<br/>or from the patient page (that patient already chosen)
   Note over M: key = crypto.randomUUID(), once per opening
   M->>R: { patientId, labTestIds }, Idempotency-Key: key (useMutation)
   Note over R: parse(createOrderHeaders): 400 for a key that is not a uuid<br/>parse(createOrderBody): 400 for a missing field,<br/>a non-uuid id or an unknown field

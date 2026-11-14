@@ -14,7 +14,8 @@ import { PatientPicker } from './PatientPicker';
 import { QuickAdd } from './QuickAdd';
 
 // The New order modal: a native <dialog>, shown while this component is
-// mounted (the page that opens it holds the open state). Pick a patient,
+// mounted (the page that opens it holds the open state; the orders page opens
+// it with no patient, the patient page with that patient). Pick a patient,
 // add tests, "Submit order". On success it closes and the order list is
 // refreshed; on a failure it stays open with the choices kept and shows the
 // server's message with the request id.
@@ -35,7 +36,15 @@ import { QuickAdd } from './QuickAdd';
 // seconds) shows the message and makes it closable again, with the same key
 // for a retry. There is no close button, and a click on the
 // backdrop never closes this dialog.
-export function NewOrderModal({ onClose }: { onClose: () => void }) {
+export function NewOrderModal({
+  onClose,
+  patient: initialPatient = null,
+}: {
+  onClose: () => void;
+  // The patient already chosen (opened from the patient page); the Change
+  // button still lets the user pick another. The modal never reads the route.
+  patient?: Patient | null;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const quickAdd = useRef<HTMLInputElement>(null);
   // Whatever had the focus when the modal opened (the button that opened
@@ -46,7 +55,7 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
       ? document.activeElement
       : null,
   );
-  const [patient, setPatient] = useState<Patient | null>(null);
+  const [patient, setPatient] = useState<Patient | null>(initialPatient);
   const [tests, setTests] = useState<LabTest[]>([]);
   // crypto.randomUUID needs a secure context: https, or localhost.
   const [idempotencyKey] = useState(() => crypto.randomUUID());

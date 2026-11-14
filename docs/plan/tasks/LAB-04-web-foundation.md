@@ -16,7 +16,7 @@ It comes right after the API foundation because the client must understand the e
 
 **UI**
 - Vite + React + TypeScript under `src/web/`, entry `index.html`, `src/web/main.tsx`, `src/web/App.tsx`. Routing with React Router: `/` Orders (the home page), `/patients`, `/catalog`. Unknown paths show a "Page not found" screen with a link home.
-- Menu bar on every page with three links (Orders, Patients, Catalog); the current section is visually marked and has `aria-current="page"`. The menu bar reserves a place for the "New order" button, which LAB-20 fills in; it is not shown yet.
+- Menu bar on every page with three links (Orders, Patients, Catalog); the current section is visually marked and has `aria-current="page"`. (Superseded by LAB-20: the menu bar never gets a "New order" button; orders are placed from the orders page and the patient page.)
 - Each placeholder page has a heading and one line saying what will appear there.
 - Shared components in `src/web/components/`: `Loading` (text with `role="status"`), `EmptyState` (message and optional action), `ErrorMessage` (message plus request id, with a retry button when a retry function is given). An error boundary wraps the app and shows a fallback screen ("Something went wrong. Reload the page.") instead of a blank page, and writes the error to the browser console.
 - Plain CSS in `src/web/styles/base.css`: colour and spacing variables, readable default type, visible focus outlines. No component library. The app is for a desktop browser: it supports a window at least 1024 px wide, and has no mobile or narrow-screen layout and no responsive breakpoints (an owner decision).
@@ -67,7 +67,7 @@ It comes right after the API foundation because the client must understand the e
 ## Out of scope
 
 - Real page content: catalog LAB-06, patients LAB-08, orders LAB-11.
-- The "New order" modal: LAB-12. The button in the menu bar: LAB-20.
+- The "New order" modal: LAB-12. The patient-page button: LAB-20 (a menu-bar button was planned there; superseded by LAB-20, there is none).
 - Serving the built web app from the API: future version; the reviewer runs the dev setup.
 - A component library, dark mode, translations: future version.
 - Mobile and narrow-screen layouts: not planned. The app is for a desktop browser window at least 1024 px wide (an owner decision, recorded in `docs/plan/README.md`).

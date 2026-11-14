@@ -31,7 +31,7 @@ This is the first write in the main workflow. It adds the order-creation transac
 - `matchTests(query, tests, selectedIds)` returns suggestions in this order: code equals the query; then code starts with the query; then name contains the query. Case-insensitive, query trimmed, empty query returns nothing. Inactive tests and tests in `selectedIds` are excluded. A test appears once, in its best group; inside a group, ordered by code.
 
 **UI**
-- A "Place new order" button on the Orders page (label and accessible name "Place new order") opens a native `dialog`. The menu-bar button added in LAB-20 is a different control named "New order", and the patient-page button added in LAB-20 is named "New order for this patient"; the three names are deliberate, so tests and tickets can tell them apart.
+- A "Place new order" button on the Orders page (label and accessible name "Place new order") opens a native `dialog`. The patient-page button added in LAB-20 is named "New order for this patient"; the two names are deliberate, so tests and tickets can tell them apart. (A menu-bar "New order" was planned here; superseded by LAB-20: the owner removed it, so there are two entry points.)
 - Step one: patient name search (the LAB-09 search and the shared `PatientLabel`, so each match shows name and date of birth). Picking one shows the chosen patient with a Change button. Reuse `usePatientSearch(q)` and `useDebouncedValue(text)` from `src/web/patients/usePatientSearch.ts` (the 300 ms wait and the query), not a copy.
 - Step two: the quick-add box over the active tests already loaded from the catalog. Up to 8 suggestions. Arrow Up and Down move the highlight, Enter adds the highlighted test and clears the box, Escape closes the suggestion list, a click also adds. Enter with nothing highlighted does nothing and never submits. Quick-add is disabled with the hint "Choose a patient first" until a patient is selected.
 - Chosen tests show code, name, price, turnaround and a Remove button. The modal's submit button has the label and accessible name "Submit order" and is disabled until a patient and at least one test are chosen.
@@ -82,7 +82,7 @@ This is the first write in the main workflow. It adds the order-creation transac
 
 - The live total and ready date in the modal, and the quote endpoint: LAB-13.
 - Duplicate-order protection on a double click or retry: LAB-18.
-- Opening the modal from the menu bar's "New order" button or the patient page: LAB-20.
+- Opening the modal from the patient page: LAB-20. (A menu-bar button was planned; superseded by LAB-20, there is none.)
 - Pasting a comma-separated list of tests, and AI matching: future version.
 - Editing an order after it is placed: future version.
 
@@ -94,4 +94,4 @@ This is the first write in the main workflow. It adds the order-creation transac
 4. In what order does `matchTests` rank results, and why is it a pure function in `src/shared/`?
 5. Why is an unknown patient a 422 and not a 404?
 6. Why is the order-item shape defined once in `src/shared/`, and who reuses it?
-7. Why do the three buttons that open the New order modal ("New order", "Place new order", "New order for this patient") have different names?
+7. Why do the two buttons that open the New order modal ("Place new order", "New order for this patient") have different names?

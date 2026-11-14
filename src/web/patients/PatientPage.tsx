@@ -108,7 +108,7 @@ function EditPatient({ patient: loaded }: { patient: Patient }) {
       <p role="status" className="muted">
         {status}
       </p>
-      <PatientOrders patientId={patient.id} />
+      <PatientOrders patient={patient} />
     </>
   );
 }
