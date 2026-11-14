@@ -96,7 +96,9 @@ function fakeApi({
 }
 
 const posts = (fetch: ReturnType<typeof fakeApi>) =>
-  fetch.mock.calls.filter(([, init]) => init?.method === 'POST');
+  fetch.mock.calls.filter(
+    ([url, init]) => init?.method === 'POST' && !String(url).endsWith('/quote'),
+  );
 
 async function openModal() {
   const user = userEvent.setup();

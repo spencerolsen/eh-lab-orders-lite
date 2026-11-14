@@ -56,7 +56,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-10](tasks/LAB-10-patients-duplicate-warning.md) | Patients: duplicate warning on create | Vertical slice | LAB-09 | Done |
 | [LAB-11](tasks/LAB-11-orders-home-page.md) | Orders: see orders on the home page | Vertical slice | LAB-06, LAB-08 | Done |
 | [LAB-12](tasks/LAB-12-orders-place-an-order.md) | Orders: place an order | Vertical slice | LAB-09, LAB-11 | Done |
-| [LAB-13](tasks/LAB-13-orders-live-preview.md) | Orders: live total and ready date while building an order | Vertical slice | LAB-12 | Not started |
+| [LAB-13](tasks/LAB-13-orders-live-preview.md) | Orders: live total and ready date while building an order | Vertical slice | LAB-12 | In progress |
 | [LAB-14](tasks/LAB-14-orders-list-filters.md) | Orders: filter the list by status and patient | Vertical slice | LAB-09, LAB-11 | Not started |
 | [LAB-15](tasks/LAB-15-orders-detail-panel.md) | Orders: order detail slide-out panel | Vertical slice | LAB-11 | Done |
 | [LAB-16](tasks/LAB-16-orders-advance-status.md) | Orders: mark an order collected or completed | Vertical slice | LAB-15 | Not started |

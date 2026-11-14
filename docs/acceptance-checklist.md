@@ -123,6 +123,16 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 
 **Covers:** live preview, filters, detail panel, status changes, cancel.
 
+### Live total and ready date (LAB-13)
+
+- [ ] Open New order, choose a patient: the summary says "Add a test to see the total", and the browser's network tab shows no request to `/api/orders/quote`.
+- [ ] Add CBC: the total is CBC's catalog price and a ready date is shown. Add a second test: the total is the sum of both. Remove it: the first total and date are back.
+- [ ] With the longest-turnaround test chosen, remove it: the ready date moves to match the longest remaining turnaround.
+- [ ] Typing in the quick-add box sends no quote request; only adding or removing a test does.
+- [ ] Submit the order: its total and ready date in the Orders list equal the ones the summary showed.
+- [ ] Stop the API (or block `/api/orders/quote`), add a test: the summary shows a plain message with a "Reference:" id, and "Submit order" is still enabled.
+- [ ] `curl -X POST localhost:3000/api/orders/quote -H 'content-type: application/json' -d '{"labTestIds":[]}'` gives 422 `INVALID_ORDER_TESTS`; the Orders list has no new row after any quote.
+
 ### Order detail panel (LAB-15)
 
 - [ ] Click a row in the Orders list: a panel slides in from the right and the address bar shows `?order=<id>`. Focus is inside the panel.

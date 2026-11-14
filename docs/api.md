@@ -336,6 +336,37 @@ One order with its patient and the tests it holds (LAB-15). Read-only.
 
 Logged: `debug` `order.loaded` with the order id and item count; `warn` `order.not_found` with the order id. Nothing about the patient.
 
+### `POST /api/orders/quote`
+
+What an order of these tests would cost and when it would be ready, if it were placed now (LAB-13). It saves nothing and takes no patient. The New order modal calls it each time the chosen tests change.
+
+```json
+{ "labTestIds": ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000008"] }
+```
+
+Same rules for `labTestIds` as `POST /api/orders` (the same function checks them), and no other field is allowed. The response:
+
+```json
+{
+  "items": [
+    { "labTestId": "10000000-0000-4000-8000-000000000001", "testCode": "CBC", "testName": "Complete Blood Count", "priceCents": 2500, "turnaroundDays": 1 },
+    { "labTestId": "10000000-0000-4000-8000-000000000008", "testCode": "CULT", "testName": "Bacterial Culture", "priceCents": 5250, "turnaroundDays": 5 }
+  ],
+  "totalCents": 7750,
+  "estimatedReadyDate": "2026-11-20"
+}
+```
+
+`totalCents` comes from `calculateTotal` and `estimatedReadyDate` from `estimateReadyDate`, with the injected clock read once and `CLINIC_TIMEZONE`: the same values the order would have if placed at that moment.
+
+| Status | Body |
+|---|---|
+| 200 | The quote above. Nothing is written. |
+| 400 | `VALIDATION_ERROR`: `labTestIds` missing or not a list of uuids, or an unknown extra field. |
+| 422 | `INVALID_ORDER_TESTS`: the list is empty, or a test is repeated, does not exist or is inactive; `details` names each offending position, as for create. |
+
+Logging: only the `order.ready_date_estimated` line at `debug` (ids and counts); a refusal is `warn` from the error handler. The quote adds no `info` line of its own (only the generic `request.completed` line every request gets).
+
 ### `POST /api/orders`
 
 Places an order: one patient and the tests to run.

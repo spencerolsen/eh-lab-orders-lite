@@ -8,6 +8,7 @@ import { formatTurnaround } from '../catalog/CatalogPage';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { createOrder, ORDERS_KEY } from './api';
+import { OrderPreview } from './OrderPreview';
 import { PatientPicker } from './PatientPicker';
 import { QuickAdd } from './QuickAdd';
 
@@ -96,6 +97,7 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
             quickAdd.current?.focus();
           }}
         />
+        <OrderPreview testIds={tests.map((test) => test.id)} />
         {submit.isError && <ErrorMessage error={submit.error} />}
         <div className="form-actions">
           <button type="submit" disabled={!canSubmit}>
