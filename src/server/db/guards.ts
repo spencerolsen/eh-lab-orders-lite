@@ -5,9 +5,13 @@ export function databaseName(databaseUrl: string): string {
   return decodeURIComponent(new URL(databaseUrl).pathname.slice(1));
 }
 
+// The browser tests (LAB-21) have a database of their own, so they never touch
+// the development data (`lab_orders`) or the integration tests' (`_test`).
+export const E2E_DATABASE = 'lab_orders_e2e';
+
 // The reset commands drop every table, so they only run against this project's
-// own two databases, and never in production.
-const RESETTABLE_DATABASES = ['lab_orders', 'lab_orders_test'];
+// own databases, and never in production.
+const RESETTABLE_DATABASES = ['lab_orders', 'lab_orders_test', E2E_DATABASE];
 
 export function assertResettable(
   databaseUrl: string,
@@ -19,7 +23,7 @@ export function assertResettable(
   const name = databaseName(databaseUrl);
   if (!RESETTABLE_DATABASES.includes(name)) {
     throw new Error(
-      `Refusing to reset database "${name}": only ${RESETTABLE_DATABASES.join(' and ')} can be reset`,
+      `Refusing to reset database "${name}": only lab_orders, lab_orders_test and ${E2E_DATABASE} can be reset`,
     );
   }
 }
@@ -42,6 +46,24 @@ export function testDatabaseUrl(
     );
   }
   return url;
+}
+
+// The browser tests' database URL: the development URL's server, user and
+// password with the database name replaced by E2E_DATABASE. The name is fixed
+// here and never read from a setting, so a mistyped setting cannot point the
+// reset at another database.
+export function e2eDatabaseUrl(
+  env: Record<string, string | undefined>,
+): string {
+  const url = env.DATABASE_URL;
+  if (!url || !URL.canParse(url)) {
+    throw new Error(
+      'DATABASE_URL is not set: run `cp .env.example .env` (the browser tests use its server, with their own database name)',
+    );
+  }
+  const e2e = new URL(url);
+  e2e.pathname = `/${E2E_DATABASE}`;
+  return e2e.toString();
 }
 
 // The Docker database listens on host port DB_PORT (compose.yaml), and the two

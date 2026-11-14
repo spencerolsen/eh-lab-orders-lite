@@ -4,6 +4,7 @@ import {
   assertResettable,
   checkDatabasePort,
   databaseName,
+  e2eDatabaseUrl,
   testDatabaseUrl,
 } from './guards';
 
@@ -24,13 +25,16 @@ describe('assertResettable', () => {
     expect(() =>
       assertResettable(url('lab_orders_test'), undefined),
     ).not.toThrow();
+    expect(() =>
+      assertResettable(url('lab_orders_e2e'), undefined),
+    ).not.toThrow();
   });
 
   it.each(['postgres', 'not_lab_orders_prod', 'lab_orders_copy', 'other_test'])(
     'refuses the database %s',
     (name) => {
       expect(() => assertResettable(url(name), undefined)).toThrow(
-        /only lab_orders and lab_orders_test can be reset/,
+        /only lab_orders, lab_orders_test and lab_orders_e2e can be reset/,
       );
     },
   );
@@ -39,6 +43,24 @@ describe('assertResettable', () => {
     expect(() => assertResettable(url('lab_orders'), 'production')).toThrow(
       /production/,
     );
+  });
+});
+
+describe('e2eDatabaseUrl', () => {
+  it('keeps the server and login of DATABASE_URL and names the e2e database', () => {
+    const e2e = e2eDatabaseUrl({ DATABASE_URL: url('lab_orders') });
+    expect(e2e).toBe(url('lab_orders_e2e'));
+    expect(databaseName(e2e)).toBe('lab_orders_e2e');
+  });
+
+  it('never takes the name from the setting, whatever it says', () => {
+    expect(
+      databaseName(e2eDatabaseUrl({ DATABASE_URL: url('some_other_db') })),
+    ).toBe('lab_orders_e2e');
+  });
+
+  it('stops when DATABASE_URL is missing', () => {
+    expect(() => e2eDatabaseUrl({})).toThrow(/DATABASE_URL is not set/);
   });
 });
 

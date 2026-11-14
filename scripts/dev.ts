@@ -20,11 +20,11 @@
 // visible in this file.
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 
 import { loadConfig } from '../src/server/config';
 import { checkDatabasePort } from '../src/server/db/guards';
+import { portInUse } from './ports';
 
 function say(line: string): void {
   console.log(`dev: ${line}`);
@@ -39,22 +39,6 @@ function pnpmCommand(args: string[]): [string, string[]] {
   return pnpm
     ? [process.execPath, [pnpm, ...args]]
     : ['corepack', ['pnpm', ...args]];
-}
-
-// True when something already listens on the port at this loopback address.
-// The API and Vite listen on 'localhost', which is both 127.0.0.1 and ::1, so
-// both are checked. Any other error (::1 on a machine without IPv6) is not
-// a port in use.
-function portInUse(port: number, host: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = createServer();
-    server.once('error', (error: NodeJS.ErrnoException) => {
-      resolve(error.code === 'EADDRINUSE');
-    });
-    server.listen({ port, host, exclusive: true }, () => {
-      server.close(() => resolve(false));
-    });
-  });
 }
 
 // Runs one step to the end, with its output shown as is; stops on a failure.
