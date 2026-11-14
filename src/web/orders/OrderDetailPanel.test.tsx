@@ -230,6 +230,34 @@ it('keeps the open order in the address, and the back button closes it', async (
   expect(screen.getByRole('table')).toBeTruthy();
 });
 
+// Closing replaces the entry opening added, so Back does not reopen the panel.
+it('does not reopen the panel when going back after closing it', async () => {
+  fakeApi();
+  function Back() {
+    const navigate = useNavigate();
+    return (
+      <button type="button" onClick={() => void navigate(-1)}>
+        Browser back
+      </button>
+    );
+  }
+  render(
+    <QueryClientProvider client={testQueryClient()}>
+      <MemoryRouter initialEntries={['/']}>
+        <Back />
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await userEvent.click(await screen.findByRole('cell', { name: '$56.00' }));
+  await panel();
+  await userEvent.keyboard('{Escape}');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await userEvent.click(screen.getByRole('button', { name: 'Browser back' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(screen.getByRole('table')).toBeTruthy();
+});
+
 // React's development mode runs every effect twice; the panel must stay open
 // (closing it on that first clean-up once removed ?order= from the address).
 it('stays open under StrictMode', async () => {

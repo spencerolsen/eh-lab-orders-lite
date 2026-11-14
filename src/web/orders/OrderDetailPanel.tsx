@@ -59,12 +59,17 @@ export function OrderDetailPanel({ orderId }: { orderId: string }) {
   }, []);
 
   // Escape, the Close button and a click on the backdrop all end up here.
+  // It replaces the history entry, so Back after closing leaves the page
+  // instead of reopening the panel.
   function close() {
-    setSearchParams((params) => {
-      const next = new URLSearchParams(params);
-      next.delete(ORDER_PARAM);
-      return next;
-    });
+    setSearchParams(
+      (params) => {
+        const next = new URLSearchParams(params);
+        next.delete(ORDER_PARAM);
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   return (
