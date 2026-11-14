@@ -50,6 +50,12 @@ export const CULT: FixtureItem = {
   turnaroundDays: 5,
 };
 
+// What insertOrder stores on a cancelled order.
+export const FIXTURE_CANCELLATION = {
+  note: 'Fixture cancel note',
+  cancelledBy: 'Fixture Staff',
+};
+
 // One order with its items. The ready date is any fixed date: these tests
 // check what the list returns, not how the date was worked out.
 export async function insertOrder(
@@ -63,15 +69,22 @@ export async function insertOrder(
     items: FixtureItem[];
   },
 ): Promise<void> {
+  // A cancelled order must have a note, a name and a time (the CHECK
+  // orders_cancellation_complete, migration 0007), so one is given here.
+  const cancelled = order.status === 'cancelled';
   await pool.query(
-    `insert into orders (id, patient_id, status, estimated_ready_date, created_at, updated_at)
-     values ($1, $2, $3, $4, $5, $5)`,
+    `insert into orders (id, patient_id, status, estimated_ready_date, created_at, updated_at,
+                         cancellation_note, cancelled_by, cancelled_at)
+     values ($1, $2, $3, $4, $5, $5, $6, $7, $8)`,
     [
       order.id,
       order.patientId ?? PATIENT_A,
       order.status ?? 'ordered',
       order.readyDate ?? '2026-11-20',
       order.createdAt,
+      cancelled ? FIXTURE_CANCELLATION.note : null,
+      cancelled ? FIXTURE_CANCELLATION.cancelledBy : null,
+      cancelled ? order.createdAt : null,
     ],
   );
   for (const item of order.items) {
