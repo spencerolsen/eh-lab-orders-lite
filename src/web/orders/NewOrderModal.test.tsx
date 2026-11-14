@@ -505,6 +505,109 @@ it('makes a new key for the next order after a successful submit', async () => {
   expect(second).not.toBe(first);
 });
 
+// No closing while a submit is in flight (owner decision, LAB-18): every way
+// to close is refused until the reply arrives, and any reply ends that.
+async function submitAndHold(place?: () => Promise<Response>) {
+  let answer: (response: Response) => void = () => {};
+  let fail: (error: Error) => void = () => {};
+  const fetch = fakeApi({
+    place:
+      place ??
+      (() =>
+        new Promise<Response>((resolve, reject) => {
+          answer = resolve;
+          fail = reject;
+        })),
+  });
+  const { user, dialog } = await openModal();
+  await addCbcAndSubmit(user);
+  return { user, dialog, fetch, answer, fail };
+}
+
+const cancelButton = () =>
+  screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel' });
+const isOpen = () =>
+  screen.queryByRole<HTMLDialogElement>('dialog', { name: 'New order' })
+    ?.open === true;
+
+it('refuses every way to close while the submit is in flight: Cancel is disabled, Escape and a close request do nothing, a backdrop click does nothing', async () => {
+  const { user, dialog, answer } = await submitAndHold();
+  expect(screen.getByRole('button', { name: 'Submitting…' })).toBeTruthy();
+
+  expect(cancelButton().disabled).toBe(true);
+  await user.click(cancelButton());
+  expect(isOpen()).toBe(true);
+
+  await user.keyboard('{Escape}');
+  await user.keyboard('{Escape}');
+  expect(isOpen()).toBe(true);
+  // The key press itself is stopped, wherever the focus is: a browser may not
+  // let the cancel event of a repeated Escape be refused.
+  const escape = new KeyboardEvent('keydown', {
+    key: 'Escape',
+    bubbles: true,
+    cancelable: true,
+  });
+  document.body.dispatchEvent(escape);
+  expect(escape.defaultPrevented).toBe(true);
+
+  // A close request that is not a key press (a browser's own): its cancel
+  // event is refused.
+  const request = new Event('cancel', { cancelable: true });
+  dialog.dispatchEvent(request);
+  expect(request.defaultPrevented).toBe(true);
+
+  // A click on the backdrop lands on the dialog element itself.
+  await user.click(dialog);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(isOpen()).toBe(true);
+
+  // The reply ends it: a success closes the modal as before.
+  answer(json(201, NEW_ORDER));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+it('is closable again after an error reply, with Cancel enabled and Escape working', async () => {
+  const { user, answer } = await submitAndHold();
+  answer(
+    json(500, {
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Something went wrong',
+        requestId: 'req-place-3',
+      },
+    }),
+  );
+  await screen.findByRole('alert');
+
+  expect(cancelButton().disabled).toBe(false);
+  await user.keyboard('{Escape}');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+it('is closable again after a network failure, keeping the key for a retry', async () => {
+  const { user, fetch, fail } = await submitAndHold();
+  fail(new TypeError('Failed to fetch'));
+  expect((await screen.findByRole('alert')).textContent).toContain(
+    "Can't reach the server",
+  );
+  expect(cancelButton().disabled).toBe(false);
+
+  // A retry is blocked again while it runs, with the same key.
+  await user.click(submitButton());
+  await waitFor(() => expect(posts(fetch)).toHaveLength(2));
+  const [first, second] = keys(fetch);
+  expect(second).toBe(first);
+  expect(cancelButton().disabled).toBe(true);
+});
+
+it('Cancel closes the modal again once the reply came back with an error', async () => {
+  const { user } = await submitAndHold(serverError);
+  await screen.findByRole('alert');
+  await user.click(cancelButton());
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
 it('treats a 200 (the order this key already placed) as a success: it closes and shows the order', async () => {
   fakeApi({ place: () => Promise.resolve(json(200, NEW_ORDER)) });
   const { user } = await openModal();

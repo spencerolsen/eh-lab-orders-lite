@@ -27,8 +27,13 @@ import { QuickAdd } from './QuickAdd';
 // Escape) gets a new key. Known and accepted: changing the patient or tests
 // after a failed submit and submitting again still sends the same key, so if
 // the failed attempt had in fact placed an order, that first order is returned.
-// Cancel or Escape while a submit is in flight close the modal at once; the
-// order is still placed and appears when the list refreshes.
+//
+// NO CLOSING WHILE A SUBMIT IS IN FLIGHT: Cancel is disabled and Escape does
+// nothing until the reply arrives, so the user always sees whether the order
+// was placed. Any reply ends it: a success closes the modal; an error (or the
+// server not answering) shows the message and makes it closable again, with
+// the same key for a retry. There is no close button, and a click on the
+// backdrop never closes this dialog.
 export function NewOrderModal({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const quickAdd = useRef<HTMLInputElement>(null);
@@ -67,6 +72,19 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
     };
   }, [opener]);
 
+  // While a submit is in flight, Escape does nothing. It is stopped at the
+  // key press, on the whole document (the focus may have left the disabled
+  // Submit button), because a browser may refuse to let the `cancel` event of
+  // a repeated Escape be prevented.
+  useEffect(() => {
+    if (!submit.isPending) return;
+    const stopEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') event.preventDefault();
+    };
+    document.addEventListener('keydown', stopEscape, true);
+    return () => document.removeEventListener('keydown', stopEscape, true);
+  }, [submit.isPending]);
+
   // Tests can only be added once a patient is chosen; changing the patient
   // keeps them.
   const canSubmit = patient !== null && tests.length > 0 && !submit.isPending;
@@ -82,6 +100,11 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
       // dialog is open again, so that event is ignored.
       onClose={() => {
         if (!dialog.current?.open) onClose();
+      }}
+      // While a submit is in flight, any close request (Escape is also stopped
+      // by the effect above) is refused here.
+      onCancel={(event) => {
+        if (submit.isPending) event.preventDefault();
       }}
     >
       <form
@@ -118,7 +141,12 @@ export function NewOrderModal({ onClose }: { onClose: () => void }) {
           <button type="submit" disabled={!canSubmit}>
             {submit.isPending ? 'Submitting…' : 'Submit order'}
           </button>
-          <button type="button" className="button-secondary" onClick={onClose}>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={onClose}
+            disabled={submit.isPending}
+          >
             Cancel
           </button>
         </div>
