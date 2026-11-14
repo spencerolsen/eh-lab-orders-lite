@@ -1,14 +1,18 @@
 // "New order for this patient" on the patient page (LAB-20), and the other
 // entry point, "Place new order" on the orders page, with a fake API.
 // All values are fake.
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
+import { MemoryRouter, useNavigate } from 'react-router';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { render } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 
 import type { LabTest } from '../../shared/lab-tests';
 import type { OrderListItem } from '../../shared/orders';
 import { fakePatientsApi, SEEDED } from '../testing/fake-patients-api';
-import { renderApp } from '../testing/render';
+import { App } from '../App';
+import { renderApp, testQueryClient } from '../testing/render';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -16,6 +20,8 @@ afterEach(() => {
 
 const PID = '5eed0020-0000-4000-8000-000000000001';
 const PATIENT = { ...SEEDED[0]!, id: PID };
+const OTHER_PID = '5eed0020-0000-4000-8000-000000000002';
+const OTHER = { ...SEEDED[1]!, id: OTHER_PID };
 const CBC: LabTest = {
   id: '5eed0020-0000-4000-8000-0000000000c1',
   code: 'CBC',
@@ -51,7 +57,7 @@ function json(status: number, body: unknown): Response {
 // holds the orders placed so far.
 function fakeApi() {
   const placed: OrderListItem[] = [];
-  const patients = fakePatientsApi([PATIENT], () =>
+  const patients = fakePatientsApi([PATIENT, OTHER], () =>
     json(200, { items: placed, hasMore: false, clinicTimezone: 'UTC' }),
   );
   const answer = patients.getMockImplementation()!;
@@ -202,4 +208,46 @@ it('each opening of the modal sends a new idempotency key, from the orders page'
   const [first, second] = keys(fetch);
   expect(first).toBeTruthy();
   expect(first).not.toBe(second);
+});
+
+it("moving from one patient's page to another's opens the modal for the second patient", async () => {
+  const fetch = fakeApi();
+  const user = userEvent.setup();
+  // A router navigate, as the browser's Back and Forward do: the page stays
+  // mounted and only the address changes.
+  let go: (path: string) => void = () => {};
+  function Navigator() {
+    const navigate = useNavigate();
+    go = (path) => void navigate(path);
+    return null;
+  }
+  render(
+    <QueryClientProvider client={testQueryClient()}>
+      <MemoryRouter initialEntries={[`/patients/${PID}`]}>
+        <App />
+        <Navigator />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByRole('heading', { level: 1, name: /Demo Example/ });
+  act(() => go(`/patients/${OTHER_PID}`));
+  await screen.findByRole('heading', { level: 1, name: /Jane Smith/ });
+  // Back to the first: its patient is cached, so the page does not show
+  // "Loading" in between, and only the key on EditPatient starts it afresh.
+  act(() => go(`/patients/${PID}`));
+  await screen.findByRole('heading', { level: 1, name: /Demo Example/ });
+
+  await user.click(
+    screen.getByRole('button', { name: 'New order for this patient' }),
+  );
+  expect(within(dialog()).getByText(/Demo Example/)).toBeTruthy();
+  await placeOrder(user);
+  await vi.waitFor(() => expect(keys(fetch)).toHaveLength(1));
+  const post = fetch.mock.calls.find(
+    ([url, init]) => url === '/api/orders' && init?.method === 'POST',
+  )!;
+  expect(JSON.parse(post[1]!.body as string)).toEqual({
+    patientId: PID,
+    labTestIds: [CBC.id],
+  });
 });
