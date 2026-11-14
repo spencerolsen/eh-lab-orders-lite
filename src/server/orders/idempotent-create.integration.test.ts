@@ -109,6 +109,28 @@ describe('the same key twice', () => {
     expect(orderIdOf(replay)).toBe(orderIdOf(first));
   });
 
+  it('returns the first order, not a 422, when one of its tests was deactivated before the repeat', async () => {
+    const first = await post(BODY, KEY);
+    await t.pool.query('update lab_tests set is_active = false where id = $1', [
+      TEST_CBC,
+    ]);
+    const repeat = await post(BODY, KEY);
+
+    expect(repeat.statusCode).toBe(200);
+    expect(repeat.json()).toEqual(first.json());
+    expect(await counts()).toEqual({ orders: 1, items: 2 });
+    // Without the key the same body is refused: the test is inactive now.
+    expect((await post(BODY)).statusCode).toBe(422);
+  });
+
+  it('returns the first order for a repeat whose body would be refused (an empty test list)', async () => {
+    const first = await post(BODY, KEY);
+    const repeat = await post({ patientId: PATIENT_A, labTestIds: [] }, KEY);
+
+    expect(repeat.statusCode).toBe(200);
+    expect(orderIdOf(repeat)).toBe(orderIdOf(first));
+  });
+
   it('treats a key written in upper case as the same key', async () => {
     const first = await post(BODY, KEY);
     const second = await post(BODY, KEY.toUpperCase());

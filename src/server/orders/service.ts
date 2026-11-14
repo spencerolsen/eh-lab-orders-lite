@@ -144,6 +144,18 @@ export type CreateOrderResult =
   | { replayed: false; order: OrderListItem; itemCount: number }
   | { replayed: true; order: OrderListItem };
 
+// The order an idempotency key placed, as a list row, or null: none yet, or
+// no key was sent.
+async function orderPlacedWith(
+  db: Db,
+  idempotencyKey: string | null,
+  clinicTimezone: string,
+): Promise<OrderListItem | null> {
+  if (idempotencyKey === null) return null;
+  const id = await findOrderIdByIdempotencyKey(db, idempotencyKey);
+  return id === null ? null : findOrderListItem(db, id, clinicTimezone);
+}
+
 // Creates the order and returns it as a list row. With an idempotency key
 // (the Idempotency-Key header, LAB-18) that an earlier order already holds,
 // nothing is written and that earlier order is returned instead: a double
@@ -166,6 +178,17 @@ export async function createOrder(
   return inTransaction(deps.pool, async (client) => {
     const db = withQueryLog(client, log);
 
+    // REPLAY: this key already placed an order. Return that order as it is
+    // stored, before anything is checked: a repeat of the key always gets the
+    // first order, even if one of its tests was deactivated since, and
+    // whatever this request's body says (it is not compared).
+    const earlier = await orderPlacedWith(
+      db,
+      idempotencyKey,
+      deps.clinicTimezone,
+    );
+    if (earlier !== null) return { replayed: true, order: earlier };
+
     // SNAPSHOT: each item copies the test's code, name, price and turnaround
     // as the catalog holds them now, read inside this transaction (and locked
     // until it ends). A later catalog change never alters this order. The
@@ -177,9 +200,9 @@ export async function createOrder(
     // from `now` in the clinic's time zone, and stored on the order.
     const estimatedReadyDate = readyDateFor(deps, log, now, items);
 
-    // A new order always starts as 'ordered'. ONE ORDER PER KEY: if another
-    // order holds the key, the insert does nothing (the unique index decides;
-    // a request racing this one waits here until the other commits).
+    // A new order always starts as 'ordered'. ONE ORDER PER KEY: the unique
+    // index decides, not the lookup above. If a request with the same key got
+    // here first, this insert waits until it commits, then does nothing.
     const orderId = await insertOrder(db, {
       patientId: input.patientId,
       status: 'ordered',
@@ -188,20 +211,17 @@ export async function createOrder(
       idempotencyKey,
     });
 
-    // REPLAY: the key was used before. Return that order as it is stored,
-    // whatever this request's body says (it is not compared), and insert no
-    // items. Reading it is a new statement, so it sees the other request's
-    // committed row.
-    if (orderId === null && idempotencyKey !== null) {
-      const existingId = await findOrderIdByIdempotencyKey(db, idempotencyKey);
-      const existing =
-        existingId === null
-          ? null
-          : await findOrderListItem(db, existingId, deps.clinicTimezone);
-      if (existing === null) throw new Error('The replayed order is missing');
-      return { replayed: true, order: existing };
+    // LOST RACE: that other request won. Return its order, inserting no
+    // items. Reading it is a new statement, so it sees the committed row.
+    if (orderId === null) {
+      const winner = await orderPlacedWith(
+        db,
+        idempotencyKey,
+        deps.clinicTimezone,
+      );
+      if (winner === null) throw new Error('The order was not inserted');
+      return { replayed: true, order: winner };
     }
-    if (orderId === null) throw new Error('The order was not inserted');
 
     for (const item of items) {
       await insertOrderItem(db, orderId, item);
