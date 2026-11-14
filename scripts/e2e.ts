@@ -163,7 +163,9 @@ async function waitUntilUp(): Promise<void> {
   const url = `http://localhost:${WEB_PORT}/healthz`;
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    if (childExited) fail(`the ${childExited} stopped before the app was up.`);
+    if (childExited) {
+      throw new Error(`the ${childExited} stopped before the app was up.`);
+    }
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -171,7 +173,7 @@ async function waitUntilUp(): Promise<void> {
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  fail(`the app did not answer at ${url} within 60 seconds.`);
+  throw new Error(`the app did not answer at ${url} within 60 seconds.`);
 }
 
 let code: number;
@@ -180,6 +182,11 @@ try {
   start('web app', ['--silent', 'exec', 'vite', '--logLevel', 'warn']);
   await waitUntilUp();
   code = run(['exec', 'playwright', 'test', ...process.argv.slice(2)], env);
+} catch (error) {
+  // Reported after the finally below has stopped the servers: exiting here
+  // (as fail() does) would leave the one that is still running behind.
+  console.error(`test:e2e: ${(error as Error).message}`);
+  code = 1;
 } finally {
   await stopAll();
 }
