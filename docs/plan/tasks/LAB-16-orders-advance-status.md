@@ -22,7 +22,7 @@ This is the first task that changes an order after it is placed, so it is where 
 - Order of work in `src/server/orders/service.ts`, kept in this order so each failure has its own code:
   1. Read the order. Missing: 404 `NOT_FOUND`.
   2. Call `assertTransition(current, to)` from LAB-15. Illegal: 422 `ILLEGAL_TRANSITION` with a message naming the current status and the requested one.
-  3. Run `UPDATE orders SET status = $to, updated_at = now() WHERE id = $id AND status = $previous`. If zero rows changed, someone else moved it first: 409 `ORDER_CHANGED`.
+  3. Run `UPDATE orders SET status = $to, updated_at = now() WHERE id = $id AND status = $previous`. If zero rows changed, someone else moved it between this request's read and its update: 409 `ORDER_CHANGED`. A request sent from an out-of-date screen (the order was moved before this request read it) is judged by step 2 against the status it reads now, so it gets 422 `ILLEGAL_TRANSITION`, not 409; the owner accepted this for this version (see `docs/plan/backlog.md`).
 - Body not matching the schema (missing `to`, not a string, any value other than `collected` or `completed`, unknown extra fields): 400 `VALIDATION_ERROR`. `to: "cancelled"` is rejected here with 400 `VALIDATION_ERROR` because cancelling has its own endpoint in LAB-17.
 - Malformed `:id`: 400 `VALIDATION_ERROR`.
 
@@ -32,7 +32,7 @@ This is the first task that changes an order after it is placed, so it is where 
 **UI**
 - In the panel, one button for each entry in `allowedNextStatuses` ("Mark collected", "Mark completed"). No button for a move that is not allowed; a final order shows none.
 - While the request runs the button is disabled. On success the panel shows the new status and the orders list behind it refreshes through TanStack Query invalidation, with no page reload.
-- On 409 the panel shows "This order was changed by someone else", reloads the order and shows its real status. On 422 or 500 it shows the message and the request id.
+- On 409 the panel shows "This order was changed by someone else", reloads the order and shows its real status. On 422 or 500 it shows the message and the request id; on 422 it also reloads the order, because the button was offered from the status the panel showed, so a 422 means the order moved since the panel loaded it.
 
 **Logging**
 - `info` `order.status_changed` with `orderId`, `from`, `to`.
@@ -49,7 +49,7 @@ This is the first task that changes an order after it is placed, so it is where 
 - [ ] `POST .../transitions` on a `completed` order returns 422 `ILLEGAL_TRANSITION` for either allowed `to` value.
 - [ ] `POST .../transitions` on an unknown order id returns 404 `NOT_FOUND`.
 - [ ] A missing `to`, an unknown `to`, and `to: "cancelled"` each return 400 `VALIDATION_ERROR`.
-- [ ] If the order was already moved by another request, the second request returns 409 `ORDER_CHANGED` and the panel tells the user and shows the current status.
+- [ ] If another request moves the order between this request's read and its update, this request returns 409 `ORDER_CHANGED` and the panel tells the user and shows the current status. (If the other request finished before this one read the order, as with a second tab left open, this one gets 422 `ILLEGAL_TRANSITION` and the panel reloads to the current status: an accepted limitation, `docs/plan/backlog.md`.)
 - [ ] `updated_at` changes on a successful transition and `estimated_ready_date` does not.
 - [ ] A refused or lost-race request is logged at `warn`, a successful one at `info`, and no line contains a name or date of birth.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 2).
