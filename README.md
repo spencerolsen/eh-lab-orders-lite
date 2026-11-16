@@ -36,7 +36,7 @@ PORT=3001
 WEB_PORT=5174
 ```
 
-`DB_PORT` and the port in both URLs must match, and a changed `DB_PORT` needs its own `COMPOSE_PROJECT_NAME`; `corepack pnpm dev` and `corepack pnpm test` stop with one line if not.
+If `.env` does not exist yet, copy `.env.example` to `.env` first, then change these lines. `DB_PORT` and the port in both URLs must match, and a changed `DB_PORT` needs its own `COMPOSE_PROJECT_NAME`; `corepack pnpm dev` and `corepack pnpm test` stop with one line if not.
 
 Other commands, all run as `corepack pnpm <script>`: `build`, `db:reset` (drop, migrate and reseed the development database), `lint`, `typecheck`, `format:check`. Run `corepack enable` once if you would rather type plain `pnpm`.
 
@@ -49,7 +49,7 @@ Other commands, all run as `corepack pnpm <script>`: `build`, `db:reset` (drop, 
 | Integration | The real app through HTTP against a real Postgres: every endpoint, the transaction, the idempotency key, two status changes racing. | `corepack pnpm test --project integration` |
 | Browser | The main journeys in Chromium against the real app and database: add a patient and see the duplicate warning, place an order, double-click submit, change status, cancel, filter. | `corepack pnpm exec playwright install chromium` once, then `corepack pnpm test:e2e` |
 
-`corepack pnpm test` runs the first three together (it starts the database container itself). Each rule is tested in one layer only. Calendar-day tests run a second time with the process in another time zone, so a day-shift bug cannot hide.
+`corepack pnpm test` runs the first three together (it starts the database container itself). The integration tests need a `.env` (created by the first `corepack pnpm dev`, or by copying `.env.example`) or `TEST_DATABASE_URL` set in the environment; the unit and component tests need neither. Each rule is tested in one layer only. Calendar-day tests run a second time with the process in another time zone, so a day-shift bug cannot hide.
 
 **Browser tests run locally only.** They are the slowest and most fragile layer and need a browser download, so they are not in the GitHub Actions checks. Those run lint, types, formatting, the build and the first three kinds of test against a Postgres 16 service on every pull request. Details: [docs/testing.md](docs/testing.md).
 
@@ -132,6 +132,7 @@ Details and the table of log events: [docs/architecture.md](docs/architecture.md
 - Two people saving the same patient or lab test at once: the last save wins.
 - Two identical patient creates at the same moment can both pass the duplicate check.
 - No public holidays or cut-off times in the ready date.
+- The patient list without a search and the lab test catalog list are not paged: each returns every row. A patient search returns at most 50.
 - Desktop only (1024 px and wider). No mobile layout.
 - Orders cannot be edited after they are placed. Cancel and place a new one.
 - Patient search is not accent-insensitive, and phone numbers must be US numbers.

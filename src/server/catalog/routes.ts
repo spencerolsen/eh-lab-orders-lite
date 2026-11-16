@@ -61,7 +61,8 @@ export function catalogRoutes(app: FastifyInstance, pool: pg.Pool): void {
       throw new NotFoundError('There is no lab test with this id');
     }
     const { labTest, wasActive } = result;
-    // Ids and counts only: never the values, nor even the field names.
+    // Ids and counts, never the values. (This route logs only how many fields
+    // changed; the patient update also logs their names, never their values.)
     // Switching a test on or off is named, so it can be traced later.
     const active =
       labTest.isActive === wasActive
