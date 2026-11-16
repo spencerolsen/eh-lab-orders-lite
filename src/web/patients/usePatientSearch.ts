@@ -4,6 +4,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { SEARCH_MAX_LENGTH } from '../../shared/patients';
 import { fetchPatients, patientListKey } from './api';
 
 // How long typing must pause before the search is sent.
@@ -21,10 +22,19 @@ export function useDebouncedValue<T>(value: T, delayMs = SEARCH_DELAY_MS): T {
   return debounced;
 }
 
+// Search text cut to the length the server accepts (SEARCH_MAX_LENGTH), so a
+// long text from the address or a paste never makes a request the server
+// refuses with a 400. `usePatientSearch` applies it before the request; the
+// search boxes also set `maxLength={SEARCH_MAX_LENGTH}` on their input.
+export function limitSearchText(text: string): string {
+  return text.slice(0, SEARCH_MAX_LENGTH).trim();
+}
+
 // The patients whose name matches `q` (trimmed; '' for every patient), from
 // GET /api/patients?q= (docs/api.md: at most SEARCH_RESULT_LIMIT). While a
 // new search runs, the previous results stay instead of a loading state.
-export function usePatientSearch(q: string) {
+export function usePatientSearch(text: string) {
+  const q = limitSearchText(text);
   return useQuery({
     queryKey: patientListKey(q),
     queryFn: ({ signal }) => fetchPatients(q, signal),

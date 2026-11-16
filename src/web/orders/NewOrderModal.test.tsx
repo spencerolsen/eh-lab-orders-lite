@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { LabTest } from '../../shared/lab-tests';
 import type { OrderListItem } from '../../shared/orders';
+import { SEARCH_MAX_LENGTH } from '../../shared/patients';
 import { SEEDED } from '../testing/fake-patients-api';
 import { renderApp } from '../testing/render';
 import { CREATE_ORDER_TIMEOUT_MS } from './api';
@@ -140,6 +141,13 @@ const chosenCodes = () => {
     .map((row) => row.querySelector('td')?.textContent);
 };
 const submitButton = () => screen.getByRole('button', { name: 'Submit order' });
+
+it('limits the patient search box to the length the server accepts', async () => {
+  fakeApi();
+  await openModal();
+  const box = screen.getByLabelText<HTMLInputElement>('Patient');
+  expect(box.maxLength).toBe(SEARCH_MAX_LENGTH);
+});
 
 it('opens from "Place new order" with the focus in the patient search, and Cancel closes it and gives the focus back', async () => {
   fakeApi();

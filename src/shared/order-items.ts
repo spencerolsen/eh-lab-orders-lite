@@ -2,7 +2,7 @@
 // snapshot (the code, name, price and turnaround as they were when the order
 // was placed), never from the catalog. Defined once here: the order detail
 // (LAB-15) returns it, placing an order (LAB-12) copies the catalog into this
-// shape before inserting it, and the preview (LAB-13) will reuse it. (The 201
+// shape before inserting it, and the preview (LAB-13) reuses it. (The 201
 // of POST /api/orders is a list row, not items.)
 import { z } from 'zod';
 

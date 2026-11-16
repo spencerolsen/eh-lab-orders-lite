@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { SEARCH_MAX_LENGTH } from '../../shared/patients';
 import { ApiError } from '../api/client';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
@@ -42,6 +43,7 @@ export function PatientFilter({
         type="search"
         autoComplete="off"
         value={text}
+        maxLength={SEARCH_MAX_LENGTH}
         aria-describedby="orders-patient-filter-help"
         onChange={(event) => setText(event.target.value)}
       />

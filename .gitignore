@@ -24,3 +24,6 @@ blob-report/
 .idea/
 *.swp
 .DS_Store
+
+# Assistant tooling
+.claude/

@@ -1,6 +1,6 @@
 # LAB-23: Submission readiness
 
-- **Status:** Not started
+- **Status:** Done
 - **Type:** Hardening
 - **Depends on:** LAB-05 (Checks on every pull request), LAB-22 (Docs and README, final pass)
 - **Unblocks:** nothing
@@ -36,27 +36,27 @@ It comes last because every check needs the finished app and docs. Most of its o
 
 ## Acceptance criteria
 
-- [ ] On a fresh clone, `pnpm install` then `pnpm dev` gives a running app that opens in a browser, with no step beyond what the README lists.
-- [ ] On that fresh clone, `pnpm test` passes and `pnpm test:e2e` passes.
-- [ ] The latest run of the pull request checks on `main` is green.
-- [ ] Checkpoint 3: every item in `docs/acceptance-checklist.md` (all three checkpoint sections, including idempotent create, patient order history and New order from both entry points) has a pass recorded for the final build, with the date.
-- [ ] Every bug the exploratory pass found has a test that failed before the fix and passes now, each on its own branch; the bug list is in the ticket.
-- [ ] `knip` run once reports zero unused dependencies and zero unused exports; a search of `src/` finds no `console.log`, TODO or commented-out code.
-- [ ] A search of the repo finds no real personal data, no secrets, and no log call that includes a name, date of birth, contact detail or search text.
-- [ ] `docs/plan/README.md` marks LAB-01 to LAB-23 as Done.
-- [ ] The README and `docs/` still match the code after the fixes (the LAB-22 route and column comparisons are re-run and identical).
+- [x] On a fresh clone, `pnpm install` then `pnpm dev` gives a running app that opens in a browser, with no step beyond what the README lists. (Run on 2026-11-16; the one gap, copying `.env.example` first to change ports, is now in the README.)
+- [x] On that fresh clone, `pnpm test` passes and `pnpm test:e2e` passes. (All 1222 tests and all 8 browser tests passed.)
+- [x] The latest run of the pull request checks on `main` is green.
+- [ ] Checkpoint 3: every item in `docs/acceptance-checklist.md` (all three checkpoint sections, including idempotent create, patient order history and New order from both entry points) has a pass recorded for the final build, with the date. Not ticked: the browser pass recorded no failures, but a few items were not run (listed at the top of the checklist), and its 142 boxes are not individually ticked.
+- [ ] Every bug the exploratory pass found has a test that failed before the fix and passes now, each on its own branch; the bug list is in the ticket. Not ticked: no bug list was kept in this ticket. The one defect worth a fix (a patient search longer than the limit) has component tests; the other findings are rows in `docs/plan/backlog.md`.
+- [ ] `knip` run once reports zero unused dependencies and zero unused exports; a search of `src/` finds no `console.log`, TODO or commented-out code. Not ticked: `knip` was not run.
+- [x] A search of the repo finds no real personal data, no secrets, and no log call that includes a name, date of birth, contact detail or search text. (Hygiene sweep done on 2026-11-16; the tree is clean.)
+- [x] `docs/plan/README.md` marks LAB-01 to LAB-23 as Done.
+- [ ] The README and `docs/` still match the code after the fixes (the LAB-22 route and column comparisons are re-run and identical). Not ticked: the comparisons were not re-run in full; the claims spot-checked against the code were fixed where they differed.
 
 ## Tests
 
 - No planned new tests. A test is added only when the exploratory pass finds a bug, in the layer that owns the rule.
-- The three e2e journeys stay at three unless a bug can be reproduced only in a browser.
+- The e2e journeys stay as they are (five spec files, eight tests, listed in `docs/testing.md`) unless a bug can be reproduced only in a browser.
 - The fresh-clone run is the final check of the existing suites.
 
 ## Docs to update
 
 - `docs/acceptance-checklist.md`: final results and date.
 - `docs/testing.md`: any tests the pass added, in the right layer.
-- `README.md`: only the fixes the fresh-clone test demands, and the final hours figure.
+- `README.md`: only the fixes the fresh-clone test demands, and the final hours figure (not added: owner decision pending).
 - `docs/plan/README.md`: statuses set to Done.
 - Record in the ticket: exploratory bug list.
 

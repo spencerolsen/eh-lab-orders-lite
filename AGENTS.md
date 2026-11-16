@@ -10,7 +10,7 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
 
 - `src/server/`: the API server. Each feature gets its own folder, `src/server/<feature>/` (for example `orders`, `patients`, `catalog`).
   - `routes.ts`: HTTP routes. A route parses its input explicitly with the shared schema, then calls the repository or the service.
-  - `repo.ts`: the SQL queries for that feature, hand-written, with typed row mappers. Queries live here and nowhere else.
+  - `repo.ts`: the SQL queries for that feature, hand-written, with typed row mappers. Queries live in repo files (`repo.ts`) and nowhere else, with one exception: the `/healthz` probe runs `select 1` in its own route (`src/server/health/routes.ts`).
   - `domain/`: business rules as pure functions (no Fastify, no `pg`, no clock: the caller passes the time in), unit tested on their own. Rules never live in routes or repositories. The order total (`calculateTotal`) and ready date (`estimateReadyDate`) are in `src/server/orders/domain/`; call them, never reimplement them. The status moves are the table and `assertTransition` in `domain/transitions.ts`: status changes call it, and nothing else lists legal moves.
   - `service.ts`: only where a feature needs a transaction or combines rules with several queries (for example placing an order, `src/server/orders/service.ts`, which runs its queries through `inTransaction` from `src/server/db/transaction.ts`). Simple features call the repository from the route.
 - `src/web/`: the browser app (React, Vite, React Router, TanStack Query). Each feature gets its own folder, `src/web/<feature>/`, with its page (for example `catalog/CatalogPage.tsx`).
@@ -75,7 +75,7 @@ The same checks run on GitHub Actions for every pull request and every push to `
 
 - **Money is in whole cents**, as integers (`price_cents`, `total_cents`), everywhere except on screen. Never floats. The only conversions are in `src/shared/money.ts`: `parseDollarsToCents` (what the user typed, read as text) and `formatCents` (for display).
 - **Dates are `YYYY-MM-DD` strings** (a date of birth, a ready date), from the form to the database and back. Never a JavaScript `Date` for a calendar day: use the helpers in `src/shared/dates.ts` (`isRealDate`, `today(timezone, now)`, `formatDate`). "Today" on the server is `today(deps.clinicTimezone, deps.clock())`, never the server's own time zone.
-- **Logs carry ids and counts only.** No names, dates of birth or other patient details in logs, and never request bodies, query strings, headers or SQL parameters. Levels follow the logging standard in `docs/architecture.md`.
+- **Logs carry ids, counts and field names, never values.** A log line may name which fields a request changed (`patient.updated` logs `changedFields`), but no names, dates of birth or other patient details, and never request bodies, query strings, headers or SQL parameters. Levels follow the logging standard in `docs/architecture.md`.
 - **Each fixed list of values is defined once in `src/shared/`** (for example order statuses), and everything else (database checks, schemas, the screens) derives from it.
 - **Patient rules live in one shared schema**, `src/shared/patients.ts`: the server parses with it and the form checks with it. A new screen that creates or edits a patient reuses `PatientForm` (`src/web/patients/`), and any screen that names a patient uses `PatientLabel` (name with date of birth), except the order panel, which shows the name only (`patientName`, from the same file) and says "Order for <name>" in its heading.
 - Imports are relative (`../shared/money`).
@@ -130,7 +130,7 @@ Open http://localhost:5173/styles (your `WEB_PORT`): it is linked from nowhere i
    - `BusinessRuleError(code, message)` (422): the shape is right but a business rule is broken, or an id inside the body does not exist.
    - Anything else becomes a 500 with a generic message; the stack goes to the log.
 5. A new error code goes into `ERROR_CODES` in `src/server/errors.ts` and into the error-code table in `docs/api.md` (a unit test checks they match), in upper snake case.
-6. Log business events once, where they are handled, with `request.log` and a dotted event name (`lab_test.created`), ids and counts only. The levels and rules are in the logging standard in `docs/architecture.md`. The request line and the error lines are already written for you.
+6. Log business events once, where they are handled, with `request.log` and a dotted event name (`lab_test.created`), ids, counts and field names only, never values. The levels and rules are in the logging standard in `docs/architecture.md`. The request line and the error lines are already written for you.
 7. Write an integration test with `startTestApp()` from `src/server/testing/harness.ts`, and document the endpoint in `docs/api.md`.
 
 ## Database
