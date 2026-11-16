@@ -10,6 +10,11 @@ const MAX_INTEGER = 2_147_483_647;
 // ready-date arithmetic (LAB-11) on sane numbers; the database checks it too.
 export const MAX_TURNAROUND_DAYS = 365;
 
+// The longest text the catalog search box takes (LAB-27). A code is at most 20
+// characters and a name at most 100, so 100 holds any whole name. The search
+// itself runs in the browser; nothing is sent.
+export const CATALOG_SEARCH_MAX_LENGTH = 100;
+
 // Each message says what a valid value looks like. The API returns it as the
 // field's reason, and the form shows it under the field.
 export const LAB_TEST_MESSAGES = {

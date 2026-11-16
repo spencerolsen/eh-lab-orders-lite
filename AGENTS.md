@@ -19,7 +19,7 @@ Lab Orders Lite: a small clinic app for patients, a lab test catalog and orders.
   - `orders/NewOrderModal.tsx` is the one New order dialog. Orders are placed from exactly two places: "Place new order" on the orders page and "New order for this patient" on the patient page (which passes the `patient` prop). The menu bar has no New order entry. A new entry point renders the modal and does not copy it.
   - `main.tsx` mounts the app (error boundary, query client, router); `App.tsx` holds the routes; `Layout.tsx` and `MenuBar.tsx` are the frame around every page; `NotFoundPage.tsx` is the screen for unknown paths.
   - `api/`: `client.ts` (`apiFetch` and `ApiError`, the only way to call the API), `errors.ts` (`describeError`, the sentence shown for a failed request), `query-client.ts` (TanStack Query defaults).
-  - `components/`: shared `Loading`, `EmptyState`, `ErrorMessage`, `StatusBadge` and the `ErrorBoundary`. A page shows loading, empty and error states with these, never its own.
+  - `components/`: shared `Loading`, `EmptyState`, `ErrorMessage`, `StatusBadge`, `ConfirmDialog` (a small "are you sure?" modal; the catalog's Deactivate uses it) and the `ErrorBoundary`. A page shows loading, empty and error states with these, never its own.
   - `health/ServerStatus.tsx`: the footer line that says whether the API answers.
   - `styles/base.css`: the only stylesheet, plain CSS: the theme's custom properties and the shared classes (see "Styling a page"). `styles/StylesPage.tsx` is the `/styles` sample page.
   - `testing/`: the component test setup and `renderApp(path)`, which renders the whole app at a path with a fake `fetch`.

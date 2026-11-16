@@ -95,6 +95,7 @@ Then `corepack pnpm test:e2e` is the only command. It needs `.env` and Docker, a
 | `order-status.spec.ts` | Advance ordered, collected, completed, and a completed order offers no actions. Cancel: an empty note is refused, then the note and name show on the cancelled order, which the status filter finds. |
 | `filters.spec.ts` | Filter the list by status and by patient; both filters survive a reload. Sort by Ready by: the order and `aria-sort` survive a reload, a second click reverses it, Back undoes it, and the sort stays when a filter is added. |
 | `menu.spec.ts` | The menu bar has only Orders, Patients and Catalog. |
+| `catalog.spec.ts` | Search the catalog for a test of its own (the text is kept in the address and survives a reload), cancel and then confirm the Deactivate dialog, see the row Inactive, and see the no-match message. |
 
 **Seeing why one failed.** Every failed test keeps a trace (`trace: 'retain-on-failure'`) in `test-results/`, and the HTML report is in `playwright-report/` (both are git-ignored):
 
