@@ -2,7 +2,7 @@
 // their length limits, and nothing else accepted.
 import { describe, expect, it } from 'vitest';
 
-import { cancelOrderBody } from './orders';
+import { cancelOrderBody, listOrdersQuery } from './orders';
 
 const valid = { note: 'Patient asked to cancel', cancelledBy: 'Sample Staff' };
 
@@ -93,5 +93,40 @@ describe('cancelOrderBody', () => {
     expect(problems({ ...valid, cancelledBy: 'Sample\nStaff' })).toEqual([
       { field: 'cancelledBy', reason: 'must not contain control characters' },
     ]);
+  });
+});
+
+describe('listOrdersQuery sort and dir', () => {
+  it('defaults to newest first', () => {
+    expect(listOrdersQuery.parse({})).toMatchObject({
+      sort: 'created',
+      dir: 'desc',
+    });
+  });
+
+  it.each(['created', 'readyBy', 'status', 'patient'])(
+    'accepts sort=%s',
+    (sort) => {
+      expect(listOrdersQuery.parse({ sort }).sort).toBe(sort);
+    },
+  );
+
+  it.each(['asc', 'desc'])('accepts dir=%s', (dir) => {
+    expect(listOrdersQuery.parse({ dir }).dir).toBe(dir);
+  });
+
+  it.each(['total', 'tests', 'Created', '', 'created,status'])(
+    'rejects sort=%j',
+    (sort) => {
+      expect(listOrdersQuery.safeParse({ sort }).success).toBe(false);
+    },
+  );
+
+  it.each(['up', 'ASC', ''])('rejects dir=%j', (dir) => {
+    expect(listOrdersQuery.safeParse({ dir }).success).toBe(false);
+  });
+
+  it('still refuses an unknown parameter', () => {
+    expect(listOrdersQuery.safeParse({ order: 'asc' }).success).toBe(false);
   });
 });

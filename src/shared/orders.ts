@@ -67,6 +67,17 @@ export const orderListSchema = z.object({
 export const DEFAULT_ORDER_LIMIT = 25;
 export const MAX_ORDER_LIMIT = 100;
 
+// The columns the list can be sorted by (`sort`) and the two directions
+// (`dir`); the default is newest first. Sorting is done by the server, in SQL,
+// so it holds across pages. Tests and Total are not sortable: the total is
+// worked out per order from the item prices, not stored.
+export const ORDER_SORTS = ['created', 'readyBy', 'status', 'patient'] as const;
+export type OrderSort = (typeof ORDER_SORTS)[number];
+export const ORDER_SORT_DIRS = ['asc', 'desc'] as const;
+export type OrderSortDir = (typeof ORDER_SORT_DIRS)[number];
+export const DEFAULT_ORDER_SORT: OrderSort = 'created';
+export const DEFAULT_ORDER_SORT_DIR: OrderSortDir = 'desc';
+
 const limitText = `Must be a whole number from 1 to ${MAX_ORDER_LIMIT}`;
 const offsetText = 'Must be a whole number, 0 or more';
 
@@ -80,6 +91,14 @@ export const listOrdersQuery = z.strictObject({
     .uuid({ error: 'Must be a patient id (a uuid)' })
     .toLowerCase()
     .optional(),
+  sort: z
+    .enum(ORDER_SORTS, { error: `Must be one of ${ORDER_SORTS.join(', ')}` })
+    .default(DEFAULT_ORDER_SORT),
+  dir: z
+    .enum(ORDER_SORT_DIRS, {
+      error: `Must be one of ${ORDER_SORT_DIRS.join(', ')}`,
+    })
+    .default(DEFAULT_ORDER_SORT_DIR),
   limit: z
     .string({ error: limitText })
     .regex(/^\d{1,9}$/, { error: limitText })

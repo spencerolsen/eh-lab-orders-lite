@@ -47,6 +47,9 @@ export function orderRoutes(app: FastifyInstance, deps: AppDeps): void {
         filters: (['status', 'patientId'] as const).filter(
           (name) => query[name] !== undefined,
         ),
+        // Field names and a direction word: not patient data.
+        sort: query.sort,
+        dir: query.dir,
         rowCount: items.length,
         hasMore,
       },

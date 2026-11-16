@@ -7,6 +7,9 @@ import {
   orderDetailSchema,
   type OrderListItem,
   orderListItemSchema,
+  ORDER_STATUSES,
+  type OrderSort,
+  type OrderSortDir,
   type OrderStatus,
 } from '../../shared/orders';
 import type { OrderItem } from '../../shared/order-items';
@@ -75,14 +78,47 @@ const LIST_ROW_SELECT = `
   join patients p on p.id = o.patient_id
   left join order_items i on i.order_id = o.id`;
 
-// One page of orders, newest first; the id breaks ties between orders placed
-// at the same moment, so the order (and so every page) is the same on every
-// call. The filters combine with AND. One query: it asks for limit + 1 rows,
-// and toPage turns the extra one into hasMore, so there is no COUNT.
+// The ORDER BY of each sort, written here and nowhere else: the text comes
+// from this map, keyed by the validated `sort`, and `dir` picks one of the two
+// fixed words below. User input is never put into SQL. None of these columns
+// can be null (all are NOT NULL), so there is no NULLS FIRST/LAST to choose.
+// Status sorts in lifecycle order, built from ORDER_STATUSES (a fixed list,
+// not input), not alphabetically. Every ordering ends with o.id, which is
+// unique, so a page is the same on every call and no row repeats or is lost
+// between pages. Patient sorts by last then first name, ignoring case.
+const STATUS_RANK = `case o.status ${ORDER_STATUSES.map(
+  (status, rank) => `when '${status}' then ${rank}`,
+).join(' ')} end`;
+
+const SORT_COLUMNS: Record<OrderSort, string[]> = {
+  created: ['o.created_at', 'o.id'],
+  readyBy: ['o.estimated_ready_date', 'o.id'],
+  status: [STATUS_RANK, 'o.id'],
+  patient: ['lower(p.last_name)', 'lower(p.first_name)', 'o.id'],
+};
+const SORT_DIRECTIONS: Record<OrderSortDir, string> = {
+  asc: 'asc',
+  desc: 'desc',
+};
+
+function orderBy(sort: OrderSort, dir: OrderSortDir): string {
+  return SORT_COLUMNS[sort]
+    .map((column) => `${column} ${SORT_DIRECTIONS[dir]}`)
+    .join(', ');
+}
+
+// One page of orders in the requested order (newest first by default); the
+// id breaks ties (see SORT_COLUMNS), so the order (and so every page) is the
+// same on every call. The filters combine with AND. One query: it asks for
+// limit + 1 rows, and toPage turns the extra one into hasMore, so there is no
+// COUNT.
 export async function listOrders(
   db: Db,
   clinicTimezone: string,
-  query: Pick<ListOrdersQuery, 'status' | 'patientId' | 'limit' | 'offset'>,
+  query: Pick<
+    ListOrdersQuery,
+    'status' | 'patientId' | 'sort' | 'dir' | 'limit' | 'offset'
+  >,
 ): Promise<{ items: OrderListItem[]; hasMore: boolean }> {
   // The where clause is built from fixed fragments; the values are always
   // bound parameters.
@@ -101,14 +137,21 @@ export async function listOrders(
     conditions.length > 0 ? 'where ' + conditions.join(' and ') : '';
   // The page of orders is cut first, from orders alone, so Postgres can read
   // it from the filter's index in order and stop after limit + 1 rows; only
-  // then are the patients and items joined, for those rows alone.
+  // then are the patients and items joined, for those rows alone. The patient
+  // sort is the exception: it needs the patients inside the cut, so it joins
+  // them there (and may read every matching order).
+  const order = orderBy(query.sort, query.dir);
+  const cutFrom =
+    query.sort === 'patient'
+      ? 'orders o join patients p on p.id = o.patient_id'
+      : 'orders o';
   const { rows } = await db.query<OrderListRow>(
     `select o.id, o.status, o.estimated_ready_date, o.created_at,
             p.id as patient_id, p.first_name, p.last_name, p.date_of_birth,
             array_remove(array_agg(i.price_cents), null) as item_prices
-     from (select * from orders o
+     from (select o.* from ${cutFrom}
            ${where}
-           order by o.created_at desc, o.id desc
+           order by ${order}
            limit $` +
       (params.length - 1) +
       ` offset $` +
@@ -117,7 +160,7 @@ export async function listOrders(
      join patients p on p.id = o.patient_id
      left join order_items i on i.order_id = o.id
      group by o.id, o.status, o.estimated_ready_date, o.created_at, p.id
-     order by o.created_at desc, o.id desc`,
+     order by ${order}`,
     params,
   );
   const page = toPage(rows, query.limit);
