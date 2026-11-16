@@ -134,7 +134,7 @@ Details and the table of log events: [docs/architecture.md](docs/architecture.md
 - Two identical patient creates at the same moment can both pass the duplicate check.
 - No public holidays or cut-off times in the ready date.
 - The patient list without a search and the lab test catalog list are not paged: each returns every row. A patient search returns at most 50.
-- The catalog search runs in the browser, over the list the page already holds, because the catalog comes whole in one response. It moves to the server when the catalog is paged. (The orders list is paged, so its filters run on the server.)
+- The rule for lists: a list that grows without bound (orders) is paged, and filtered and sorted on the server; a small reference list (the catalog) is loaded whole and filtered in the browser. So the catalog search runs in the browser, over the list the page already holds, and moves to the server when the catalog is paged.
 - Desktop only (1024 px and wider). No mobile layout.
 - Orders cannot be edited after they are placed. Cancel and place a new one.
 - Patient search is not accent-insensitive, and phone numbers must be US numbers.
