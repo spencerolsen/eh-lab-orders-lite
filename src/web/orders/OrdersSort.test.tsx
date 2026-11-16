@@ -33,16 +33,22 @@ function order(n: number): OrderListItem {
   };
 }
 
-function fakeApi() {
+// `total` orders; the fake pages like the server (limit 25 by default).
+function fakeApi(total = 2) {
   const fetch = vi.fn((url: string) => {
-    const { pathname } = new URL(url, 'http://localhost');
+    const { pathname, searchParams } = new URL(url, 'http://localhost');
+    const offset = Number(searchParams.get('offset') ?? 0);
+    const limit = Number(searchParams.get('limit') ?? 25);
+    const items = Array.from({ length: total }, (_, i) =>
+      order(total - i),
+    ).slice(offset, offset + limit);
     const body =
       pathname === '/healthz'
         ? { status: 'ok' }
         : pathname === '/api/orders'
           ? {
-              items: [order(2), order(1)],
-              hasMore: false,
+              items,
+              hasMore: offset + limit < total,
               clinicTimezone: 'America/Denver',
             }
           : pathname === '/api/patients'
@@ -188,14 +194,37 @@ it('keeps the filters when the sort changes, and the sort when a filter changes'
   );
 });
 
-it('a new sort starts again from the first page (no offset)', async () => {
-  const fetch = fakeApi();
+const bodyRows = () => screen.getAllByRole('row').length - 1;
+
+it('a new sort starts again from the first page, after Load more', async () => {
+  const fetch = fakeApi(30);
   renderWithAddress('/');
-  await userEvent.setup().click(await sortButton('Patient'));
+  const user = userEvent.setup();
+  await waitFor(() => expect(bodyRows()).toBe(25));
+  await user.click(screen.getByRole('button', { name: 'Load more' }));
+  await waitFor(() => expect(bodyRows()).toBe(30));
+  expect(orderCalls(fetch).at(-1)).toBe('/api/orders?offset=25');
+
+  await user.click(await sortButton('Patient'));
   await waitFor(() =>
     expect(orderCalls(fetch).at(-1)).toBe('/api/orders?sort=patient&dir=asc'),
   );
-  expect(orderCalls(fetch).some((url) => url.includes('offset'))).toBe(false);
+  // Back to one page: 25 rows and Load more again.
+  await waitFor(() => expect(bodyRows()).toBe(25));
+  expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy();
+});
+
+it('Load more after a sort carries the sort and direction', async () => {
+  const fetch = fakeApi(30);
+  renderWithAddress('/');
+  const user = userEvent.setup();
+  await user.click(await sortButton('Ready by'));
+  await waitFor(() => expect(bodyRows()).toBe(25));
+  await user.click(screen.getByRole('button', { name: 'Load more' }));
+  await waitFor(() => expect(bodyRows()).toBe(30));
+  expect(orderCalls(fetch).at(-1)).toBe(
+    '/api/orders?sort=readyBy&dir=asc&offset=25',
+  );
 });
 
 it('the sort buttons work from the keyboard and keep focus after the new sort loads', async () => {
