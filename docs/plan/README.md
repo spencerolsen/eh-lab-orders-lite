@@ -66,6 +66,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-23](tasks/LAB-23-submission-readiness.md) | Submission readiness | Hardening | LAB-05, LAB-22 | Done |
 | [LAB-24](tasks/LAB-24-visual-theme.md) | Visual theme | Groundwork | LAB-04 | Done |
 | [LAB-25](tasks/LAB-25-polish-pass.md) | Polish pass from the browser checkpoints | Hardening | LAB-20 | Done |
+| [LAB-26](tasks/LAB-26-orders-sorting.md) | Orders: sort the list by column | Vertical slice | LAB-14 | Done |
 
 ## How the tasks depend on each other
 
@@ -101,6 +102,7 @@ flowchart TD
     L14 --> L17
     L14 --> L19[LAB-19 Patient order history]
     L15 --> L19
+    L14 --> L26[LAB-26 Sort by column]
     L18 --> L20[LAB-20 New order from the patient page]
     L19 --> L20
   end

@@ -30,7 +30,7 @@ In CI the test database is a Postgres 16 service container on the runner's port 
 | Kind | Files | What it covers | Database |
 |---|---|---|---|
 | Unit | `<name>.test.ts`, next to the code | Pure functions and single modules: the error mapper, `parse`, the request id check, the logger, config, the guards, domain rules. | No |
-| Component | `<name>.test.tsx`, next to the component | React components rendered in jsdom with Testing Library: the menu bar (navigation only), the routes, the shared states, the error boundary, the server status line, and the pages and dialogs (catalog, patients, the orders list and its filters, the New order dialog, the order panel with its status and cancel actions). `fetch` is replaced with a fake, so no API runs. | No |
+| Component | `<name>.test.tsx`, next to the component | React components rendered in jsdom with Testing Library: the menu bar (navigation only), the routes, the shared states, the error boundary, the server status line, and the pages and dialogs (catalog, patients, the orders list, its filters and its sortable headers, the New order dialog, the order panel with its status and cancel actions). `fetch` is replaced with a fake, so no API runs. | No |
 | Integration | `<name>.integration.test.ts`, next to the code | The app through `inject` (real routing, error handler and logging) and repositories on a real Postgres. | The test database |
 | Browser (end to end) | `e2e/<journey>.spec.ts` | Journeys through the real screens, API and database in Chromium: that they work together. | The e2e database |
 
@@ -93,7 +93,7 @@ Then `corepack pnpm test:e2e` is the only command. It needs `.env` and Docker, a
 | `patients.spec.ts` | Add a patient; a second one with the same email shows the duplicate warning naming the first; Create anyway saves it. |
 | `place-order.spec.ts` | Place an order from the orders page (pick the patient, quick-add by code and by name, see the live total and ready date, submit) and see the same total and ready date on the list row and in the panel. A double click on Submit order creates one order. "New order for this patient" opens with the patient chosen and the order joins the patient's history. |
 | `order-status.spec.ts` | Advance ordered, collected, completed, and a completed order offers no actions. Cancel: an empty note is refused, then the note and name show on the cancelled order, which the status filter finds. |
-| `filters.spec.ts` | Filter the list by status and by patient; both filters survive a reload. |
+| `filters.spec.ts` | Filter the list by status and by patient; both filters survive a reload. Sort by Ready by: the order and `aria-sort` survive a reload, a second click reverses it, Back undoes it, and the sort stays when a filter is added. |
 | `menu.spec.ts` | The menu bar has only Orders, Patients and Catalog. |
 
 **Seeing why one failed.** Every failed test keeps a trace (`trace: 'retain-on-failure'`) in `test-results/`, and the HTML report is in `playwright-report/` (both are git-ignored):
