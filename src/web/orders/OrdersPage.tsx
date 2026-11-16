@@ -2,13 +2,21 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from '../../shared/orders';
-import { type OrderFilters, readFilters, writeFilters } from './filters';
+import {
+  type OrderFilters,
+  type OrderSortState,
+  readFilters,
+  readSort,
+  writeFilters,
+  writeSort,
+} from './filters';
 import { OrderDetailPanel, useOpenOrderId } from './OrderDetailPanel';
 import { NewOrderModal } from './NewOrderModal';
 import { OrdersTable } from './OrdersTable';
 import { PatientFilter } from './PatientFilter';
 
-// The home page: the orders, newest first, as the server sends them, a page
+// The home page: the orders, newest first unless a column header sorts them
+// (?sort=...&dir=...; the server sorts), as the server sends them, a page
 // at a time ("Load more"), narrowed by the status and patient filters kept in
 // the address (?status=...&patientId=...; see filters.ts); the table is the
 // shared OrdersTable. "Place new order" opens the New order
@@ -41,6 +49,16 @@ function useFilters() {
   const setFilters = (next: OrderFilters) =>
     setParams((current) => writeFilters(current, next));
   return [filters, setFilters] as const;
+}
+
+// The sort, kept in the address next to the filters (?sort=...&dir=...).
+// Changing it adds a history entry and leaves the filters and ?order= alone.
+function useSort() {
+  const [params, setParams] = useSearchParams();
+  const sort = readSort(params);
+  const setSort = (next: OrderSortState) =>
+    setParams((current) => writeSort(current, next));
+  return [sort, setSort] as const;
 }
 
 function Filters() {
@@ -77,9 +95,12 @@ function Filters() {
 
 function OrderList() {
   const [filters, setFilters] = useFilters();
+  const [sort, setSort] = useSort();
   return (
     <OrdersTable
       filters={filters}
+      sort={sort}
+      onSortChange={setSort}
       showPatient
       onClearFilters={() => setFilters({})}
     />

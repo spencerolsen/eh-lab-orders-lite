@@ -112,6 +112,13 @@ it('PatientOrders renders one row per order with status, ready date, total and t
   expect(within(rows[2]!).getByText('Ordered')).toBeTruthy();
   // The patient is the page's, so the table has no Patient column.
   expect(screen.queryByRole('columnheader', { name: 'Patient' })).toBeNull();
+  // The history keeps its fixed newest-first order: no sortable headers.
+  expect(screen.queryAllByRole('button', { name: /^Sort by/ })).toHaveLength(0);
+  expect(
+    screen
+      .getAllByRole('columnheader')
+      .some((h) => h.hasAttribute('aria-sort')),
+  ).toBe(false);
 });
 
 it('PatientOrders shows "No orders yet" for an empty list', async () => {

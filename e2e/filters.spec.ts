@@ -45,3 +45,58 @@ test('filter the orders list by status and by patient; the filters survive a rel
   await expect(rowOf(b.fullName)).toBeVisible();
   await expect(rowOf(a.fullName)).toBeHidden();
 });
+
+test('sort the orders list by Ready by; the sort survives a reload and combines with a filter', async ({
+  page,
+  request,
+}) => {
+  // One patient, two orders: Urinalysis (ready sooner) placed first, Vitamin D
+  // (ready later) second, so newest first and ready-date order differ.
+  const patient = await createPatient(request);
+  await createOrder(request, patient.id, ['UA']);
+  const later = await createOrder(request, patient.id, ['VITD']);
+
+  const rows = page.getByRole('row').filter({ hasText: patient.fullName });
+  // The ready dates of the patient's rows, top to bottom (the fourth cell).
+  const readyDates = () => rows.locator('td:nth-child(4)').allTextContents();
+  const readyHeader = page.getByRole('columnheader', { name: /Ready by/ });
+  const readyButton = page.getByRole('button', { name: /^Sort by Ready by/ });
+
+  await page.goto(`/?patientId=${patient.id}`);
+  await expect(rows).toHaveCount(2);
+  const [newestFirst] = await readyDates();
+
+  await readyButton.click();
+  await expect(page).toHaveURL(/sort=readyBy&dir=asc/);
+  await expect(readyHeader).toHaveAttribute('aria-sort', 'ascending');
+  await expect(rows).toHaveCount(2);
+  const ascending = await readyDates();
+  // Newest first has the later ready date on top; ascending has the sooner.
+  expect(ascending[0]).not.toBe(newestFirst);
+
+  // Reload: the same sort, the same order.
+  await page.reload();
+  await expect(readyHeader).toHaveAttribute('aria-sort', 'ascending');
+  await expect(rows).toHaveCount(2);
+  expect(await readyDates()).toEqual(ascending);
+
+  // A second click reverses it, and Back undoes that click.
+  await readyButton.click();
+  await expect(readyHeader).toHaveAttribute('aria-sort', 'descending');
+  await expect(rows).toHaveCount(2);
+  expect(await readyDates()).toEqual([...ascending].reverse());
+  await page.goBack();
+  await expect(readyHeader).toHaveAttribute('aria-sort', 'ascending');
+  await expect(rows).toHaveCount(2);
+  expect(await readyDates()).toEqual(ascending);
+
+  // The sort stays when a filter is added.
+  await markCollected(request, later);
+  await page.reload();
+  await page
+    .getByLabel('Filter by status')
+    .selectOption({ label: 'Collected' });
+  await expect(page).toHaveURL(/status=collected/);
+  await expect(page).toHaveURL(/sort=readyBy&dir=asc/);
+  await expect(rows).toHaveCount(1);
+});

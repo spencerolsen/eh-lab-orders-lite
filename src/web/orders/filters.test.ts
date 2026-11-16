@@ -1,6 +1,12 @@
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { readFilters, writeFilters } from './filters';
+import {
+  nextSort,
+  readFilters,
+  readSort,
+  writeFilters,
+  writeSort,
+} from './filters';
 
 const PATIENT = '5eed0008-0000-4000-8000-000000000002';
 
@@ -41,4 +47,86 @@ it('writes an empty address for no filters', () => {
   expect(
     writeFilters(new URLSearchParams('status=ordered'), {}).toString(),
   ).toBe('');
+});
+
+describe('the sort in the address', () => {
+  it('reads the default (newest first) from an address without it', () => {
+    expect(readSort(new URLSearchParams())).toEqual({
+      sort: 'created',
+      dir: 'desc',
+    });
+  });
+
+  it('reads a valid sort and direction', () => {
+    expect(readSort(new URLSearchParams('sort=readyBy&dir=asc'))).toEqual({
+      sort: 'readyBy',
+      dir: 'asc',
+    });
+  });
+
+  it('ignores an unknown sort or direction, each on its own', () => {
+    expect(readSort(new URLSearchParams('sort=total&dir=asc'))).toEqual({
+      sort: 'created',
+      dir: 'asc',
+    });
+    expect(readSort(new URLSearchParams('sort=status&dir=up'))).toEqual({
+      sort: 'status',
+      dir: 'desc',
+    });
+  });
+
+  it('leaves the default sort out of the address, and other parameters alone', () => {
+    expect(
+      writeSort(new URLSearchParams('sort=status&dir=asc&order=abc'), {
+        sort: 'created',
+        dir: 'desc',
+      }).toString(),
+    ).toBe('order=abc');
+  });
+
+  it('writes a sort that is not the default', () => {
+    expect(
+      writeSort(new URLSearchParams('status=ordered'), {
+        sort: 'patient',
+        dir: 'asc',
+      }).toString(),
+    ).toBe('status=ordered&sort=patient&dir=asc');
+    expect(
+      writeSort(new URLSearchParams(), {
+        sort: 'created',
+        dir: 'asc',
+      }).toString(),
+    ).toBe('sort=created&dir=asc');
+  });
+
+  it('writing filters leaves the sort alone', () => {
+    expect(
+      writeFilters(new URLSearchParams('sort=status&dir=asc'), {
+        status: 'ordered',
+      }).toString(),
+    ).toBe('sort=status&dir=asc&status=ordered');
+  });
+
+  it('a click on another column sorts it ascending, except Created (descending)', () => {
+    const current = { sort: 'patient', dir: 'desc' } as const;
+    expect(nextSort(current, 'readyBy')).toEqual({
+      sort: 'readyBy',
+      dir: 'asc',
+    });
+    expect(nextSort(current, 'created')).toEqual({
+      sort: 'created',
+      dir: 'desc',
+    });
+  });
+
+  it('a click on the same column reverses the direction', () => {
+    expect(nextSort({ sort: 'status', dir: 'asc' }, 'status')).toEqual({
+      sort: 'status',
+      dir: 'desc',
+    });
+    expect(nextSort({ sort: 'status', dir: 'desc' }, 'status')).toEqual({
+      sort: 'status',
+      dir: 'asc',
+    });
+  });
 });

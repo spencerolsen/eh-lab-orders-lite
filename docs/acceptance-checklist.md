@@ -148,6 +148,19 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] `curl 'localhost:3000/api/orders?status=bogus'` (and `limit=0`, `limit=101`, `offset=-1`, `patientId=abc`, `colour=red`) gives 400 `VALIDATION_ERROR` with a request id; an unknown but well-formed `patientId` gives 200 with an empty `items`.
 - [ ] With `LOG_LEVEL=debug` the API's log shows `orders.listed` with filter names and a row count, and no patient name, id or search text.
 
+### Orders list sorting (LAB-26)
+
+- [ ] On the Orders page the Patient, Ready by, Status and Created headers are buttons; Tests and Total are plain text. With no sort in the address, Created shows a down arrow and the list is newest first.
+- [ ] Click "Ready by": the list is sorted by ready date, earliest first, the arrow points up and the address has `?sort=readyBy&dir=asc`. Click it again: latest first, and `dir=desc`. Click "Created": newest first (the first click on Created sorts descending) and the sort leaves the address.
+- [ ] Click "Status": ordered, then collected, then completed, then cancelled (not alphabetical). Click "Patient": by last name, then first name, ignoring upper and lower case.
+- [ ] With more than 25 orders, sort by Patient and press "Load more": the new rows continue the order, with no repeats and none missing. Changing the sort starts again from the first page.
+- [ ] Choose a status or a patient filter, then sort: both apply. Change the filter: the sort stays.
+- [ ] Reload, and open the address in a new tab: the same sort and rows. Back and Forward step through the sort changes. `/?sort=bogus&dir=up` shows the default list, as an unknown filter does.
+- [ ] Tab reaches each sort button with a visible outline; Enter or Space sorts, and the focus is on the same button once the list has loaded. A screen reader reads "Sort by Status, now ascending" and the column's sort state.
+- [ ] Open a patient's page: their order history has no sort buttons and stays newest first.
+- [ ] `curl 'localhost:3000/api/orders?sort=readyBy&dir=asc'` returns rows in ascending `estimatedReadyDate`; `sort=bogus`, `sort=total` and `dir=up` each give 400 `VALIDATION_ERROR` with a request id.
+- [ ] With `LOG_LEVEL=debug` the `orders.listed` line shows `sort` and `dir`, and no patient name.
+
 ### Order detail panel (LAB-15)
 
 - [ ] Click a row in the Orders list: a panel slides in from the right and the address bar shows `?order=<id>`. Focus is inside the panel.

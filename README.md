@@ -8,7 +8,7 @@ What it does:
 
 - **Patients:** add, search by name, edit. Adding a patient who looks like an existing one shows a warning with the matches.
 - **Catalog:** add lab tests, edit price and turnaround, activate or deactivate (tests are never deleted).
-- **Orders:** place an order for one patient and one or more tests, with a live total and ready date while building it. Filter the list by status and patient. Open an order in a side panel.
+- **Orders:** place an order for one patient and one or more tests, with a live total and ready date while building it. Filter the list by status and patient, and sort it by patient, ready date, status or created time (the server sorts, so the order holds across "Load more"). Open an order in a side panel.
 - **Order status:** mark an order collected, then completed, or cancel it with a note and a name.
 - **Patient page:** the patient's order history, and a New order button with that patient already chosen.
 
@@ -47,7 +47,7 @@ Other commands, all run as `corepack pnpm <script>`: `build`, `db:reset` (drop, 
 | Unit | Pure rules and single modules: total, ready date, status moves, duplicate matching, schemas, config, error mapping. No database. | `corepack pnpm test --project unit` |
 | Component | React screens in a fake browser (jsdom) with a faked `fetch`: forms, the New order dialog, the order panel, filters. | `corepack pnpm test --project component` |
 | Integration | The real app through HTTP against a real Postgres: every endpoint, the transaction, the idempotency key, two status changes racing. | `corepack pnpm test --project integration` |
-| Browser | The main journeys in Chromium against the real app and database: add a patient and see the duplicate warning, place an order, double-click submit, change status, cancel, filter. | `corepack pnpm exec playwright install chromium` once, then `corepack pnpm test:e2e` |
+| Browser | The main journeys in Chromium against the real app and database: add a patient and see the duplicate warning, place an order, double-click submit, change status, cancel, filter, sort. | `corepack pnpm exec playwright install chromium` once, then `corepack pnpm test:e2e` |
 
 `corepack pnpm test` runs the first three together (it starts the database container itself). The integration tests need a `.env` (created by the first `corepack pnpm dev`, or by copying `.env.example`) or `TEST_DATABASE_URL` set in the environment; the unit and component tests need neither. Each rule is tested in one layer only. Calendar-day tests run a second time with the process in another time zone, so a day-shift bug cannot hide.
 
@@ -126,6 +126,7 @@ Details and the table of log events: [docs/architecture.md](docs/architecture.md
 
 - No login or roles. The name on a cancellation is typed in, and every user can see every patient.
 - A tab that is out of date gets "This order has changed" and reloads. There is no live update.
+- Sorting the orders list by status or by patient has no index and may read every matching order; the other sorts use an index. Tests and Total cannot be sorted (the total is worked out per order, not stored).
 - The orders list uses offset paging. Orders placed or cancelled between two pages can make a row repeat or be skipped. There is no total count.
 - Reusing an idempotency key with a different body returns the first order. Keys never expire and are not tied to a user.
 - If a test's price or turnaround changes while the New order dialog is open, the order is saved at the current numbers, which can differ from the preview.

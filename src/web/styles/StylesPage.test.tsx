@@ -36,8 +36,15 @@ it('the styles page renders every shared style without throwing', () => {
   expect(main.getByRole('alert').textContent).toContain(
     'Reference: req-sample',
   );
-  // The plain table, and the one with an inactive row and row buttons.
-  expect(screen.getAllByRole('table')).toHaveLength(2);
+  // The plain table, the one with an inactive row and row buttons, and the
+  // one with sortable headers (aria-sort on the th, the arrow hidden).
+  expect(screen.getAllByRole('table')).toHaveLength(3);
+  expect(
+    screen
+      .getByRole('button', { name: 'Sort by Code, now ascending' })
+      .closest('th')!
+      .getAttribute('aria-sort'),
+  ).toBe('ascending');
   expect(screen.getByLabelText<HTMLInputElement>('Locked code').disabled).toBe(
     true,
   );

@@ -301,6 +301,39 @@ textarea[aria-invalid='true'] {
   background: var(--color-surface-tint);
 }
 
+/* A sortable column header (LAB-26): a real button in the <th>, drawn as the
+   header text. The <th> carries aria-sort; the arrow only shows it, so the
+   active column is also the bolder, underlined one. */
+.table .sort-button,
+.table .sort-button:hover:not(:disabled) {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.table .sort-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.table th[aria-sort='ascending'] .sort-button,
+.table th[aria-sort='descending'] .sort-button {
+  text-decoration: underline;
+}
+
+/* The arrow's place is kept when it is empty, so the header does not shift. */
+.table .sort-arrow {
+  display: inline-block;
+  min-width: 1em;
+  font-size: 0.75em;
+}
+
 /* Buttons side by side in a table cell (Edit, Deactivate). */
 .row-actions {
   display: flex;

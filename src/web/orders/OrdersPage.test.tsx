@@ -76,7 +76,7 @@ it('shows each order as a row, in the order the server sent them', async () => {
       'Total',
       'Ready by',
       'Status',
-      'Created (America/Denver)',
+      'Created (America/Denver)▼',
       'Details',
     ],
     [

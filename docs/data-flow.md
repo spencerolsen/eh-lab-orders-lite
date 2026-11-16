@@ -114,7 +114,7 @@ sequenceDiagram
   participant D as Postgres
 
   P->>A: GET /api/orders (TanStack Query, key ['orders'])
-  A->>D: one select: orders join patients, left join order_items,<br/>array_agg(price_cents) per order, newest first, id breaks ties
+  A->>D: one select: orders join patients, left join order_items,<br/>array_agg(price_cents) per order, in the requested order (newest first by default; `sort` and `dir`), id breaks ties
   D-->>A: one row per order with item_prices [2500, 3800]
   Note over A: toOrderListItem: testCount = item_prices.length,<br/>totalCents = calculateTotal(item_prices),<br/>createdAtClinic = clinicDateTime(CLINIC_TIMEZONE, created_at)
   A-->>P: { items, hasMore: false, clinicTimezone }

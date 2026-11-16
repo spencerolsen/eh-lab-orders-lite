@@ -217,6 +217,51 @@ export function StylesPage() {
         </tbody>
       </table>
 
+      <h3>Sortable header</h3>
+      <p>
+        A column the server can sort is a <code>sort-button</code> inside the{' '}
+        <code>th</code>, which carries <code>aria-sort</code>; the arrow is{' '}
+        <code>aria-hidden</code>, so the button&apos;s name says the direction.
+      </p>
+      <table className="table">
+        <thead>
+          <tr>
+            <th scope="col" aria-sort="ascending" className="sortable">
+              <button
+                type="button"
+                className="sort-button"
+                aria-label="Sort by Code, now ascending"
+              >
+                Code
+                <span aria-hidden="true" className="sort-arrow">
+                  ▲
+                </span>
+              </button>
+            </th>
+            <th scope="col" aria-sort="none" className="sortable">
+              <button
+                type="button"
+                className="sort-button"
+                aria-label="Sort by Name"
+              >
+                Name
+                <span aria-hidden="true" className="sort-arrow" />
+              </button>
+            </th>
+            <th scope="col" className="numeric">
+              Price
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SAMPLE1</td>
+            <td>Sample panel one</td>
+            <td className="numeric">$12.50</td>
+          </tr>
+        </tbody>
+      </table>
+
       <h2>Status badges</h2>
       <div className="form-actions">
         {ORDER_STATUSES.map((status) => (

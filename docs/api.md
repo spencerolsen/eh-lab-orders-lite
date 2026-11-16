@@ -240,16 +240,29 @@ The server logs `patient.updated` at `info` with `patientId` and `changedFields`
 
 ### `GET /api/orders`
 
-Orders, newest first (`created_at` descending, then `id` descending, so orders placed at the same moment always come back in the same order, and every page is the same on every call), one page at a time, optionally narrowed by status and patient.
+Orders, one page at a time, optionally narrowed by status and patient and optionally sorted. With no `sort` and `dir` the list is newest first (`created_at` descending, then `id` descending, so orders placed at the same moment always come back in the same order, and every page is the same on every call).
 
 | Query parameter | Rule |
 |---|---|
 | `status` | One of `ordered`, `collected`, `completed`, `cancelled` (`ORDER_STATUSES`). Optional. |
 | `patientId` | A uuid. Optional. A well-formed id that no patient has is not an error: the list is simply empty (it is a filter, not a resource in the path). |
+| `sort` | One of `created`, `readyBy`, `status`, `patient`. Optional, default `created`. See "Sorting" below. |
+| `dir` | `asc` or `desc`. Optional, default `desc`. |
 | `limit` | A whole number from 1 to 100. Default 25. |
 | `offset` | A whole number, 0 or more. Default 0. |
 
 The filters combine with AND. No other parameter is allowed.
+
+Sorting (LAB-26): the server sorts, because the list is paged and a browser can only sort the rows it has. Exactly four columns can be sorted; Tests and Total cannot, because the total is worked out per order from the item prices (`calculateTotal`) and is not stored, and the database does not add up prices.
+
+| `sort` | Orders by |
+|---|---|
+| `created` | `created_at` (the default; with `dir=desc`, newest first). |
+| `readyBy` | `estimated_ready_date`. |
+| `status` | Lifecycle order: `ordered`, `collected`, `completed`, `cancelled` (the order of `ORDER_STATUSES`), not alphabetical. |
+| `patient` | The patient's last name, then first name, ignoring case. |
+
+`dir` applies to the whole ordering. Every ordering ends with the order's `id` (in the same direction), which is unique, so rows with an equal sort value come back in the same order on every call and paging by `offset` returns every order exactly once. None of the sorted columns can be null, so there is no null placement to choose. The `ORDER BY` text comes from a fixed map keyed by the validated `sort`; request values are never put into SQL. The `status` and `patient` sorts have no index and may read every matching order.
 
 Paging: the server asks the database for `limit + 1` rows. Getting the extra row means there is a next page: `hasMore` is `true` and the extra row is dropped. There is no count of all the matching orders (a `COUNT` would read every matching row on every request), so a screen cannot say "page 3 of 12"; it asks for the next page with `offset` = the number of rows it already has. Offset paging is not stable against new orders: see `docs/architecture.md`, "Scaling the orders list".
 
@@ -293,9 +306,9 @@ Paging: the server asks the database for `limit + 1` rows. Getting the extra row
 | Status | Body |
 |---|---|
 | 200 | The list above (`{ "items": [], ... }` when there are no orders). |
-| 400 | `VALIDATION_ERROR` for a `status` that is not one of the statuses, a `patientId` that is not a uuid, a `limit` or `offset` that is out of range or not a whole number (`1.5`, `abc`, empty), a parameter given twice, or an unknown parameter. `details` names each field. |
+| 400 | `VALIDATION_ERROR` for a `status` that is not one of the statuses, a `patientId` that is not a uuid, a `sort` or `dir` that is not one of the values above (`sort=total`, `dir=up`; the values are case-sensitive), a `limit` or `offset` that is out of range or not a whole number (`1.5`, `abc`, empty), a parameter given twice, or an unknown parameter. `details` names each field. |
 
-Logged: the request line, and `debug` `orders.listed` with `filters` (the names of the filters that were present, such as `["status"]`, never their values), `rowCount` and `hasMore`. Nothing about the patients is logged.
+Logged: the request line, and `debug` `orders.listed` with `filters` (the names of the filters that were present, such as `["status"]`, never their values), `sort` and `dir` (field names and a direction word), `rowCount` and `hasMore`. Nothing about the patients is logged.
 
 ### `GET /api/orders/:id`
 
