@@ -7,7 +7,7 @@ Lab Orders Lite is a small clinic app. Staff keep a list of patients and a catal
 What it does:
 
 - **Patients:** add, search by name, edit. Adding a patient who looks like an existing one shows a warning with the matches.
-- **Catalog:** add lab tests, edit price and turnaround, activate or deactivate (tests are never deleted).
+- **Catalog:** add lab tests, edit price and turnaround, activate or deactivate (tests are never deleted; deactivating asks for confirmation first), and search the list by code or name.
 - **Orders:** place an order for one patient and one or more tests, with a live total and ready date while building it. Filter the list by status and patient, and sort it by patient, ready date, status or created time (the server sorts, so the order holds across "Load more"). Open an order in a side panel.
 - **Order status:** mark an order collected, then completed, or cancel it with a note and a name.
 - **Patient page:** the patient's order history, and a New order button with that patient already chosen.
@@ -134,6 +134,7 @@ Details and the table of log events: [docs/architecture.md](docs/architecture.md
 - Two identical patient creates at the same moment can both pass the duplicate check.
 - No public holidays or cut-off times in the ready date.
 - The patient list without a search and the lab test catalog list are not paged: each returns every row. A patient search returns at most 50.
+- The catalog search runs in the browser, over the list the page already holds, because the catalog comes whole in one response. It moves to the server when the catalog is paged. (The orders list is paged, so its filters run on the server.)
 - Desktop only (1024 px and wider). No mobile layout.
 - Orders cannot be edited after they are placed. Cancel and place a new one.
 - Patient search is not accent-insensitive, and phone numbers must be US numbers.

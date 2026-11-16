@@ -61,6 +61,17 @@ Commands are written `pnpm <script>`: run them as `corepack pnpm <script>` unles
 - [ ] No row has a delete control. `curl -i -X DELETE http://localhost:<PORT>/api/lab-tests/<a real id>` answers 404 `NOT_FOUND`, and the test is still listed.
 - [ ] `curl -i -X PATCH -H 'content-type: application/json' -d '{"code":"NEW-1"}' http://localhost:<PORT>/api/lab-tests/<CBC id>` answers 400 `VALIDATION_ERROR` with a detail on `code`, and CBC keeps its code.
 
+### Catalog: confirm deactivation and search (LAB-27)
+
+- [ ] Click Deactivate on `TSH`: a dialog "Deactivate TSH?" names the code and name and says the test can no longer be added to new orders and that existing orders keep it. The focus is on "Keep active". Nothing was sent (network tab) and the row is still Active.
+- [ ] "Keep active" closes it with no request and the focus is back on the Deactivate button; so does Escape.
+- [ ] "Deactivate test" shows "Deactivating…" with both buttons disabled (throttle the network to see it; Escape does nothing meanwhile), then closes and the row is Inactive. A double click sends one `PATCH`. Activate on the same row is still one click with no dialog.
+- [ ] With the API stopped, "Deactivate test" shows the error inside the dialog, which stays open; after restarting the API, "Deactivate test" works.
+- [ ] Type `cbc`, then `blood`, then `(`: the table narrows at each keystroke (code or name, any case, spaces at the ends ignored; `(` and `.*` match only that text), and "3 of 8 tests" style text under the box follows. No request is sent for any of it. A search that matches nothing shows "No lab test matches this search." with "Clear the search", which restores every test.
+- [ ] The address shows `?q=<text>` while typing and no `?q` when the box is empty. Reload, or Back after leaving the page and returning, keeps the text and the filtered list.
+- [ ] With a search active, edit a test, deactivate one and activate it again: the search stays, and an edited test that no longer matches leaves the list.
+- [ ] Inactive tests are found by the search like active ones (a deactivated `TSH` still shows for `tsh`).
+
 ### Patients: add and list (LAB-08)
 
 - [ ] After `pnpm db:seed`, Patients lists exactly 6 patients, sorted by last name (Example, Patient, Person, Record, Sample, Tester). With the table empty (`truncate patients` in `psql`), the page shows "No patients yet. Add the first one with New patient."
