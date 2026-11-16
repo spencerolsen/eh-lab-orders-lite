@@ -14,26 +14,37 @@ import {
   type OrderTransitionBody,
 } from '../../shared/orders';
 import { apiFetch } from '../api/client';
-import type { OrderFilters } from './filters';
+import {
+  isDefaultSort,
+  type OrderFilters,
+  type OrderSortState,
+} from './filters';
 
 // The TanStack Query key of the order list; placing an order (LAB-12),
 // changing a status (LAB-16) and cancelling (LAB-17) refresh it.
 export const ORDERS_KEY = ['orders'] as const;
 
-// The list's key: every filter combination is its own cache entry.
-export const orderListKey = (filters: OrderFilters) =>
-  [...ORDERS_KEY, 'list', filters] as const;
+// The list's key: every filter and sort combination is its own cache entry,
+// so a new sort starts again from the first page.
+export const orderListKey = (filters: OrderFilters, sort: OrderSortState) =>
+  [...ORDERS_KEY, 'list', filters, sort] as const;
 
 // One page of the list: the orders matching `filters`, starting at `offset`
 // (the server's default page size; docs/api.md).
 export async function fetchOrders(
   filters: OrderFilters,
+  sort: OrderSortState,
   offset: number,
   signal?: AbortSignal,
 ): Promise<OrderList> {
   const params = new URLSearchParams();
   if (filters.status) params.set('status', filters.status);
   if (filters.patientId) params.set('patientId', filters.patientId);
+  // The default sort is left to the server's default.
+  if (!isDefaultSort(sort)) {
+    params.set('sort', sort.sort);
+    params.set('dir', sort.dir);
+  }
   if (offset > 0) params.set('offset', String(offset));
   const query = params.toString();
   return orderListSchema.parse(

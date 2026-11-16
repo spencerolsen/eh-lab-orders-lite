@@ -1,6 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { Link } from 'react-router';
 
+import type { OrderSort } from '../../shared/orders';
 import { formatDate, formatDateTime } from '../../shared/dates';
 import { formatCents } from '../../shared/money';
 import { EmptyState } from '../components/EmptyState';
@@ -9,7 +11,13 @@ import { Loading } from '../components/Loading';
 import { StatusBadge } from '../components/StatusBadge';
 import { PatientLabel, patientName } from '../patients/PatientLabel';
 import { fetchOrders, orderListKey } from './api';
-import { hasFilters, type OrderFilters } from './filters';
+import {
+  DEFAULT_SORT_STATE,
+  hasFilters,
+  nextSort,
+  type OrderFilters,
+  type OrderSortState,
+} from './filters';
 import { useOpenOrder } from './OrderDetailPanel';
 
 // The orders matching `filters`, newest first, as the server sends them, a
@@ -21,17 +29,43 @@ import { useOpenOrder } from './OrderDetailPanel';
 // column says which zone that is.
 // `showPatient` adds the Patient column (the patient page leaves it out).
 // With filters, an empty list offers `onClearFilters` when it is given.
+// `sort` and `onSortChange` make the Patient, Ready by, Status and Created
+// headers sort buttons (the server sorts; docs/api.md); without `onSortChange`
+// the headers are plain text and the order is newest first (the patient page).
 export function OrdersTable({
   filters,
   showPatient,
   onClearFilters,
+  sort = DEFAULT_SORT_STATE,
+  onSortChange,
 }: {
   filters: OrderFilters;
   showPatient: boolean;
   onClearFilters?: () => void;
+  sort?: OrderSortState;
+  onSortChange?: (sort: OrderSortState) => void;
 }) {
   const openOrder = useOpenOrder();
-  const query = useOrders(filters);
+  const query = useOrders(filters, sort);
+  // A new sort shows the loading state like a new filter does, which removes
+  // the header, so the clicked button is focused again once the new table is
+  // there.
+  const refocus = useRef<OrderSort | null>(null);
+  const header = (column: OrderSort, label: string) =>
+    onSortChange ? (
+      <SortHeader
+        column={column}
+        label={label}
+        sort={sort}
+        refocusRef={refocus}
+        onClick={() => {
+          refocus.current = column;
+          onSortChange(nextSort(sort, column));
+        }}
+      />
+    ) : (
+      <th scope="col">{label}</th>
+    );
   if (query.isPending) return <Loading label="Loading orders…" />;
   if (!query.data) {
     return (
@@ -64,16 +98,16 @@ export function OrdersTable({
       <table className="table">
         <thead>
           <tr>
-            {showPatient && <th scope="col">Patient</th>}
+            {showPatient && header('patient', 'Patient')}
             <th scope="col" className="numeric">
               Tests
             </th>
             <th scope="col" className="numeric">
               Total
             </th>
-            <th scope="col">Ready by</th>
-            <th scope="col">Status</th>
-            <th scope="col">Created ({clinicTimezone})</th>
+            {header('readyBy', 'Ready by')}
+            {header('status', 'Status')}
+            {header('created', `Created (${clinicTimezone})`)}
             <th scope="col">Details</th>
           </tr>
         </thead>
@@ -141,13 +175,65 @@ export function OrdersTable({
   );
 }
 
-// The pages of orders for these filters. The next page starts after the rows
-// already loaded (offset paging); a new filter is a new key, so it starts
-// again from the first page.
-function useOrders(filters: OrderFilters) {
+const ARROWS = { asc: '▲', desc: '▼' } as const;
+const DIRECTION_WORDS = { asc: 'ascending', desc: 'descending' } as const;
+
+// One sortable column header: a real button in the <th>, which carries
+// aria-sort. The arrow is only a picture (aria-hidden): the direction is said
+// by aria-sort and by the button's name.
+function SortHeader({
+  column,
+  label,
+  sort,
+  refocusRef,
+  onClick,
+}: {
+  column: OrderSort;
+  label: string;
+  sort: OrderSortState;
+  refocusRef: { current: OrderSort | null };
+  onClick: () => void;
+}) {
+  const active = sort.sort === column;
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? DIRECTION_WORDS[sort.dir] : 'none'}
+      className="sortable"
+    >
+      <button
+        type="button"
+        className="sort-button"
+        aria-label={
+          active
+            ? `Sort by ${label}, now ${DIRECTION_WORDS[sort.dir]}`
+            : `Sort by ${label}`
+        }
+        ref={(button) => {
+          if (button && refocusRef.current === column) {
+            refocusRef.current = null;
+            button.focus();
+          }
+        }}
+        onClick={onClick}
+      >
+        {label}
+        <span aria-hidden="true" className="sort-arrow">
+          {active ? ARROWS[sort.dir] : ''}
+        </span>
+      </button>
+    </th>
+  );
+}
+
+// The pages of orders for these filters in this order. The next page starts
+// after the rows already loaded (offset paging); a new filter or sort is a
+// new key, so it starts again from the first page.
+function useOrders(filters: OrderFilters, sort: OrderSortState) {
   return useInfiniteQuery({
-    queryKey: orderListKey(filters),
-    queryFn: ({ pageParam, signal }) => fetchOrders(filters, pageParam, signal),
+    queryKey: orderListKey(filters, sort),
+    queryFn: ({ pageParam, signal }) =>
+      fetchOrders(filters, sort, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) =>
       lastPage.hasMore
