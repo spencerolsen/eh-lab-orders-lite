@@ -72,7 +72,6 @@ It is done now, before the feature pages exist, so that every page built from LA
 - `docs/architecture.md`: the theme (roles and values), the contrast table, and where the styles live.
 - `docs/acceptance-checklist.md`: the visual checks, under Checkpoint 1.
 - `docs/plan/README.md`: this task's row in the table and its place in the dependency diagram.
-- The process log entry is written outside the repository.
 
 ## Out of scope
 

@@ -79,7 +79,7 @@ The modal (LAB-12, LAB-13) and its idempotency key (LAB-18) already exist. This 
 ## Out of scope
 
 - The idempotency behaviour on the server: LAB-18.
-- Known limitation: If a submit fails after the server already created the order, and the user then changes the patient or tests in the same open modal and resubmits, the server returns the first order as a success. Accepted by the candidate for this exercise; the fix (a new key whenever the content changes, plus a server-side fingerprint check returning 422) is recorded in the README's known limitations.
+- Known limitation: If a submit fails after the server already created the order, and the user then changes the patient or tests in the same open modal and resubmits, the server returns the first order as a success. Accepted by the author for this exercise; the fix (a new key whenever the content changes, plus a server-side fingerprint check returning 422) is recorded in the README's known limitations.
 - The live total and ready date in the modal: LAB-13.
 - Pasting a list of tests into quick-add: future version.
 - Remembering a half-filled modal after it is closed: future version.

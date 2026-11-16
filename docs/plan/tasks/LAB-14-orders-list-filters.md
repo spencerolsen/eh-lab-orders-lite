@@ -47,13 +47,12 @@ LAB-11 returns every order in one response, which is fine for a seed but not for
 - [ ] An unknown but valid-uuid `patientId` returns 200 with an empty `items` list.
 - [ ] The response has no count of all matching orders, and the repository runs one query per request.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 2).
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 
 ## Tests
 
 **Unit:** the pure function turning fetched rows and the limit into `items` and `hasMore` (fewer than, exactly, and one more than the limit); the function reading and writing filter state to and from a URL query string (defaults omitted, invalid values ignored).
 
-**Integration** (real Postgres, HTTP): each filter alone and combined; newest-first with tie-break; two pages with no overlap or gap; the exactly-`limit` boundary; every 400 case; unknown patient returns an empty list; the `cancelled` filter returns cancelled rows, which the test inserts into the test database and truncates afterwards. No hand-inserted cancelled row is ever left in the development database. Index use is checked once by hand with `EXPLAIN` and recorded in docs/process.md.
+**Integration** (real Postgres, HTTP): each filter alone and combined; newest-first with tie-break; two pages with no overlap or gap; the exactly-`limit` boundary; every 400 case; unknown patient returns an empty list; the `cancelled` filter returns cancelled rows, which the test inserts into the test database and truncates afterwards. No hand-inserted cancelled row is ever left in the development database. Index use is checked once by hand with `EXPLAIN` and recorded in the ticket.
 
 **Component:** Load more visibility; empty state with Clear filters.
 
@@ -65,7 +64,7 @@ LAB-11 returns every order in one response, which is fine for a seed but not for
 - `docs/data-model.md`: the three indexes and which query each serves.
 - `docs/architecture.md`: scaling notes: why limit and offset with `limit + 1` instead of COUNT or cursors; cursor pagination and total counts as the next step; the trade-off accepted.
 - `docs/acceptance-checklist.md`: add the filter checks under Checkpoint 2.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry, including the `EXPLAIN` result.
+- Record in the ticket: `EXPLAIN` result.
 
 ## Out of scope
 

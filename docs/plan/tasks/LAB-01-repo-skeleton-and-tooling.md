@@ -32,7 +32,6 @@ It comes first because every later task assumes these rules are already enforced
 
 **Docs**
 - The plan is already in `docs/plan/` (the index page is `docs/plan/README.md`, never `index.md`, plus `REVIEW.md` and the `tasks/` folder). It is not moved or rewritten.
-- The process log stays outside the repo for now (changed after the ticket was written). No `docs/process.md` is created and the README does not link to it. A note in `docs/plan/README.md`, under "Definition of done", says so: entries a ticket says are written in its pull request are written to the outside log at the same time, and the log is added to the repo when the candidate chooses.
 - Create exactly six stubs, each with a title, a one-sentence purpose and "To be filled in by LAB-NN": `docs/architecture.md`, `docs/api.md`, `docs/data-model.md`, `docs/data-flow.md`, `docs/testing.md`, `docs/acceptance-checklist.md`. The `docs/acceptance-checklist.md` stub has three headed sections, Checkpoint 1, Checkpoint 2 and Checkpoint 3, each stating when it runs (Checkpoint 1: once LAB-04's app-start checks and LAB-06 to LAB-12 have all merged; Checkpoint 2: once LAB-13 to LAB-17 have all merged; Checkpoint 3: in LAB-23) and what it covers (Checkpoint 1: app start and menu, catalog, patients, orders home page, placing an order; Checkpoint 2: live preview, filters, detail panel, status changes, cancel; Checkpoint 3: everything, including idempotent create, patient order history and the New order entry points). No other file exists under `docs/` apart from `plan/`.
 
 ## Acceptance criteria
@@ -43,11 +42,10 @@ It comes first because every later task assumes these rules are already enforced
 - [ ] A temporary import from `src/server` into `src/web` makes `pnpm lint` fail with a message naming the boundary; the same for `src/web` into `src/server`; `src/shared` importing either side fails too; an import of `src/shared` from either side passes.
 - [ ] `.env` is ignored by git and `.env.example` is tracked.
 - [ ] `CLAUDE.md` is a single line that imports `AGENTS.md`, and `AGENTS.md` names every command and folder rule listed above.
-- [ ] `docs/plan/` contains `README.md` (the index), `REVIEW.md` and all 23 task files, unchanged apart from this ticket, status rows and the process-log note; `docs/process.md` does not exist.
+- [ ] `docs/plan/` contains `README.md` (the index), `REVIEW.md` and all 23 task files, unchanged apart from this ticket and status rows.
 - [ ] Exactly six stub documents exist under `docs/` (architecture, api, data-model, data-flow, testing, acceptance-checklist) and each names the task that fills it in; the acceptance-checklist stub has the three Checkpoint sections.
 - [ ] No file in the repo contains app behaviour (no server, no pages, no SQL).
-- [ ] The first commit and push (the plan only) happened only after the candidate approved them.
-- [ ] The process log slice entry and test entry for this task are written to the log outside the repo at the same time as this pull request.
+- [ ] The first commit and push (the plan only) happened only after the author approved them.
 
 ## Tests
 
@@ -57,9 +55,7 @@ It comes first because every later task assumes these rules are already enforced
 ## Docs to update
 
 - `README.md` (stub), `AGENTS.md` and `CLAUDE.md` (created).
-- `docs/plan/README.md`: the note that the process log is kept outside the repo for now.
 - Stubs created for `docs/architecture.md`, `docs/api.md`, `docs/data-model.md`, `docs/data-flow.md`, `docs/testing.md`, `docs/acceptance-checklist.md`.
-- The process log (outside the repo for now): slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 - Status table in `docs/plan/README.md` (LAB-01 set to Done when merged).
 
 ## Out of scope
@@ -74,5 +70,5 @@ It comes first because every later task assumes these rules are already enforced
 1. Why is this one package with three folders and a lint rule, and not a workspace with separate packages? What does the lint rule protect?
 2. What does `src/shared` hold, and why may both server and web import it but not each other?
 3. What is `AGENTS.md` for, and why is `CLAUDE.md` only one line?
-4. Why does the plan live inside the repo, why does the process log stay outside it for now, and why was nothing pushed before you approved the first commit?
+4. Why does the plan live inside the repo, and why was nothing pushed before you approved the first commit?
 5. What does "no app behaviour yet" buy us as a first merge to `main`?

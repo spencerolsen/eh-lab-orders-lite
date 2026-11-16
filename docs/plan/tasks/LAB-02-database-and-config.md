@@ -50,7 +50,6 @@ It comes before the server because the server's first job is to read its config 
 - [ ] With no `.env` file, `pnpm dev` still starts (the copy from `.env.example` happens; checked once LAB-04 adds the script).
 - [ ] `pnpm db:test:reset` with a `TEST_DATABASE_URL` whose database name does not end in `_test` refuses to run and exits non-zero.
 - [ ] `pnpm test`, `pnpm lint` and `pnpm typecheck` pass.
-- [ ] The `docs/process.md` slice log entry and test log entry for this task were written in the same pull request.
 
 ## Tests
 
@@ -64,7 +63,6 @@ It comes before the server because the server's first job is to read its config 
 - `README.md` (prerequisites and the database commands), `AGENTS.md` (db commands, migration rules: never edit an applied file, add a new one; every task extends `db:seed`, each seeded row has a fixed key and is inserted with `on conflict do nothing`).
 - `docs/architecture.md` (database section: Postgres in Docker, port 5433, two databases).
 - `docs/data-model.md` (only `schema_migrations` exists so far, and the date rule).
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 
 ## Out of scope
 

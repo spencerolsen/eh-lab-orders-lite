@@ -45,7 +45,6 @@ LAB-12 lets a user place an order but hides what it costs and when it will be re
 - [ ] Quote and create return identical `totalCents` and `estimatedReadyDate` for the same test list with the same injected `clock` time.
 - [ ] If the quote request fails, "Submit order" still works and the summary shows the request id.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 2).
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 
 ## Tests
 
@@ -61,7 +60,6 @@ LAB-12 lets a user place an order but hides what it costs and when it will be re
 - `docs/data-flow.md`: the preview flow beside the place-an-order flow.
 - `docs/architecture.md`: quote and create share the domain functions and the test-list validation.
 - `docs/acceptance-checklist.md`: add the preview checks under Checkpoint 2.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 
 ## Out of scope
 

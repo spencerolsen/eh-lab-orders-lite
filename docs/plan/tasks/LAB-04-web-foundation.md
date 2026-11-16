@@ -47,7 +47,6 @@ It comes right after the API foundation because the client must understand the e
 - [ ] A component that throws during render shows the fallback screen.
 - [ ] Every link and button can be reached with the keyboard, in order, with a visible focus outline.
 - [ ] `pnpm build` succeeds, and `pnpm lint`, `pnpm typecheck` and `pnpm test` pass.
-- [ ] The `docs/process.md` slice log entry and test log entry for this task were written in the same pull request.
 
 ## Tests
 
@@ -62,7 +61,6 @@ It comes right after the API foundation because the client must understand the e
 - `docs/data-flow.md` (first diagram: the path of an API error from server to the message on screen).
 - `docs/testing.md` (the component test layer and how to run it).
 - `docs/acceptance-checklist.md`: add the app-starts and menu checks under Checkpoint 1.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 
 ## Out of scope
 

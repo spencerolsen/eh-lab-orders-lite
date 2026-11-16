@@ -49,7 +49,6 @@ Nothing new is built on the server. The orders list already filters by patient (
 - [ ] If the orders request fails, the section shows a message containing the request id, and the patient form can still be edited and saved.
 - [ ] The patient page and the orders page use the same `OrderDetailPanel` and the same orders table component (one import each, no copy).
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 3).
-- [ ] The docs/process.md slice log entry and test log entry for this task were written in the same pull request.
 
 ## Tests
 
@@ -68,7 +67,6 @@ Nothing new is built on the server. The orders list already filters by patient (
 - `docs/acceptance-checklist.md`: add the checks from the criteria above, under Checkpoint 3, subheading "Patient page".
 - `docs/architecture.md`: state that `OrderDetailPanel` and the orders table are shared by the orders page and the patient page, and that the open order lives in the URL.
 - `AGENTS.md`: one line saying a new place that shows orders reuses the shared table and panel and does not copy them.
-- docs/process.md: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 
 ## Out of scope
 

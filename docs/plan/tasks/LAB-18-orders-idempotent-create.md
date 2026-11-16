@@ -10,7 +10,7 @@
 
 This task makes placing an order safe to repeat. After it, a double-click on the "Submit order" button, a slow network that makes the browser retry, or a second tab sending the same request creates one lab order, not two. A repeat of the same request returns the order that already exists.
 
-It comes after the New order modal is complete (LAB-13) so that it does not collide with the modal and create-path work, and it protects that flow without changing what a user sees when things go well. A duplicate lab order is a real cost (two specimens, two charges), so the guard is a minimal, correct version: a key made by the browser, stored on the order in a unique column. Expiring old keys and scoping keys per user are known limits, recorded in the docs/process.md entry and gathered in the README by LAB-22, not built.
+It comes after the New order modal is complete (LAB-13) so that it does not collide with the modal and create-path work, and it protects that flow without changing what a user sees when things go well. A duplicate lab order is a real cost (two specimens, two charges), so the guard is a minimal, correct version: a key made by the browser, stored on the order in a unique column. Expiring old keys and scoping keys per user are known limits, recorded in the ticket and gathered in the README by LAB-22, not built.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 - [ ] Closing and reopening the modal and submitting again creates a new order (new key).
 - [ ] A replay writes a `warn` line `order.create_replayed` with no patient data, and no second `order.created` line.
 - [ ] This slice's manual checks (the double-click check) are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 3).
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request, and the entry lists the limitations: keys never expire, keys are not scoped per user, a replay with a different body is not detected (including the changed-patient case in the known limitation under Out of scope).
+- [ ] The ticket records the limitations: keys never expire, keys are not scoped per user, a replay with a different body is not detected (including the changed-patient case in the known limitation under Out of scope).
 
 ## Tests
 
@@ -72,14 +72,13 @@ It comes after the New order modal is complete (LAB-13) so that it does not coll
 - `docs/api.md`: the `Idempotency-Key` header, 201 versus 200, and the 400 case.
 - `docs/data-flow.md`: the create flow with the replay branch.
 - `docs/acceptance-checklist.md`: add the double-click check under Checkpoint 3.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why, including why a browser-made key and why `ON CONFLICT DO NOTHING`) and test log entry.
 
 ## Out of scope
 
 - Expiring old keys: future version.
 - Scoping keys per user: needs login, future version.
 - Rejecting a reused key with a different body: future version.
-- Known limitation: If a submit fails after the server already created the order, and the user then changes the patient or tests in the same open modal and resubmits, the server returns the first order as a success. Accepted by the candidate for this exercise; the fix (a new key whenever the content changes, plus a server-side fingerprint check returning 422) is recorded in the README's known limitations.
+- Known limitation: If a submit fails after the server already created the order, and the user then changes the patient or tests in the same open modal and resubmits, the server returns the first order as a success. Accepted by the author for this exercise; the fix (a new key whenever the content changes, plus a server-side fingerprint check returning 422) is recorded in the README's known limitations.
 - Idempotency for transitions and cancel: already safe through the conditional update (LAB-16, LAB-17).
 - Duplicate patient detection: LAB-10.
 

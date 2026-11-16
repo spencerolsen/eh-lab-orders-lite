@@ -30,7 +30,7 @@ It comes before any feature because the logging standard, the status-code rules 
 - Request completion is logged once at `info` (method, route pattern, status, duration). Request bodies, query strings and headers are never logged; the logged route is the pattern (`/api/patients/:id`), not the raw URL.
 - The pool's `'error'` listener from LAB-02 (`createPool` in `src/server/db/pool.ts`, event `db.pool_error`) switches from `console.error` to the pino logger, still logging the error code only and no connection details.
 - The pool wrapper in `src/server/db/` logs each query's duration at `debug` level, with the request id when there is one. It logs no SQL parameters and no row data.
-- Levels follow the logging standard, written down by this task as its own section of `docs/architecture.md` (changed after the ticket was written: it pointed at `docs/process.md`, which is not in the repository): `debug` developer detail; `info` things that happened (`app.started`, `app.shutting_down`); `warn` expected refusals (4xx from the typed errors); `error` unexpected breaks (500s, with stack) and an unreachable database. Event names are stable and dotted. Only ids and counts go into log fields.
+- Levels follow the logging standard, written down by this task as its own section of `docs/architecture.md`: `debug` developer detail; `info` things that happened (`app.started`, `app.shutting_down`); `warn` expected refusals (4xx from the typed errors); `error` unexpected breaks (500s, with stack) and an unreachable database. Event names are stable and dotted. Only ids and counts go into log fields.
 
 **Tooling**
 - The API runs under `tsx` (for example `tsx watch --env-file=.env src/server/main.ts`), and imports stay extensionless (`../shared/money`). Plain `node` cannot resolve extensionless TypeScript imports, so it is not used to run the server.
@@ -52,7 +52,6 @@ It comes before any feature because the logging standard, the status-code rules 
 - [ ] The Vitest integration project sets `fileParallelism: false`, and two integration test files that each insert a row both start with an empty table.
 - [ ] Sending `SIGTERM` while a request is running lets that request finish, then exits 0.
 - [ ] `pnpm lint`, `pnpm typecheck` and `pnpm test` pass.
-- [ ] The `docs/process.md` slice log entry and test log entry for this task were written in the same pull request.
 
 ## Tests
 
@@ -66,7 +65,6 @@ It comes before any feature because the logging standard, the status-code rules 
 - `docs/architecture.md` (server structure, where errors and logging live, and the logging standard).
 - `docs/testing.md` (the kinds of test, the harness, `TEST_DATABASE_URL` and the `_test` guard, truncate not transaction, files run one at a time, `pnpm test` starts the database unless `CI` is set).
 - `AGENTS.md` (how to add a route and which error class to throw), `README.md` (run and test commands).
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 
 ## Out of scope
 

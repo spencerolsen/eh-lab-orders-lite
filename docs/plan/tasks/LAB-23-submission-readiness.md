@@ -40,12 +40,11 @@ It comes last because every check needs the finished app and docs. Most of its o
 - [ ] On that fresh clone, `pnpm test` passes and `pnpm test:e2e` passes.
 - [ ] The latest run of the pull request checks on `main` is green.
 - [ ] Checkpoint 3: every item in `docs/acceptance-checklist.md` (all three checkpoint sections, including idempotent create, patient order history and New order from both entry points) has a pass recorded for the final build, with the date.
-- [ ] Every bug the exploratory pass found has a test that failed before the fix and passes now, each on its own branch; the bug list is in `docs/process.md`.
+- [ ] Every bug the exploratory pass found has a test that failed before the fix and passes now, each on its own branch; the bug list is in the ticket.
 - [ ] `knip` run once reports zero unused dependencies and zero unused exports; a search of `src/` finds no `console.log`, TODO or commented-out code.
 - [ ] A search of the repo finds no real personal data, no secrets, and no log call that includes a name, date of birth, contact detail or search text.
 - [ ] `docs/plan/README.md` marks LAB-01 to LAB-23 as Done.
 - [ ] The README and `docs/` still match the code after the fixes (the LAB-22 route and column comparisons are re-run and identical).
-- [ ] The docs/process.md slice log entry and test log entry for this task were written in the same pull request.
 
 ## Tests
 
@@ -59,7 +58,7 @@ It comes last because every check needs the finished app and docs. Most of its o
 - `docs/testing.md`: any tests the pass added, in the right layer.
 - `README.md`: only the fixes the fresh-clone test demands, and the final hours figure.
 - `docs/plan/README.md`: statuses set to Done.
-- docs/process.md: slice log entry (what was asked for, what was rejected or changed and why) and test log entry, including the exploratory bug list.
+- Record in the ticket: exploratory bug list.
 
 ## Out of scope
 
