@@ -1,9 +1,16 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
-import { LAB_TEST_MESSAGES, type LabTest } from '../../shared/lab-tests';
-import { renderApp } from '../testing/render';
+import {
+  CATALOG_SEARCH_MAX_LENGTH,
+  LAB_TEST_MESSAGES,
+  type LabTest,
+} from '../../shared/lab-tests';
+import { App } from '../App';
+import { renderApp, testQueryClient } from '../testing/render';
 import { CODE_LOCKED_HELP, PRICE_MESSAGE } from './LabTestForm';
 
 function labTest(code: string, fields: Partial<LabTest> = {}): LabTest {
@@ -608,30 +615,22 @@ describe('the edit form', () => {
   });
 });
 
-describe('Activate and Deactivate', () => {
-  it('deactivates TSH at once, marks the row Inactive, and activates it again', async () => {
-    const list = [CBC, TSH];
+describe('Activate', () => {
+  const OFF = { ...TSH, isActive: false };
+
+  it('activates at once, with no dialog, and shows the row Active', async () => {
+    const list = [CBC, OFF];
     const fetch = fakeApi({ list, onPatch: patchInto(list) });
     renderApp('/catalog');
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Deactivate TSH' }),
+      await screen.findByRole('button', { name: 'Activate TSH' }),
     );
 
-    const activate = await screen.findByRole('button', {
-      name: 'Activate TSH',
-    });
-    const row = activate.closest('tr') as HTMLElement;
-    expect(within(row).getByText('Inactive')).toBeTruthy();
-    expect(row.className).toBe('muted');
-    expect(rowTexts()[0]?.[4]).toBe('Active');
-
-    await userEvent.click(activate);
-
     await screen.findByRole('button', { name: 'Deactivate TSH' });
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(rowTexts()[1]?.[4]).toBe('Active');
     expect(patches(fetch)).toEqual([
-      [`/api/lab-tests/${TSH.id}`, { isActive: false }],
       [`/api/lab-tests/${TSH.id}`, { isActive: true }],
     ]);
   });
@@ -639,14 +638,12 @@ describe('Activate and Deactivate', () => {
   it('disables only that row button while its request runs', async () => {
     let answer: (reply: Reply) => void = () => {};
     fakeApi({
-      list: [CBC, TSH],
+      list: [CBC, OFF],
       onPatch: () => new Promise<Reply>((resolve) => (answer = resolve)),
     });
     renderApp('/catalog');
 
-    const button = await screen.findByRole('button', {
-      name: 'Deactivate TSH',
-    });
+    const button = await screen.findByRole('button', { name: 'Activate TSH' });
     await userEvent.click(button);
 
     await waitFor(() =>
@@ -657,18 +654,18 @@ describe('Activate and Deactivate', () => {
         .disabled,
     ).toBe(false);
 
-    answer({ status: 200, body: { ...TSH, isActive: false } });
+    answer({ status: 200, body: { ...TSH, isActive: true } });
     await waitFor(() =>
       expect((button as HTMLButtonElement).disabled).toBe(false),
     );
   });
 
   it('shows the message and fetches the list again when the test is gone (404)', async () => {
-    const fetch = fakeApi({ list: [TSH], onPatch: () => notFound });
+    const fetch = fakeApi({ list: [OFF], onPatch: () => notFound });
     renderApp('/catalog');
 
     const button = await screen.findByRole('button', {
-      name: 'Deactivate TSH',
+      name: 'Activate TSH',
     });
     const before = listRequests(fetch);
     await userEvent.click(button);
@@ -686,5 +683,453 @@ describe('Activate and Deactivate', () => {
     expect(screen.queryAllByRole('button', { name: /delete|remove/i })).toEqual(
       [],
     );
+  });
+});
+
+describe('the Deactivate confirmation', () => {
+  async function openDialog(code = 'TSH') {
+    const opener = await screen.findByRole('button', {
+      name: `Deactivate ${code}`,
+    });
+    await userEvent.click(opener);
+    return { opener, dialog: await screen.findByRole('dialog') };
+  }
+
+  it('opens naming the test and what deactivating does, and sends nothing yet', async () => {
+    const fetch = fakeApi({ list: [CBC, TSH] });
+    renderApp('/catalog');
+
+    const { dialog } = await openDialog();
+
+    expect(
+      within(dialog).getByRole('heading', { name: 'Deactivate TSH?' }),
+    ).toBeTruthy();
+    expect(dialog.getAttribute('aria-labelledby')).toBeTruthy();
+    expect(dialog.textContent).toContain('TSH');
+    expect(dialog.textContent).toContain('Thyroid Stimulating Hormone');
+    expect(dialog.textContent).toContain(
+      'It can no longer be added to new orders. Orders that already include it keep it.',
+    );
+    expect(
+      within(dialog).getByRole('button', { name: 'Deactivate test' }),
+    ).toBeTruthy();
+    expect(patches(fetch)).toEqual([]);
+    // The safe button has the focus.
+    expect(document.activeElement).toBe(
+      within(dialog).getByRole('button', { name: 'Keep active' }),
+    );
+  });
+
+  it('Keep active closes it with no request, and the focus returns to the row button', async () => {
+    const fetch = fakeApi({ list: [CBC, TSH] });
+    renderApp('/catalog');
+    const { opener, dialog } = await openDialog();
+
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Keep active' }),
+    );
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(patches(fetch)).toEqual([]);
+    expect(rowTexts()[1]?.[4]).toBe('Active');
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('Escape closes it with no request, and the focus returns', async () => {
+    const fetch = fakeApi({ list: [CBC, TSH] });
+    renderApp('/catalog');
+    const { opener } = await openDialog();
+
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(patches(fetch)).toEqual([]);
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('confirming sends exactly one request, then closes and shows the row Inactive', async () => {
+    const list = [CBC, TSH];
+    const fetch = fakeApi({ list, onPatch: patchInto(list) });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Deactivate test' }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(rowTexts()[1]?.[4]).toBe('Inactive');
+    expect(
+      screen.getByRole('button', { name: 'Activate TSH' }).closest('tr')
+        ?.className,
+    ).toBe('muted');
+    expect(patches(fetch)).toEqual([
+      [`/api/lab-tests/${TSH.id}`, { isActive: false }],
+    ]);
+  });
+
+  it('a double click on the confirming button sends one request', async () => {
+    const list = [CBC, TSH];
+    const fetch = fakeApi({ list, onPatch: patchInto(list) });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+
+    await userEvent.dblClick(
+      within(dialog).getByRole('button', { name: 'Deactivate test' }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(patches(fetch)).toHaveLength(1);
+  });
+
+  it('keeps the dialog open with both buttons disabled while the request runs, and ignores Escape', async () => {
+    let answer: (reply: Reply) => void = () => {};
+    fakeApi({
+      list: [CBC, TSH],
+      onPatch: () => new Promise<Reply>((resolve) => (answer = resolve)),
+    });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Deactivate test' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole<HTMLButtonElement>('button', {
+          name: 'Deactivating…',
+        }).disabled,
+      ).toBe(true),
+    );
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>('button', {
+        name: 'Keep active',
+      }).disabled,
+    ).toBe(true);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    // No optimistic update: the row is still Active.
+    expect(rowTexts()[1]?.[4]).toBe('Active');
+
+    answer({ status: 200, body: { ...TSH, isActive: false } });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('shows a failure inside the dialog, keeps it open, and a retry works', async () => {
+    const list = [CBC, TSH];
+    let failing = true;
+    const fetch = fakeApi({
+      list,
+      onPatch: (id, body) =>
+        failing
+          ? {
+              status: 500,
+              body: {
+                error: {
+                  code: 'INTERNAL_ERROR',
+                  message: 'Something went wrong on our side',
+                  requestId: 'req-patch-500',
+                },
+              },
+            }
+          : patchInto(list)(id, body),
+    });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Deactivate test' }),
+    );
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent).toContain('Reference: req-patch-500');
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>('button', {
+        name: 'Deactivate test',
+      }).disabled,
+    ).toBe(false);
+    expect(rowTexts()[1]?.[4]).toBe('Active');
+
+    failing = false;
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Deactivate test' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(rowTexts()[1]?.[4]).toBe('Inactive');
+    expect(patches(fetch)).toHaveLength(2);
+  });
+
+  it('a failure is gone when the dialog is closed and opened again', async () => {
+    fakeApi({ list: [CBC, TSH], onPatch: () => ({ status: 500 }) });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Deactivate test' }),
+    );
+    await within(dialog).findByRole('alert');
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Keep active' }),
+    );
+
+    const again = (await openDialog()).dialog;
+    expect(within(again).queryByRole('alert')).toBeNull();
+  });
+});
+
+function CurrentUrl() {
+  const location = useLocation();
+  return (
+    <output data-testid="url">{location.pathname + location.search}</output>
+  );
+}
+
+function renderAt(path: string) {
+  render(
+    <QueryClientProvider client={testQueryClient()}>
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+        <CurrentUrl />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+const url = () => screen.getByTestId('url').textContent;
+const box = () =>
+  screen.getByRole<HTMLInputElement>('searchbox', {
+    name: 'Search by code or name',
+  });
+// The "3 of 8 tests" line, a polite live region.
+const count = () => {
+  const found = screen.getByText(/^\d+ of \d+ tests?$/);
+  expect(found.getAttribute('role')).toBe('status');
+  return found;
+};
+const codesShown = () => rowTexts().map((row) => row[0]);
+
+const CMP = labTest('CMP', {
+  id: '10000000-0000-4000-8000-000000000003',
+  name: 'Comprehensive Metabolic Panel (14)',
+});
+const OLD = labTest('VITD', {
+  id: '10000000-0000-4000-8000-000000000004',
+  name: 'Vitamin D',
+  isActive: false,
+});
+const FOUR = [CBC, CMP, OLD, TSH];
+
+describe('the catalog search', () => {
+  it('has a visible label and shows every test with the count', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+
+    expect(box().maxLength).toBe(CATALOG_SEARCH_MAX_LENGTH);
+    expect(screen.getByText('Search by code or name')).toBeTruthy();
+    expect(codesShown()).toEqual(['CBC', 'CMP', 'VITD', 'TSH']);
+    expect(count().textContent).toBe('4 of 4 tests');
+  });
+
+  it('matches part of a code', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'cmp');
+    expect(codesShown()).toEqual(['CMP']);
+  });
+
+  it('matches part of a name', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'blood');
+    expect(codesShown()).toEqual(['CBC']);
+  });
+
+  it('ignores case and spaces at the ends', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), '  tHyRoid ');
+    expect(codesShown()).toEqual(['TSH']);
+  });
+
+  it('treats special characters as plain text', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), '(14)');
+    expect(codesShown()).toEqual(['CMP']);
+    await userEvent.clear(box());
+    await userEvent.type(box(), '.*');
+    expect(screen.queryByRole('table')).toBeNull();
+    await userEvent.clear(box());
+    await userEvent.type(box(), '[[');
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(count().textContent).toBe('0 of 4 tests');
+  });
+
+  it('shows the no-match state, different from the empty catalog, and Clear brings everything back', async () => {
+    const fetch = fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+
+    await userEvent.type(box(), 'zzz');
+
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByText('No lab test matches this search.')).toBeTruthy();
+    expect(
+      screen.queryByText('No lab tests yet. Add the first one below.'),
+    ).toBeNull();
+    expect(count().textContent).toBe('0 of 4 tests');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Clear the search' }),
+    );
+    expect(box().value).toBe('');
+    expect(codesShown()).toHaveLength(4);
+    // No request for any of it: the list is searched in the browser.
+    expect(listRequests(fetch)).toBe(1);
+  });
+
+  it('says "1 of 4 tests" after a narrowing', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'cbc');
+    expect(count().textContent).toBe('1 of 4 tests');
+  });
+
+  it('searches inactive tests like active ones', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'vitamin');
+    expect(rowTexts()).toEqual([
+      ['VITD', 'Vitamin D', '$10.00', '1 business day', 'Inactive'],
+    ]);
+  });
+
+  it('writes the text to the address, replacing history, and omits it when empty', async () => {
+    fakeApi({ list: FOUR });
+    renderAt('/catalog');
+    await screen.findByRole('table');
+    expect(url()).toBe('/catalog');
+
+    await userEvent.type(box(), 'cb');
+    expect(url()).toBe('/catalog?q=cb');
+    await userEvent.clear(box());
+    expect(url()).toBe('/catalog');
+  });
+
+  it('starts from ?q= in the address', async () => {
+    fakeApi({ list: FOUR });
+    renderAt('/catalog?q=thyroid');
+    await screen.findByRole('table');
+    expect(box().value).toBe('thyroid');
+    expect(codesShown()).toEqual(['TSH']);
+  });
+
+  it('cuts an address text longer than the limit', async () => {
+    fakeApi({ list: FOUR });
+    renderAt(`/catalog?q=${'a'.repeat(CATALOG_SEARCH_MAX_LENGTH + 50)}`);
+    await screen.findByRole('searchbox');
+    expect(box().value).toHaveLength(CATALOG_SEARCH_MAX_LENGTH);
+  });
+
+  it('keeps a space typed between words', async () => {
+    fakeApi({ list: FOUR });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'blood ');
+    expect(box().value).toBe('blood ');
+    await userEvent.type(box(), 'count');
+    expect(codesShown()).toEqual(['CBC']);
+  });
+
+  it('keeps the search after an edit, and a test that no longer matches leaves', async () => {
+    const list = [CBC, CMP, TSH];
+    fakeApi({ list, onPatch: patchInto(list) });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'blood');
+    expect(codesShown()).toEqual(['CBC']);
+
+    await startEditing('CBC');
+    const name = screen.getByLabelText('Name');
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Full Blood Count');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(rowTexts()[0]?.[1]).toBe('Full Blood Count'));
+    expect(box().value).toBe('blood');
+
+    await startEditing('CBC');
+    const again = screen.getByLabelText('Name');
+    await userEvent.clear(again);
+    await userEvent.type(again, 'Count');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(count().textContent).toBe('0 of 3 tests'));
+    expect(box().value).toBe('blood');
+  });
+
+  it('keeps the search and the row state through a deactivation and an activation', async () => {
+    const list = [CBC, CMP, TSH];
+    fakeApi({ list, onPatch: patchInto(list) });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'tsh');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Deactivate TSH' }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Deactivate test',
+      }),
+    );
+    await waitFor(() => expect(rowTexts()[0]?.[4]).toBe('Inactive'));
+    expect(codesShown()).toEqual(['TSH']);
+    expect(box().value).toBe('tsh');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Activate TSH' }));
+    await waitFor(() => expect(rowTexts()[0]?.[4]).toBe('Active'));
+    expect(codesShown()).toEqual(['TSH']);
+  });
+
+  it('keeps the search when a test is added, and shows the new row if it matches', async () => {
+    const list: LabTest[] = [CBC];
+    fakeApi({
+      list,
+      onPost: (body) => {
+        const created = labTest(String(body.code), {
+          id: '10000000-0000-4000-8000-000000000099',
+          name: String(body.name),
+        });
+        list.push(created);
+        return { status: 201, body: created };
+      },
+    });
+    renderApp('/catalog');
+    await screen.findByRole('table');
+    await userEvent.type(box(), 'panel');
+    expect(screen.queryByRole('table')).toBeNull();
+
+    await fillForm({
+      code: 'DEMO-09',
+      name: 'Demo Panel',
+      price: '1',
+      turnaround: '1',
+    });
+
+    await waitFor(() => expect(codesShown()).toEqual(['DEMO-09']));
+    expect(box().value).toBe('panel');
+  });
+
+  it('has no search box while the catalog is empty', async () => {
+    fakeApi({ list: [] });
+    renderApp('/catalog');
+    await screen.findByText('No lab tests yet. Add the first one below.');
+    expect(screen.queryByRole('searchbox')).toBeNull();
   });
 });

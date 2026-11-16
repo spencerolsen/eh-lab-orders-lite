@@ -649,3 +649,8 @@ dialog h2 {
 .suggestions li[aria-selected='true'] {
   border-left-color: var(--color-brand);
 }
+
+/* "3 of 8 tests" under the catalog search box (LAB-27). */
+.search-status {
+  margin: var(--space-2) 0 var(--space-3);
+}
