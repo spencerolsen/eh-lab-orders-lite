@@ -10,7 +10,7 @@ The plan is sound enough to start. The data model, the status rules, the error-c
 2. **A fresh clone will not start, and the test database is not wired up.** The plan loads `.env` with Node's `--env-file` flag, but no ticket creates `.env`, and Node exits when the file is missing. Separately, no ticket says how the integration tests find `lab_orders_test` when `DATABASE_URL` points at the development database.
 3. **The README does not yet cover two things the brief asks for**: an architecture overview and a known-limitations section. Several tickets promise that limitations are "gathered in the README by LAB-22", but LAB-22 has no section for them.
 
-The overall size (23 pull requests, each with docs and an AI browser pass) is the biggest judgement call. It is defensible, but each ticket carries a lot of repeated ceremony, and the brief says "Keep it small but thoughtful".
+The overall size (23 pull requests, each with docs and an AI browser pass) is the biggest judgement call. It is defensible, but each ticket carries a lot of repeated ceremony, and the brief asks for a small but thoughtful solution.
 
 Findings: **2 high, 5 medium, 9 low.**
 
@@ -29,7 +29,7 @@ Findings: **2 high, 5 medium, 9 low.**
 
 **Scenario.** A user submits CBC for patient A. The server creates the order, but the response is lost (timeout, proxy 502), so the modal shows an error. The user notices the wrong patient, clicks "change", picks patient B and submits again. The same key goes out, the server finds it, returns patient A's order with 200, and the modal closes as if B's order were placed. B has no order, and A has an order nobody meant to place. The same happens if the user adds or removes a test before retrying.
 
-**Why it matters.** The brief itself says "A wrong patient on an order is a safety issue". The plan calls this the "minimal, correct version", and a reviewer who probes it will find the hole quickly. LAB-18 lists "a replay with a different body is not detected" as a known limitation, but the UI then *creates* such replays on purpose.
+**Why it matters.** In a clinic, an order recorded against the wrong patient is a safety issue, and this is the reviewer's own point. The plan calls this the "minimal, correct version", and a reviewer who probes it will find the hole quickly. LAB-18 lists "a replay with a different body is not detected" as a known limitation, but the UI then *creates* such replays on purpose.
 
 **Recommended change.** Do both. Each is a few lines:
 - **UI:** reuse the key only for an identical retry. Make a new key whenever the patient or the set of tests changes. Change the LAB-20 criterion and component test to say that changing the patient *does* produce a new key.
@@ -47,7 +47,7 @@ Findings: **2 high, 5 medium, 9 low.**
 
 I checked the flag on Node 22.21: `node --env-file=.env-missing -e …` prints `node: .env-missing: not found` and exits with code 9. So the reviewer's first `pnpm dev` fails before the config check ever runs.
 
-**Why it matters.** "A working app we can run locally" is the first deliverable in the brief. LAB-04's fresh-clone criterion would probably catch this, but no ticket says what the fix is, so it gets improvised under time pressure.
+**Why it matters.** An app that runs locally is the first deliverable the brief asks for. LAB-04's fresh-clone criterion would probably catch this, but no ticket says what the fix is, so it gets improvised under time pressure.
 
 **Recommended change.** Decide in LAB-02. Either (a) the `pnpm dev` script copies `.env.example` to `.env` when `.env` is missing and prints one line saying it did, or (b) use `--env-file-if-exists` (available in the pinned Node 22 line) and give `DATABASE_URL` a development default that matches `compose.yaml`. Option (a) keeps "the app refuses to start if a setting is missing" true. Add a LAB-02 criterion: "with no `.env`, `pnpm dev` still starts".
 
@@ -70,7 +70,7 @@ I checked the flag on Node 22.21: `node --env-file=.env-missing -e …` prints `
 
 **Affected:** LAB-22, plus LAB-07, LAB-09, LAB-18
 
-**The problem.** The brief's README must include "Overview of your architecture/design decisions" and "Known limitations and what you'd improve with more time". LAB-22's required sections are "setup, scope, decision log, assumptions, deliberate cuts, AI usage, future versions, hours spent". There is no architecture overview (only a link to `docs/architecture.md`) and no known-limitations section. Meanwhile:
+**The problem.** The brief's README must include an overview of the architecture and design decisions, and the known limitations with what would be improved given more time. LAB-22's required sections are "setup, scope, decision log, assumptions, deliberate cuts, AI usage, future versions, hours spent". There is no architecture overview (only a link to `docs/architecture.md`) and no known-limitations section. Meanwhile:
 - LAB-07: "Two people editing the same test at once (last save wins): future version; gathered in the README by LAB-22."
 - LAB-09: the same sentence for patients.
 - LAB-18: idempotency limits are "gathered in the README by LAB-22".
@@ -99,7 +99,7 @@ LAB-22 has nowhere to put these. The "Deliberate cuts" list covers features left
 **Affected:** all tickets; plan index
 
 **The problem.**
-- The judge's earlier advice in the log: "15 hours was too much for 'keep it small'. Aim for roughly 7-9 hours of build plus the README". The later decision: "There is no deadline … the limit on scope is the brief's own 'keep it small but thoughtful'."
+- Scope decision: there is no deadline, so the limit on scope is the brief's own call for a small but thoughtful solution, not an hours budget.
 - Every vertical-slice ticket requires an "AI exploratory browser pass", updates to four to six docs files, and a walkthrough. Five groundwork pull requests land before anything a user can see.
 - The plan's own index says "The first point at which the brief's core is met … is after LAB-12. Everything from there on makes it better without being needed for it to work." That is 11 more tickets.
 - LAB-01 moves all 23 ticket files (about 160 KB) into `docs/plan/` in the submission.
