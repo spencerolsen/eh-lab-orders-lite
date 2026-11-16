@@ -111,8 +111,6 @@ LAB-22 has nowhere to put these. The "Deliberate cuts" list covers features left
 - Merge small neighbours: LAB-19 and LAB-20 (both UI-only patient-page work), and LAB-15 and LAB-16 (the panel and its first buttons).
 - Submit `docs/plan/` as the index only, or move the tickets to a folder linked from the README, so the reviewer is not handed 23 files.
 
-Also record the real hours. The log's "7-9 hours" figure will be compared with them.
-
 ### 7. Medium: "today" for date of birth has no timezone, so "tomorrow is rejected" depends on the time of day
 
 **Affected:** LAB-08, LAB-09
@@ -124,7 +122,7 @@ Also record the real hours. The log's "7-9 hours" figure will be compared with t
 
 From 5 pm Denver time onward, UTC is already on the next day. A server `today()` in UTC (and the database check) will then accept "tomorrow", and the criterion fails in the evening only. Meanwhile the ready-date rule carefully uses `CLINIC_TIMEZONE`.
 
-**Why it matters.** It produces a flaky test, and it is the same class of bug the log is proud of catching ("a date turned into a timestamp shows a day early").
+**Why it matters.** It produces a flaky test, and it is the same class of bug the plan sets out to catch ("a date turned into a timestamp shows a day early").
 
 **Recommended change.** Make the helper `today(timezone)`. The server passes `CLINIC_TIMEZONE` (the same source as the ready date), and the browser check is advisory. Keep the database check as a loose backstop, and say in `docs/data-model.md` that it runs in UTC. The unit test already injects today, which is good. Add one integration test with a fixed clock near midnight.
 
@@ -174,8 +172,6 @@ From 5 pm Denver time onward, UTC is already on the next day. A server `today()`
 - **LAB-22's own criterion fails on purpose-written text.** It requires that "A search of README.md and `docs/` finds … no `resulted`, `VALIDATION_FAILED` …". But `docs/plan/tasks/LAB-22…` contains both words. A search confirmed it. Fix: exclude `docs/plan/` from that search.
 - **The index file name.** LAB-01 and LAB-05 update "Status table in `docs/plan/index.md`", but the index is `README.md` today, and LAB-01 moves it "unchanged in content". Pick one name.
 - **The plan says the ready date is derived.** Under Future versions §6: "the total and ready date recalculated. Because both are derived from the order items, they would update on their own." The decision table says the ready date "is calculated once at order time and stored". LAB-22 copies Future versions into the README, so fix it before then.
-- **A stale open question.** The log still says "_Open: whether the catalog's turnaround unit becomes whole business days instead of hours._", but the decision table settles it ("The catalog stores turnaround in whole business days").
-- **Three layers or four.** The log says "all three layers" (unit, integration, end to end), but the plan adds a fourth, component tests (LAB-04 onward, about 20 of them). The log's "Rough count" for integration is "~12-15", and the tickets add well over 50. Update the table so the README's testing story matches the code.
 
 ### 13. Low: two different seed-idempotency mechanisms, one of them unspecified
 

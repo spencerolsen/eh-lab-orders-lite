@@ -56,7 +56,7 @@ It comes last because every check needs the finished app and docs. Most of its o
 
 - `docs/acceptance-checklist.md`: final results and date.
 - `docs/testing.md`: any tests the pass added, in the right layer.
-- `README.md`: only the fixes the fresh-clone test demands, and the final hours figure (not added: owner decision pending).
+- `README.md`: only the fixes the fresh-clone test demands. No hours figure: the brief sets no time limit and does not ask for one (an owner decision).
 - `docs/plan/README.md`: statuses set to Done.
 - Record in the ticket: exploratory bug list.
 
