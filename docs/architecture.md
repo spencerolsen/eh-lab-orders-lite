@@ -6,10 +6,10 @@ How the app is put together: the server, the web app, the database, and how they
 
 ```mermaid
 flowchart LR
-  B[Browser] -->|pages, scripts| V[Vite dev server :5173, WEB_PORT]
-  B -->|/api/..., /healthz| V
-  V -->|proxy| A[API, Fastify :PORT]
-  A -->|SQL| D[(Postgres :5433, DB_PORT)]
+  B[Browser] -->|"pages, scripts"| V["Vite dev server :5173, WEB_PORT"]
+  B -->|"/api/..., /healthz"| V
+  V -->|proxy| A["API, Fastify :PORT"]
+  A -->|SQL| D[("Postgres :5433, DB_PORT")]
 ```
 
 In development the browser talks only to Vite. Vite serves the web app and forwards `/api` and `/healthz` to the API at `http://localhost:${PORT}`, the same `PORT` setting the API listens on (`pnpm dev` checks the settings and passes the port to both). So the browser sees one origin: no CORS setup, and the web code calls relative paths such as `/api/lab-tests`. The proxy replaces what a reverse proxy or a server serving both would do in production; serving the built app from the API is out of scope for now (the reviewer runs the dev setup).

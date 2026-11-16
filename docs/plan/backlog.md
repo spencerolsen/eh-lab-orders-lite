@@ -82,6 +82,9 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 | The `?order=` parameter stays in the address for a few hundred milliseconds after Escape. | Not a bug: the browser fires the close event late. |
 | No test goes from one patient's page to another's and checks that only the second patient's orders show. | The code is correct (checked by hand), but showing one patient's orders on another's page is the worst failure this screen could have, so a test with two fake lists would be cheap insurance. |
 | A test with a fake API that repeats a row on page 2, to pin the list's duplicate-row filter. | The filter is small and the repeat is a documented limit. |
+| `onSuccess` in `OrderDetailPanel` clears the error a second time after `onMutate` already did. | Harmless; one line could go. |
+| Two click events in the same tick on Save create two patients (a script can; a person cannot). | The Save button's disabled state comes one render late; a ref set in the handler would close it. |
+| The Escape guard in the New order dialog has a gap of a few milliseconds after Submit, because it is installed in an effect after the pending render. | A person cannot hit it; a ref set in the submit handler would close it. |
 
 ## Look and layout
 
@@ -113,3 +116,8 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 | The acceptance checklist's curl lines use port 3000, the default `PORT`, and it has no section for the polish pass. | A second copy uses its own `PORT`. The checklist is for the default setup. |
 | A few comments were left unwrapped after edits (`service.ts` line 2, the order panel's opening comment, `orders/routes.ts`). | No behaviour change. |
 | `docs/plan/README.md` ordering ("8. LAB-17, LAB-20") and the LAB-20 file name `new-order-entry-points` still say "entry points" while the title says "patient page". | Fine as is. A rename would break links for no gain. |
+| LAB-20 ticks its acceptance boxes `[x]`, while LAB-12 to LAB-19 are Done with every box still `[ ]`. | One convention is wanted; not decided. |
+| The acceptance checklist has no section for the LAB-25 polish (panel heading, select arrow, New order dialog scroll), and its "Try again" step is long ("or use a throttled/blocked request"). | Optional for a polish ticket; the step is correct and usable, and shortening it is wording only. |
+| `service.ts` imports `./domain/total` before `./domain/ready-date`; alphabetical order would be tidier. | Cosmetic; lint passes. |
+| The LAB-17 ticket lists the `cancellation` fields without `cancelledAtClinic`, which `docs/api.md` has; the LAB-18 ticket says a replay returns the order "as it was created" (it returns it as stored now) and that the disabled Submit button is checked only by the checklist (a component test now checks it). | Wording only: the tickets are a record of the plan, and `docs/api.md` is the source of truth. |
+| The ready-date unit test that compares with an independent calculation for every day from 2020 to 2031 uses only turnarounds 1 and 4 and the UTC zone. | The worked examples cover longer spans and other zones. Adding 5, 10 and a non-UTC zone to the sweep is cheap but slows the unit run. |
