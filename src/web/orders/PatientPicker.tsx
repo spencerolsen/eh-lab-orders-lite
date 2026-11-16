@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { Patient } from '../../shared/patients';
+import { type Patient, SEARCH_MAX_LENGTH } from '../../shared/patients';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
@@ -53,6 +53,7 @@ export function PatientPicker({
         // Focused when it appears again after Change.
         autoFocus
         value={text}
+        maxLength={SEARCH_MAX_LENGTH}
         aria-describedby="order-patient-help"
         // Enter here cannot submit the order: Submit order stays disabled
         // until a patient is chosen, and then this box is gone.

@@ -5,6 +5,7 @@ import { userEvent } from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router';
 
+import { SEARCH_MAX_LENGTH } from '../../shared/patients';
 import { App } from '../App';
 import { fakePatientsApi, requestedUrls } from '../testing/fake-patients-api';
 import { testQueryClient } from '../testing/render';
@@ -105,4 +106,15 @@ it('has an Edit action on each row, named for the patient, opening the same page
     await screen.findByRole('link', { name: 'Edit Demo Example' }),
   );
   expect(url()).toBe('/patients/p1');
+});
+
+it('cuts a search longer than the limit, from the address, before it is sent', async () => {
+  const fetch = fakePatientsApi();
+  renderAt(`/patients?q=${'x'.repeat(400)}`);
+  await waitFor(() => expect(searches(fetch)).not.toEqual([]));
+  for (const sent of searches(fetch)) {
+    const q = new URL(sent, 'http://localhost').searchParams.get('q') ?? '';
+    expect(q.length).toBeLessThanOrEqual(SEARCH_MAX_LENGTH);
+  }
+  expect(box()).toHaveProperty('maxLength', SEARCH_MAX_LENGTH);
 });
