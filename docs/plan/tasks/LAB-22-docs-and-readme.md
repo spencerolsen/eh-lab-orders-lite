@@ -62,7 +62,7 @@ The one new document is the README, written from scratch for a reviewer who has 
 
 - New features or behaviour changes: future version. If a doc can only be made true by changing code, the change is reported, not made here.
 - Generated API docs (OpenAPI) and a docs website: future version.
-- The fresh-clone test, the AI exploratory pass, the dependency cleanup and the final hours figure: LAB-23.
+- The fresh-clone test, the AI exploratory pass, and the dependency cleanup: LAB-23.
 
 ## What to be able to explain
 
