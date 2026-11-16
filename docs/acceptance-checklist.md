@@ -4,6 +4,8 @@ The manual checks for an exploratory pass in a real browser, grouped by the chec
 
 Each task that adds something a user can see adds its checks here, under the checkpoint that covers it.
 
+Last walked on 2026-11-16 against `main`, with no failures in the items that were run; not run: the app-start guard items, the two lost-race 409 items, the 30-second timeout, throttled-network, database-down and empty-list states, the `/styles` badge tints and the `psql` price checks.
+
 ## Checkpoint 1
 
 **Runs:** once LAB-04's app-start checks and LAB-06 to LAB-12 have all merged.

@@ -26,6 +26,8 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 
 | Item | Why it was not done |
 |---|---|
+| `cancelled_at` and `updated_at` are set with the database's `now()`, while `created_at` uses the injected clock. | A test cannot fix those two times. Passing the clock's time into the two updates would make them consistent. |
+| The orders list's column list is written twice in `orders/repo.ts`: once in `LIST_ROW_SELECT` (one order) and once in the paged query (the page is cut first, then joined). | The two shapes differ on purpose, but a new filter or column has to touch both. |
 | Offset paging can repeat or skip an order when orders are created or cancelled between two pages. The screen drops a repeated row, but a skipped one stays missing until the list is reloaded. A total count would be a separate request. | Accepted: a clinic's list is short and read by a few staff. Cursor (keyset) paging on (`created_at`, `id`) is the fix. See `docs/architecture.md`, "Scaling the orders list". |
 | Nothing stops the browser or a route from doing its own total or ready-date arithmetic (a sum that gives the same number today). The rule is held by convention and review, and nothing enforces that the total has one implementation. | It would drift only if `calculateTotal` changes (for example discounts). A lint or import rule, or a unit test that stubs `calculateTotal`, would guard it. |
 | `estimateReadyDate` has no upper bound on a turnaround: it steps one day at a time, so an absurd value (about 1e9) would take about 30 seconds. | The catalog caps turnarounds at 1 to 365, in the schema and the database, so no such value reaches it. Refusing `turnaroundDays > MAX_TURNAROUND_DAYS` with the same `RangeError` would close it. |
@@ -55,6 +57,7 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 | `?q=a&q=b` is refused with the reason "must be text"; "must be given once" would be clearer. | Still a correct 400, and the app's pages never send `q` twice. |
 | A name made only of invisible characters (a zero-width space) is accepted, and so is a cancel note or name made only of them, because `trim` does not treat them as whitespace. | Rare, harmless to store, and not something a person types by accident. Refusing it means deciding which Unicode format characters count as blank. |
 | Two people editing the same patient or the same lab test: the last save wins, silently. | Accepted: a handful of staff edit rarely. The fix is optimistic locking: send the `updated_at` (or a version number) that was loaded, and answer 409 when the row has changed. |
+| The patient list without a search (`GET /api/patients`) is not paged or capped, and the Patients page loads it whole. | A clinic's patient list is short. Paging or a cap goes with the first need for it. |
 | Only US phone numbers with an area code are accepted. | The clinic's patients have US numbers. Other countries would need the country code kept and a different length rule and display. |
 
 ## Catalog
@@ -66,6 +69,8 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 | "This code already exists" stays under the Code field while the user edits it, until the next submit. A failed Activate or Deactivate leaves its message above the table until the next toggle. | The messages stay true until the user retries. Clearing them on change is small polish. |
 | The test that lab test updates log no request values searches the log text for the sent name and the key `priceCents`, so a value logged under another key would pass. | The test catches the realistic mistake. Checking that `lab_test.updated` has exactly the expected keys would be stricter. |
 | The two `centsToDollarsText` test blocks overlap. | Harmless duplication in tests. |
+| The catalog list (`GET /api/lab-tests`) is not paged: it returns every test, and the catalog page and quick-add load it whole. | A catalog of a few dozen tests is the expected size. Paging or a search goes with the first need for it. |
+| Three styles of Postgres error detection: `violates()` in `orders/repo.ts`, `instanceof pg.DatabaseError` in `patients/repo.ts` and `isCodeTaken` in `catalog/repo.ts`. And `catalogRoutes(app, pool)` takes the pool while the other route functions take `(app, deps)`. | All work and are tested. One shared helper and one signature would be tidier. |
 
 ## Web screens: keyboard, focus and messages
 
@@ -75,6 +80,8 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 | "Keep order" stays enabled while a cancel request is in flight: it closes the form while the cancel still lands. | Harmless (the success still shows), but it can look like the cancel was abandoned. Disable it while sending. |
 | Field errors in the cancel form stay after the person fixes the field, until the next submit. | Clearing each on edit is small polish. |
 | Typed New order dialog content is discarded on Escape without a warning. | Acceptable for a small clinic. |
+| Escape inside the open cancel form closes the whole order panel and drops the typed note and name. | Nothing was sent, so nothing is lost but typing. Closing only the form on the first Escape is polish. |
+| An unknown or invalid `status`, `patientId` or `limit` in the orders page address is ignored without a message, and the full list shows. | Harmless: the page only builds valid addresses itself. A one-line notice would say what was dropped. |
 | ArrowUp with nothing highlighted highlights the first suggestion even while the list is closed. | Harmless: typing resets it, and the list is not shown. |
 | Quick-add shows nothing when no test matches what was typed. | A "No tests match" hint would help. |
 | After Change, the patient search box starts empty. | Keeping the last search text would save typing. |
@@ -92,6 +99,7 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 |---|---|
 | The global `input` rule also pads and borders checkboxes and radios. | No page uses one. The first that does adds `input:not([type='checkbox'], [type='radio'])`. |
 | An `ordered` badge inside a hovered table row is tint on tint, so its pill edge disappears (the word stays readable). | Cosmetic, and the status word is always shown. |
+| The menu bar overflows below desktop width (at 375 px "Catalog" is cut off and the page scrolls sideways). | Desktop only (1024 px and wider) is the stated scope. |
 | The footer text sits at the window's left edge while the page content is centred. | Cosmetic. |
 | At 1024 wide the orders table's patient column is the squeezed one. | Fine as is. |
 | The suggestions in quick-add sit in the page flow and push the chosen-tests table down. | Works and is readable. A floating list is a look decision. |
@@ -100,6 +108,11 @@ Things that were found and deliberately not done, grouped by theme. Each line sa
 
 | Item | Why it was not done |
 |---|---|
+| `pnpm audit` reports one moderate advisory (minimatch, reached through eslint). | Dev-only: it is not in the built app or the server. It goes when eslint's own dependency is bumped. |
+| `pnpm test:e2e` prints a transient Vite proxy error (`/healthz`, connection refused) while it waits for the API to start. | Harmless: the run waits and passes. Waiting on the API before starting Vite would hide it. |
+| Two component tests (`App.test.tsx`, `MenuBar.test.tsx`) assert `toBeTruthy()` on `getBy*` results. `getBy*` already throws when nothing matches, so the assertion cannot fail by itself. | They still prove the element is found. `toBeInTheDocument()` or a query that returns null would say it better. |
+| `cancel-uses-table.integration.test.ts` changes the shared `TRANSITIONS` table through a cast and restores it. | It is how the test proves cancelling reads the table. A table passed in as a parameter would avoid the mutation. |
+| `src/server/orders/fixtures.ts` (SQL used only by tests) sits in the source tree. | It is shared by several test files. A `testing/` folder is where it would live. |
 | Node-level 400 and 431 responses (headers over 16 KB, a body shorter than its `content-length`) are answered before the app sees them, outside the standard error shape and with no request id. | Documented in `docs/api.md`: the app's own clients never send such requests. |
 | An already-applied migration file that is edited later is ignored without a warning. | The rule is documented in `AGENTS.md`. Storing and comparing a checksum of each applied file would be the fix. |
 | No automated test checks that the `pnpm dev` steps run in order and that the Vite proxy reaches the API. | Covered by the manual checklist and by the browser tests, which run against the real dev setup. |
