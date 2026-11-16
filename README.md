@@ -149,9 +149,7 @@ The full list of smaller items, with the reason each was left, is in [docs/plan/
 
 ## How this was built
 
-<!-- OWNER: please review and reword this section in your own voice before submitting. -->
-
-I made every product and architecture decision and reviewed each piece before it merged. AI assistants wrote the code, working from a plan with one ticket per change. Each change was reviewed independently, by a session that had not written it, before it was merged. The plan, the tickets and the review findings that were not applied are in [docs/plan/](docs/plan/README.md).
+I made or reviewed every product and architecture decision. AI assistants wrote the code, working from a plan with one ticket per change. Each change was reviewed independently, by a session that had not written it, before it was merged. The plan, the tickets and the review findings that were not applied are in [docs/plan/](docs/plan/README.md).
 
 ## Docs
 
