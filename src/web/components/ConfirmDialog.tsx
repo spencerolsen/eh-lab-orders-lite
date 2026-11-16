@@ -6,7 +6,9 @@ import { ErrorMessage } from './ErrorMessage';
 // while this component is mounted, so the page mounts it only when it asks.
 // The focus goes to the safe button (the one that changes nothing) and comes
 // back to whatever had it, the button that opened the dialog, when it closes.
-// Escape and the safe button call `onCancel`. While `pending` both buttons
+// `onConfirm` returns the promise of the work; further confirms, the safe
+// button and Escape are ignored until it has settled. Escape and the safe
+// button call `onCancel`. While `pending` both buttons
 // are disabled and Escape does nothing; the page closes the dialog itself
 // (by unmounting it) when the work succeeds. A failure is passed as `error`
 // and shown inside the dialog, with the buttons enabled again for a retry.
@@ -28,7 +30,7 @@ export function ConfirmDialog({
   cancelLabel: string;
   pending: boolean;
   error?: unknown;
-  onConfirm: () => void;
+  onConfirm: () => Promise<unknown> | void;
   onCancel: () => void;
 }) {
   const titleId = useId();
@@ -53,16 +55,21 @@ export function ConfirmDialog({
     };
   }, [opener]);
 
+  // A guard that does not wait for React: `pending` reaches the screen a
+  // moment after the click, and a second click, a held Enter or an Escape can
+  // land in that gap. `locked` is set at once, in the click handler, and let go
+  // when the promise `onConfirm` returns has settled.
+  const locked = useRef(false);
+
   // While the request runs, Escape is stopped at the key press on the whole
   // document (the focus may sit on a disabled button).
   useEffect(() => {
-    if (!pending) return;
     const stopEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') event.preventDefault();
+      if (event.key === 'Escape' && locked.current) event.preventDefault();
     };
     document.addEventListener('keydown', stopEscape, true);
     return () => document.removeEventListener('keydown', stopEscape, true);
-  }, [pending]);
+  }, []);
 
   return (
     <dialog
@@ -76,7 +83,7 @@ export function ConfirmDialog({
         if (!dialog.current?.open) onCancel();
       }}
       onCancel={(event) => {
-        if (pending) event.preventDefault();
+        if (pending || locked.current) event.preventDefault();
       }}
     >
       <div className="stack">
@@ -89,7 +96,11 @@ export function ConfirmDialog({
             className="button-danger"
             disabled={pending}
             onClick={() => {
-              if (!pending) onConfirm();
+              if (pending || locked.current) return;
+              locked.current = true;
+              void Promise.resolve(onConfirm()).finally(() => {
+                locked.current = false;
+              });
             }}
           >
             {pending ? pendingLabel : confirmLabel}
@@ -99,7 +110,9 @@ export function ConfirmDialog({
             type="button"
             className="button-secondary"
             disabled={pending}
-            onClick={onCancel}
+            onClick={() => {
+              if (!locked.current) onCancel();
+            }}
           >
             {cancelLabel}
           </button>

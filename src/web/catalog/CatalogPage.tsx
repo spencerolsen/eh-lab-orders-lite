@@ -111,7 +111,9 @@ export function CatalogPage() {
           pending={deactivate.isPending}
           error={deactivate.error}
           onConfirm={() =>
-            deactivate.mutate(confirming, { onSuccess: closeConfirm })
+            deactivate
+              .mutateAsync(confirming)
+              .then(closeConfirm, () => undefined)
           }
           onCancel={closeConfirm}
         >

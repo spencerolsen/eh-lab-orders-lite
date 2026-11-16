@@ -782,6 +782,74 @@ describe('the Deactivate confirmation', () => {
     expect(patches(fetch)).toHaveLength(1);
   });
 
+  // The state of the request reaches React a moment after the click. These
+  // use native events with nothing awaited between them, so they land in that
+  // gap, as a fast double click or a held key does in a browser.
+  it('clicks with no pause between them send one request', async () => {
+    const fetch = fakeApi({
+      list: [CBC, TSH],
+      onPatch: () => new Promise<Reply>(() => {}),
+    });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+    const confirm = within(dialog).getByRole<HTMLButtonElement>('button', {
+      name: 'Deactivate test',
+    });
+
+    confirm.click();
+    confirm.click();
+    confirm.click();
+
+    await waitFor(() => expect(patches(fetch)).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(patches(fetch)).toHaveLength(1);
+  });
+
+  it('a held Enter on the confirming button sends one request', async () => {
+    const fetch = fakeApi({
+      list: [CBC, TSH],
+      onPatch: () => new Promise<Reply>(() => {}),
+    });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+    const confirm = within(dialog).getByRole<HTMLButtonElement>('button', {
+      name: 'Deactivate test',
+    });
+    confirm.focus();
+
+    // A key press on a button is a click; a held key repeats it.
+    for (let i = 0; i < 5; i++) confirm.click();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(patches(fetch)).toHaveLength(1);
+  });
+
+  it('an Escape right after the click does not close the dialog', async () => {
+    fakeApi({
+      list: [CBC, TSH],
+      onPatch: () => new Promise<Reply>(() => {}),
+    });
+    renderApp('/catalog');
+    const { dialog } = await openDialog();
+
+    within(dialog)
+      .getByRole<HTMLButtonElement>('button', { name: 'Deactivate test' })
+      .click();
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.activeElement?.dispatchEvent(escape);
+    const cancel = new Event('cancel', { cancelable: true });
+    dialog.dispatchEvent(cancel);
+
+    expect(escape.defaultPrevented).toBe(true);
+    expect(cancel.defaultPrevented).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
   it('keeps the dialog open with both buttons disabled while the request runs, and ignores Escape', async () => {
     let answer: (reply: Reply) => void = () => {};
     fakeApi({

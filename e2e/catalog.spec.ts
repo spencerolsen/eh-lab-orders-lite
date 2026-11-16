@@ -35,9 +35,20 @@ test('search the catalog, deactivate a test through the dialog, see it inactive'
   );
 
   // Confirm: the row is inactive, and the search is still there after a reload.
+  // A double click on the confirming button, with a slow answer, sends one
+  // request.
+  let patchCount = 0;
+  await page.route('**/api/lab-tests/*', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      patchCount += 1;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    await route.continue();
+  });
   await page.getByRole('button', { name: `Deactivate ${code}` }).click();
-  await dialog.getByRole('button', { name: 'Deactivate test' }).click();
+  await dialog.getByRole('button', { name: 'Deactivate test' }).dblclick();
   await expect(dialog).toBeHidden();
+  expect(patchCount).toBe(1);
   await expect(page.getByRole('row', { name: new RegExp(code) })).toContainText(
     'Inactive',
   );
