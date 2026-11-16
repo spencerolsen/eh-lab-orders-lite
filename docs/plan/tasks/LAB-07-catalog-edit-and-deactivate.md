@@ -51,7 +51,6 @@ It follows LAB-06 because it reuses that page, schema and repository. Tests are 
 - [ ] Deactivating `TSH` shows it as inactive without a reload; activating it again restores it.
 - [ ] `PATCH` changes only the fields sent; the others keep their values and `updated_at` moves forward.
 - [ ] `DELETE /api/lab-tests/:id` returns 404 and removes nothing; the UI has no delete control.
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
 
 ## Tests
@@ -66,7 +65,7 @@ It follows LAB-06 because it reuses that page, schema and repository. Tests are 
 - `docs/api.md`: `PATCH /api/lab-tests/:id`, the rejection of `code`, no delete.
 - `docs/data-model.md`: `code` is immutable (API-enforced) and unique (database-enforced); tests are deactivated, never deleted.
 - `docs/acceptance-checklist.md`: add the edit and toggle checks to the catalog section (Checkpoint 1).
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; record the trigger decision and the last-save-wins limitation here.
+- Record in the ticket: record the trigger decision and the last-save-wins limitation here.
 - `docs/plan/`: set this task's status.
 
 ## Decisions made during the build
@@ -79,7 +78,6 @@ It follows LAB-06 because it reuses that page, schema and repository. Tests are 
 - **The table's last column is "Status"** with "Active" or "Inactive" in words (it was "Active" with Yes or No); an inactive row also has the `muted` class.
 - **Two small additions to the theme**: `input:disabled` (muted text on the page colour, 6.15:1) for the locked code, and `.row-actions` for two buttons in a cell. Both are on `/styles`.
 - **No migration**: the table from LAB-06 has every column this needs.
-- The `docs/process.md` items in this ticket are kept outside the repository instead.
 
 ## Out of scope
 

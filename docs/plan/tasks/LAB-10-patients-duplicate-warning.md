@@ -48,7 +48,6 @@ Duplicate records split a patient's history across two charts, so the app warns.
 - [x] An invalid body with a matching email returns 400, not 409; `confirmDuplicate: "yes"` returns 400.
 - [x] Editing a patient into another patient's email through the edit form saves with no warning.
 - [x] No log line contains a name, date of birth, email or phone number.
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 - [x] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
 
 ## Tests
@@ -64,7 +63,7 @@ Duplicate records split a patient's history across two charts, so the app warns.
 - `docs/architecture.md`: the first service in patients and why only this rule needs one.
 - `docs/data-flow.md`: the duplicate-check branch of patient creation.
 - `docs/acceptance-checklist.md`: duplicate-warning checks (Checkpoint 1).
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; record the create race and the no-fuzzy-matching limitation here.
+- Record in the ticket: record the create race and the no-fuzzy-matching limitation here.
 - `docs/plan/`: set this task's status.
 
 ## Out of scope
@@ -96,4 +95,3 @@ Decisions made while building, and what this version deliberately accepts:
 - **Logs.** `patient.possible_duplicate` at `warn` with `code`, `matchCount` and `rules`; `patient.possible_duplicate.matches` at `debug` with the matched ids and their rules; `patient.created` gains `duplicateConfirmed: true`. An integration test triggers each rule with marker values and checks, with the logger at debug, that no marker reaches the log.
 - **The form.** `DuplicateWarning` sits above `PatientForm` on the New patient page only; it is an alert region that takes focus. Create anyway is a secondary button; Save patient stays the primary one. `PatientForm` gained a `busy` prop so Save patient is disabled while Create anyway runs.
 - **Existing tests** that create several patients sharing an email now send `confirmDuplicate: true` in their setup helper; the check itself is tested in `duplicates.integration.test.ts`.
-- The `docs/process.md` criterion is not done here: the process log is kept outside the repository.

@@ -1,6 +1,6 @@
 # Independent review of the Lab Orders Lite build plan
 
-Reviewer: an AI reviewer that took no part in the planning conversation. Read: the challenge brief, `lab-orders-process.md`, the plan index and all 23 tickets (LAB-01 to LAB-23), in full. Every finding quotes the text it rests on, or names the absence it rests on. Nothing in the plan was edited.
+Reviewer: an AI reviewer that took no part in the planning conversation. Read: the brief, the plan index and all 23 tickets (LAB-01 to LAB-23), in full. Every finding quotes the text it rests on, or names the absence it rests on. Nothing in the plan was edited.
 
 ## Verdict
 
@@ -10,7 +10,7 @@ The plan is sound enough to start. The data model, the status rules, the error-c
 2. **A fresh clone will not start, and the test database is not wired up.** The plan loads `.env` with Node's `--env-file` flag, but no ticket creates `.env`, and Node exits when the file is missing. Separately, no ticket says how the integration tests find `lab_orders_test` when `DATABASE_URL` points at the development database.
 3. **The README does not yet cover two things the brief asks for**: an architecture overview and a known-limitations section. Several tickets promise that limitations are "gathered in the README by LAB-22", but LAB-22 has no section for them.
 
-The overall size (23 pull requests, each with docs, a process-log entry and an AI browser pass) is the biggest judgement call. It is defensible, but each ticket carries a lot of repeated ceremony, and the brief says "Keep it small but thoughtful".
+The overall size (23 pull requests, each with docs and an AI browser pass) is the biggest judgement call. It is defensible, but each ticket carries a lot of repeated ceremony, and the brief says "Keep it small but thoughtful".
 
 Findings: **2 high, 5 medium, 9 low.**
 
@@ -20,7 +20,7 @@ Findings: **2 high, 5 medium, 9 low.**
 
 ### 1. High: a retried order can return a different order and report success
 
-**Affected:** LAB-18, LAB-20 (and the process log's idempotency decision)
+**Affected:** LAB-18, LAB-20 (and the idempotency decision)
 
 **The problem.** Three rules combine into a wrong result:
 - LAB-18: "A replay returns the stored order as it was created, even if the body differs. Comparing the second body with the first is not done."
@@ -29,7 +29,7 @@ Findings: **2 high, 5 medium, 9 low.**
 
 **Scenario.** A user submits CBC for patient A. The server creates the order, but the response is lost (timeout, proxy 502), so the modal shows an error. The user notices the wrong patient, clicks "change", picks patient B and submits again. The same key goes out, the server finds it, returns patient A's order with 200, and the modal closes as if B's order were placed. B has no order, and A has an order nobody meant to place. The same happens if the user adds or removes a test before retrying.
 
-**Why it matters.** The process log itself says "A wrong patient on an order is a safety issue". The plan calls this the "minimal, correct version", and an interviewer who probes it will find the hole quickly. LAB-18 lists "a replay with a different body is not detected" as a known limitation, but the UI then *creates* such replays on purpose.
+**Why it matters.** The brief itself says "A wrong patient on an order is a safety issue". The plan calls this the "minimal, correct version", and a reviewer who probes it will find the hole quickly. LAB-18 lists "a replay with a different body is not detected" as a known limitation, but the UI then *creates* such replays on purpose.
 
 **Recommended change.** Do both. Each is a few lines:
 - **UI:** reuse the key only for an identical retry. Make a new key whenever the patient or the set of tests changes. Change the LAB-20 criterion and component test to say that changing the patient *does* produce a new key.
@@ -60,7 +60,7 @@ I checked the flag on Node 22.21: `node --env-file=.env-missing -e …` prints `
 - LAB-03: the harness "builds the app against `lab_orders_test` … truncates all tables except `schema_migrations` between test files". It does not say how it gets the test database's address. There is no `TEST_DATABASE_URL`, and no rule for deriving one (searched: `lab_orders_test` appears only in LAB-02 and LAB-03).
 - LAB-05: in CI, "`DATABASE_URL` for the test database". So in CI the one variable means the test database, and locally it means the development database.
 - LAB-02's `db:reset` and LAB-21's e2e setup both have a name guard ("does not end in `_e2e`"). The integration harness, which truncates every table, has none.
-- LAB-03: "`pnpm test` runs unit and integration together; the database must be up." But the process log wants "the reviewer's first command [to be] quick and reliable", and LAB-21's `pnpm test:e2e` starts the container itself while `pnpm test` does not.
+- LAB-03: "`pnpm test` runs unit and integration together; the database must be up." But the plan wants "the reviewer's first command [to be] quick and reliable", and LAB-21's `pnpm test:e2e` starts the container itself while `pnpm test` does not.
 
 **Why it matters.** If the harness is built the obvious way (import `config.ts`), local test runs wipe the development data. A reviewer who runs `pnpm test` before `pnpm dev` gets connection errors.
 
@@ -96,17 +96,17 @@ LAB-22 has nowhere to put these. The "Deliberate cuts" list covers features left
 
 ### 6. Medium: size and per-ticket ceremony against "keep it small"
 
-**Affected:** all tickets; plan index; process log
+**Affected:** all tickets; plan index
 
 **The problem.**
 - The judge's earlier advice in the log: "15 hours was too much for 'keep it small'. Aim for roughly 7-9 hours of build plus the README". The later decision: "There is no deadline … the limit on scope is the brief's own 'keep it small but thoughtful'."
-- Every vertical-slice ticket requires an "AI exploratory browser pass", a process-log slice entry and test entry, updates to four to six docs files, and a walkthrough. Five groundwork pull requests land before anything a user can see.
+- Every vertical-slice ticket requires an "AI exploratory browser pass", updates to four to six docs files, and a walkthrough. Five groundwork pull requests land before anything a user can see.
 - The plan's own index says "The first point at which the brief's core is met … is after LAB-12. Everything from there on makes it better without being needed for it to work." That is 11 more tickets.
 - LAB-01 moves all 23 ticket files (about 160 KB) into `docs/plan/` in the submission.
 
-**Why it matters.** Each feature on its own is defensible: idempotency, the quote endpoint, the panel kept in the URL, the PR template and CI badge. Together, a grader may read them as breadth, the opposite of "a polished core". 160 KB of planning text in the repo also invites the question "how much of this did you write?". The candidate also has to explain all of it live.
+**Why it matters.** Each feature on its own is defensible: idempotency, the quote endpoint, the panel kept in the URL, the PR template and CI badge. Together, a reviewer may read them as breadth, the opposite of "a polished core". 160 KB of planning text in the repo also invites the question "how much of this did you write?". The author also has to explain all of it live.
 
-**Recommended change.** Keep the scope, but cut the overhead. Options, for the candidate to choose from:
+**Recommended change.** Keep the scope, but cut the overhead. Options, for the author to choose from:
 - Run the AI browser pass at three checkpoints (after LAB-12, after LAB-17, and in LAB-23), not in every ticket.
 - Merge small neighbours: LAB-19 and LAB-20 (both UI-only patient-page work), and LAB-15 and LAB-16 (the panel and its first buttons).
 - Submit `docs/plan/` as the index only, or move the tickets to a folder linked from the README, so the reviewer is not handed 23 files.
@@ -155,7 +155,7 @@ From 5 pm Denver time onward, UTC is already on the next day. A server `today()`
 - LAB-16: "change the stored status between the service's read and its update (an injected hook)".
 - LAB-03 only says "`buildApp(deps)`", without saying what `deps` holds.
 
-**Why it matters.** Without a decision, the first ticket to need a seam will improvise one. A test-only hook inside the order service is also something the candidate will have to defend.
+**Why it matters.** Without a decision, the first ticket to need a seam will improvise one. A test-only hook inside the order service is also something the author will have to defend.
 
 **Recommended change.** In LAB-03, state that `deps` is `{ pool, clock, logger }`, with `clock: () => Date`. For LAB-16, prefer a test that calls the repository's conditional update with a stale "previous" status over a hook in production code. That proves the same thing with no seam.
 
@@ -169,11 +169,11 @@ From 5 pm Denver time onward, UTC is already on the next day. A server `today()`
 
 ### 12. Low: documentation inconsistencies that a grader or LAB-22 will trip on
 
-**Affected:** LAB-01, LAB-05, LAB-22, `lab-orders-process.md`
+**Affected:** LAB-01, LAB-05, LAB-22
 
-- **LAB-22's own criterion fails on purpose-written text.** It requires that "A search of README.md and `docs/` finds … no `resulted`, `VALIDATION_FAILED` …". But `docs/process.md` correctly records "the AI proposed `resulted`", and `docs/plan/tasks/LAB-22…` contains both words. A search confirmed both files. Fix: exclude `docs/process.md` and `docs/plan/` from that search.
+- **LAB-22's own criterion fails on purpose-written text.** It requires that "A search of README.md and `docs/` finds … no `resulted`, `VALIDATION_FAILED` …". But `docs/plan/tasks/LAB-22…` contains both words. A search confirmed it. Fix: exclude `docs/plan/` from that search.
 - **The index file name.** LAB-01 and LAB-05 update "Status table in `docs/plan/index.md`", but the index is `README.md` today, and LAB-01 moves it "unchanged in content". Pick one name.
-- **The process log says the ready date is derived.** Under Future versions §6: "the total and ready date recalculated. Because both are derived from the order items, they would update on their own." The decision table says the ready date "is calculated once at order time and stored". LAB-22 copies Future versions into the README, so fix it before then.
+- **The plan says the ready date is derived.** Under Future versions §6: "the total and ready date recalculated. Because both are derived from the order items, they would update on their own." The decision table says the ready date "is calculated once at order time and stored". LAB-22 copies Future versions into the README, so fix it before then.
 - **A stale open question.** The log still says "_Open: whether the catalog's turnaround unit becomes whole business days instead of hours._", but the decision table settles it ("The catalog stores turnaround in whole business days").
 - **Three layers or four.** The log says "all three layers" (unit, integration, end to end), but the plan adds a fourth, component tests (LAB-04 onward, about 20 of them). The log's "Rough count" for integration is "~12-15", and the tickets add well over 50. Update the table so the README's testing story matches the code.
 
@@ -217,7 +217,7 @@ From 5 pm Denver time onward, UTC is already on the next day. A server `today()`
 - **Price snapshot and money.** Order items copy code, name, price and turnaround inside the create transaction. Money is integer cents, with string-based dollar parsing (`parseDollarsToCents`, no floats). The total is derived through one `calculateTotal`. The ready date is stored and read once from an injected `now`.
 - **Ready-date rule (LAB-11).** The weekend rules, "order day does not count" and the clinic-timezone day boundary are all specified with concrete examples. The function is pure and unit-tested in one place. Holidays would be one extra parameter, so that live change is easy.
 - **Date of birth.** The `DATE` type parser returns `YYYY-MM-DD` strings, `formatDate` never builds a `Date`, real-date validation includes leap years, and the round-trip is tested under a non-UTC timezone.
-- **Duplicate-patient check (LAB-10).** The three exact rules match the decision log. A pure `matchRules` with one candidate query; the check warns and never blocks; an invalid body takes precedence over a duplicate; the accepted race is documented.
+- **Duplicate-patient check (LAB-10).** The three exact rules match the plan's decisions. A pure `matchRules` with one candidate query; the check warns and never blocks; an invalid body takes precedence over a duplicate; the accepted race is documented.
 - **Idempotent create on the server side (LAB-18).** `ON CONFLICT DO NOTHING` inside the transaction, with a plain unique index (Postgres allows repeated nulls in one), is correct for same-key concurrency. Only the UI key policy and the missing body comparison are wrong (finding 1).
 - **Error model (LAB-03).** One error shape, a registry of upper-case codes, a consistent 400/404/409/422 split (ids in the body give 422, ids in the path give 404), generic 500s, and a request id in both the logs and the responses. No bodies, query strings or personal data in logs.
 - **Catalog.** The code is unique (by constraint, with no check-then-insert) and immutable (strict update schema). Tests are deactivated, never deleted, and inactive tests are rejected on new orders.
@@ -225,7 +225,7 @@ From 5 pm Denver time onward, UTC is already on the next day. A server `today()`
 - **Most dependencies.** Apart from findings 5 and 15, I found no merge order the graph allows that leaves `main` broken. No ticket assumes something that an earlier ticket in its dependency chain does not build.
 - **Brief coverage.** Patients (create/update), catalog (code, name, price, turnaround), multi-test orders, total, estimated ready date, list with patient and status filters, tests in three or more layers, and the README trade-offs are all covered.
 
-## Questions only the candidate can answer
+## Questions only the author can answer
 
 1. **Idempotency policy (finding 1).** Do you want both fixes (a new key when the content changes, plus a server-side fingerprint check), or only the UI change, keeping "different body not detected" as a documented limit?
 2. **Per-slice AI browser pass and the in-repo plan (finding 6).** You chose both. Do you still want the browser pass on every ticket, and all 23 ticket files in the submitted repo, given the size concern?

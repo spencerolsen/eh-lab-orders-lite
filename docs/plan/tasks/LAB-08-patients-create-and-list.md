@@ -48,7 +48,6 @@ Patients come before orders because every order belongs to a patient. This slice
 - [ ] The same invalid bodies sent directly to `POST /api/patients` return 400 `VALIDATION_ERROR` with field details and a request id.
 - [ ] The database rejects a row with neither email nor phone, and a row whose phone is not exactly 10 digits (direct SQL).
 - [ ] Two patients with identical details can both be created (no duplicate check yet).
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 - [ ] With the injected clock set just before midnight in the clinic timezone (already the next day in UTC), the clinic's today is accepted and the clinic's tomorrow is rejected.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
 
@@ -65,7 +64,7 @@ Patients come before orders because every order belongs to a patient. This slice
 - `docs/api.md`: the two endpoints, field rules, the error details shape.
 - `docs/data-flow.md`: a date of birth as a string, end to end.
 - `docs/acceptance-checklist.md`: patients create and list checks (Checkpoint 1).
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; note any limitation or assumption noticed here.
+- Record in the ticket: note any limitation or assumption noticed here.
 - `AGENTS.md`: dates are `YYYY-MM-DD` strings, never `Date`; patient rules live in the shared schema; reuse `PatientForm` and `PatientLabel`.
 - `docs/plan/`: set this task's status.
 

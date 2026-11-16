@@ -52,7 +52,6 @@ Search and the single-patient endpoint come before placing an order because LAB-
 - [ ] `GET` or `PATCH` of a well-formed unknown id returns 404 `NOT_FOUND` with the error shape and a request id; a malformed id returns 400.
 - [ ] A date of birth edited to a future date or `2020-02-30` is rejected with a field error; an accepted edit shows no day shift.
 - [ ] `PATCH` with `{}` or an unknown key returns 400.
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 - [ ] With the injected clock set just before midnight clinic time, an edit to the clinic's today is accepted and to the clinic's tomorrow is rejected.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
 
@@ -69,7 +68,7 @@ Search and the single-patient endpoint come before placing an order because LAB-
 - `docs/architecture.md`: one form for create and edit; where `PatientLabel` is used.
 - `docs/acceptance-checklist.md`: search and edit checks (Checkpoint 1).
 - `docs/data-model.md`: note that the date-of-birth database check is `date_of_birth <= current_date + 1` because the database runs in UTC (a day ahead of or behind the clinic) and is a loose backstop that must never reject a date the code accepts; the clinic-timezone check is in the schema.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; record that search text is logged by count only, and the last-save-wins limitation.
+- Record in the ticket: record that search text is logged by count only, and the last-save-wins limitation.
 - `docs/plan/`: set this task's status.
 
 ## Out of scope

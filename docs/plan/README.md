@@ -2,7 +2,7 @@
 
 This is the plan for building the app in small, shippable steps, written the way a team would plan work it wants in production quickly and safely. This page is the board: the list of tasks, their status, and how they depend on each other. Each task has its own ticket file in [tasks/](tasks/), with a description, requirements, acceptance criteria and dependencies.
 
-The decisions these tasks implement are in the process log (`docs/process.md` once in the repo).
+The decisions these tasks implement are summarised in the [README](../../README.md#decisions-and-trade-offs).
 
 ## How the work flows
 
@@ -18,7 +18,7 @@ The decisions these tasks implement are in the process log (`docs/process.md` on
 2. **Go.** I approve the ticket, with any changes recorded in it.
 3. **Build.** The AI works on a feature branch, with tests.
 4. **Walkthrough.** The AI shows me what was built, how a request flows through it, and the test results. I answer the ticket's "What to be able to explain" questions.
-5. **Merge.** I approve the pull request, and the process log gets its entry.
+5. **Merge.** I approve the pull request.
 
 ### How reviews work
 
@@ -35,10 +35,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 - Tests for the new behaviour are written in the same pull request, each rule tested in one layer only.
 - Docs are updated if the data model, API or architecture changed.
 - The slice's manual checks are added to the acceptance checklist, under the browser checkpoint that covers it (see below).
-- The slice is recorded in the process log: what was asked for, what I rejected or changed, and why.
 - I can answer the "What to be able to explain" questions in the ticket.
-
-**The process log, for now.** The process log is kept outside the repository for now. Where a ticket says its `docs/process.md` entry is written in the same pull request, the entry is written to that log at the same time. The log will be added to the repository when I choose.
 
 ## The tasks
 
@@ -65,7 +62,7 @@ The first four tickets were reviewed more heavily than this; the process was sim
 | [LAB-19](tasks/LAB-19-patient-order-history.md) | Patient page: order history | Vertical slice | LAB-14, LAB-15 | Done |
 | [LAB-20](tasks/LAB-20-new-order-entry-points.md) | New order from the patient page | Vertical slice | LAB-18, LAB-19 | Done |
 | [LAB-21](tasks/LAB-21-browser-journeys.md) | Browser tests for the main journeys | Hardening | LAB-10, LAB-13, LAB-14, LAB-17, LAB-18, LAB-20 | Done |
-| [LAB-22](tasks/LAB-22-docs-and-readme.md) | Docs and README, final pass | Docs | LAB-07, LAB-10, LAB-17, LAB-20, LAB-21 | Not started |
+| [LAB-22](tasks/LAB-22-docs-and-readme.md) | Docs and README, final pass | Docs | LAB-07, LAB-10, LAB-17, LAB-20, LAB-21 | Done |
 | [LAB-23](tasks/LAB-23-submission-readiness.md) | Submission readiness | Hardening | LAB-05, LAB-22 | Not started |
 | [LAB-24](tasks/LAB-24-visual-theme.md) | Visual theme | Groundwork | LAB-04 | Done |
 | [LAB-25](tasks/LAB-25-polish-pass.md) | Polish pass from the browser checkpoints | Hardening | LAB-20 | Done |
@@ -135,7 +132,7 @@ flowchart TD
 
 ## Browser checkpoints
 
-Automated tests guard what must not break. At three points in the build, the AI also runs an exploratory pass in a real browser, following `docs/acceptance-checklist.md`, to find what a script would not think to check. Every bug it finds gets a failing automated test before it is fixed, on its own branch, and the run is recorded in the process log.
+Automated tests guard what must not break. At three points in the build, the AI also runs an exploratory pass in a real browser, following `docs/acceptance-checklist.md`, to find what a script would not think to check. Every bug it finds gets a failing automated test before it is fixed, on its own branch.
 
 | Checkpoint | Runs | Covers | What is tested |
 |---|---|---|---|
@@ -163,10 +160,10 @@ Up to three tickets may be built at the same time where the dependency diagram a
 
 Improvements deliberately not taken, from reviews and elsewhere, are listed in the [backlog](backlog.md).
 
-An independent review of this plan, done before any code was written, is in [REVIEW.md](REVIEW.md). Its corrections are applied to the tickets; the decisions I made on its open questions are in the process log.
+An independent review of this plan, done before any code was written, is in [REVIEW.md](REVIEW.md). Its corrections are applied to the tickets.
 
 The first point at which the brief's core is met (patients, a catalog, an order with a total and ready date, a list) is after LAB-12. Everything from there on makes it better without being needed for it to work.
 
 ## What is deliberately not in this plan
 
-Login and roles, editing an order after it is placed, public holidays and cut-off times, status and results per test, voiding a completed order, pasting a list of tests, AI features in the running app, tracing, metrics and alerting, browser tests in the automated checks, and mobile and narrow-screen layouts (desktop only). Each is listed with its reason in the process log.
+Login and roles, editing an order after it is placed, public holidays and cut-off times, status and results per test, voiding a completed order, pasting a list of tests, AI features in the running app, tracing, metrics and alerting, browser tests in the automated checks, and mobile and narrow-screen layouts (desktop only). Each is listed under Known limits and What I would do next in the [README](../../README.md).

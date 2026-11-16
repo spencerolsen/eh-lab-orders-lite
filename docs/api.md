@@ -17,7 +17,7 @@ Every failure, from any endpoint, has this shape:
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "The request is not valid",
-    "details": [{ "field": "priceCents", "reason": "must be at least 0" }],
+    "details": [{ "field": "priceCents", "reason": "Must be a whole number of cents, 0 or more" }],
     "requestId": "0b6c9f0e-6a4e-4a43-9d38-2f1b3c4d5e6f"
   }
 }
@@ -304,30 +304,37 @@ One order with its patient and the tests it holds (LAB-15). Read-only.
 ```json
 {
   "id": "5eed0011-0000-4000-8000-000000000003",
-  "status": "collected",
+  "status": "ordered",
   "patient": {
     "id": "5eed0008-0000-4000-8000-000000000002",
     "firstName": "Sample",
     "lastName": "Person",
     "dateOfBirth": "1990-12-31",
-    "email": "sample@example.test",
+    "email": "sample.person@example.test",
     "phone": null
   },
   "items": [
     {
-      "labTestId": "5eed0003-0000-4000-8000-000000000001",
-      "testCode": "CBC",
-      "testName": "Complete Blood Count",
-      "priceCents": 2500,
+      "labTestId": "10000000-0000-4000-8000-000000000003",
+      "testCode": "LIPID",
+      "testName": "Lipid Panel",
+      "priceCents": 3800,
+      "turnaroundDays": 2
+    },
+    {
+      "labTestId": "10000000-0000-4000-8000-000000000006",
+      "testCode": "UA",
+      "testName": "Urinalysis",
+      "priceCents": 1800,
       "turnaroundDays": 1
     }
   ],
-  "totalCents": 2500,
+  "totalCents": 5600,
   "estimatedReadyDate": "2026-11-03",
   "createdAt": "2026-10-30T18:00:00.000Z",
   "createdAtClinic": "2026-10-30 12:00",
   "clinicTimezone": "America/Denver",
-  "allowedNextStatuses": ["completed"],
+  "allowedNextStatuses": ["collected"],
   "canCancel": true,
   "cancellation": null
 }
@@ -353,7 +360,7 @@ Logged: `debug` `order.loaded` with the order id and item count; `warn` `order.n
 
 ### `POST /api/orders/quote`
 
-What an order of these tests would cost and when it would be ready, if it were placed now (LAB-13). It saves nothing and takes no patient. The New order modal calls it each time the chosen tests change.
+What an order of these tests would cost and when it would be ready, if it were placed now (LAB-13). The example below was asked on a Friday. It saves nothing and takes no patient. The New order modal calls it each time the chosen tests change.
 
 ```json
 { "labTestIds": ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000008"] }

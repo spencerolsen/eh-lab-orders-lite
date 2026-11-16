@@ -45,7 +45,6 @@ This is the first vertical slice, so it also proves the pattern the later slices
 - [ ] The database rejects a row with a negative price or a zero turnaround (direct SQL in the integration test).
 - [ ] Running `pnpm db:seed` twice leaves exactly 8 rows.
 - [ ] A server error shows a plain message with the request id, not a blank table.
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
 
 ## Tests
@@ -60,7 +59,7 @@ This is the first vertical slice, so it also proves the pattern the later slices
 - `docs/api.md`: the two endpoints, bodies, status codes, `DUPLICATE_TEST_CODE`.
 - `docs/architecture.md`: the first full example of a request through a feature folder.
 - `docs/acceptance-checklist.md`: add the catalog checks (this task's list) under Checkpoint 1.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; note any limitation or assumption noticed here.
+- Record in the ticket: note any limitation or assumption noticed here.
 - `AGENTS.md`: money helpers live in `src/shared/money.ts`; money is cents everywhere except on screen.
 - `docs/plan/`: set this task's status.
 

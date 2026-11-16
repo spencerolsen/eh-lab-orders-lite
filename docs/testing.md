@@ -30,7 +30,7 @@ In CI the test database is a Postgres 16 service container on the runner's port 
 | Kind | Files | What it covers | Database |
 |---|---|---|---|
 | Unit | `<name>.test.ts`, next to the code | Pure functions and single modules: the error mapper, `parse`, the request id check, the logger, config, the guards, domain rules. | No |
-| Component | `<name>.test.tsx`, next to the component | React components rendered in jsdom with Testing Library: the menu bar (navigation only), the routes, the shared states, the error boundary, the server status line. `fetch` is replaced with a fake, so no API runs. | No |
+| Component | `<name>.test.tsx`, next to the component | React components rendered in jsdom with Testing Library: the menu bar (navigation only), the routes, the shared states, the error boundary, the server status line, and the pages and dialogs (catalog, patients, the orders list and its filters, the New order dialog, the order panel with its status and cancel actions). `fetch` is replaced with a fake, so no API runs. | No |
 | Integration | `<name>.integration.test.ts`, next to the code | The app through `inject` (real routing, error handler and logging) and repositories on a real Postgres. | The test database |
 | Browser (end to end) | `e2e/<journey>.spec.ts` | Journeys through the real screens, API and database in Chromium: that they work together. | The e2e database |
 

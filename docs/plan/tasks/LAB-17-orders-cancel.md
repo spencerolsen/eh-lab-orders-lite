@@ -32,7 +32,7 @@ This follows LAB-16 because it reuses the transition table (LAB-15) and the same
 - A cancelled order is never deleted and its items stay as they were.
 
 **Checkpoint 2 (AI exploratory browser pass)**
-- Checkpoint 2 runs once LAB-13 to LAB-17 have all merged, not when this ticket alone merges. The AI exploratory browser pass then runs the Checkpoint 2 section of docs/acceptance-checklist.md against everything merged so far (live preview, filters, detail panel, status changes, cancel). Each bug found gets a failing test in the right layer before it is fixed, on its own branch. The run and its findings are recorded in docs/process.md.
+- Checkpoint 2 runs once LAB-13 to LAB-17 have all merged, not when this ticket alone merges. The AI exploratory browser pass then runs the Checkpoint 2 section of docs/acceptance-checklist.md against everything merged so far (live preview, filters, detail panel, status changes, cancel). Each bug found gets a failing test in the right layer before it is fixed, on its own branch. The run and its findings are recorded in the ticket.
 
 **UI**
 - In the panel, when `canCancel` is true, a "Cancel order" action reveals a form inside the panel (not a second dialog) with a required note field, a required "Your name" field, and "Confirm cancel" and "Keep order" buttons.
@@ -58,8 +58,7 @@ This follows LAB-16 because it reuses the transition table (LAB-15) and the same
 - [ ] The status buttons from LAB-16 are not shown on a cancelled order.
 - [ ] The server log has an `order.cancelled` line with ids only and no note or name text.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 2).
-- [ ] Checkpoint 2: once LAB-13 to LAB-17 had all merged, the AI exploratory browser pass ran the Checkpoint 2 section of docs/acceptance-checklist.md against everything merged so far (live preview, filters, detail panel, status changes, cancel); each bug found got a failing test in the right layer before it was fixed, on its own branch; the run and its findings are recorded in docs/process.md.
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
+- [ ] Checkpoint 2: once LAB-13 to LAB-17 had all merged, the AI exploratory browser pass ran the Checkpoint 2 section of docs/acceptance-checklist.md against everything merged so far (live preview, filters, detail panel, status changes, cancel); each bug found got a failing test in the right layer before it was fixed, on its own branch; the run and its findings are recorded in the ticket.
 
 ## Tests
 
@@ -73,7 +72,7 @@ This follows LAB-16 because it reuses the transition table (LAB-15) and the same
 - `docs/api.md`: the cancel endpoint, and the new `cancellation` field on the order.
 - `docs/data-flow.md`: the cancel flow.
 - `docs/acceptance-checklist.md`: add the cancel checks under Checkpoint 2.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; record the no-login assumption here.
+- Record in the ticket: record the no-login assumption here.
 
 ## Out of scope
 

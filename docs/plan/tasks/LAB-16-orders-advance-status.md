@@ -53,7 +53,6 @@ This is the first task that changes an order after it is placed, so it is where 
 - [ ] `updated_at` changes on a successful transition and `estimated_ready_date` does not.
 - [ ] A refused or lost-race request is logged at `warn`, a successful one at `info`, and no line contains a name or date of birth.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 2).
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 
 ## Tests
 
@@ -67,7 +66,6 @@ This is the first task that changes an order after it is placed, so it is where 
 - `docs/architecture.md`: why the service does read, check, update; add the three new log events to the logging section.
 - `docs/data-flow.md`: add the status-change flow, including the lost-race branch.
 - `docs/acceptance-checklist.md`: add the checks above under Checkpoint 2.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 
 ## Out of scope
 

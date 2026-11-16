@@ -25,7 +25,7 @@ This is the first write in the main workflow. It adds the order-creation transac
 - The new files follow the folder rule: `routes.ts`, `service.ts` (it owns the transaction), `repo.ts`.
 
 **Checkpoint 1 (AI exploratory browser pass)**
-- Checkpoint 1 runs once every ticket filed under Checkpoint 1 (LAB-04's app-start checks and LAB-06 to LAB-12) has merged, not when this ticket alone merges. The AI exploratory browser pass then runs the Checkpoint 1 section of docs/acceptance-checklist.md against everything merged so far (app start and menu, catalog, patients, orders home page, placing an order). Each bug found gets a failing test in the right layer before it is fixed, on its own branch. The run and its findings are recorded in docs/process.md.
+- Checkpoint 1 runs once every ticket filed under Checkpoint 1 (LAB-04's app-start checks and LAB-06 to LAB-12) has merged, not when this ticket alone merges. The AI exploratory browser pass then runs the Checkpoint 1 section of docs/acceptance-checklist.md against everything merged so far (app start and menu, catalog, patients, orders home page, placing an order). Each bug found gets a failing test in the right layer before it is fixed, on its own branch. The run and its findings are recorded in the ticket.
 
 **Rules (pure, `src/shared/`, no React imports)**
 - `matchTests(query, tests, selectedIds)` returns suggestions in this order: code equals the query; then code starts with the query; then name contains the query. Case-insensitive, query trimmed, empty query returns nothing. Inactive tests and tests in `selectedIds` are excluded. A test appears once, in its best group; inside a group, ordered by code.
@@ -55,9 +55,8 @@ This is the first write in the main workflow. It adds the order-creation transac
 - [ ] A body with a non-uuid id, a missing field or an extra field returns 400 `VALIDATION_ERROR` with a request id.
 - [ ] If an item insert fails inside the transaction, no order row remains.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
-- [ ] Checkpoint 1 was run: once LAB-04's app-start checks and LAB-06 to LAB-12 had all merged, the AI exploratory browser pass ran the Checkpoint 1 section of docs/acceptance-checklist.md against everything merged so far (app start and menu, catalog, patients, orders home page, placing an order); each bug found got a failing test in the right layer before it was fixed, on its own branch; the run and its findings are recorded in docs/process.md.
+- [ ] Checkpoint 1 was run: once LAB-04's app-start checks and LAB-06 to LAB-12 had all merged, the AI exploratory browser pass ran the Checkpoint 1 section of docs/acceptance-checklist.md against everything merged so far (app start and menu, catalog, patients, orders home page, placing an order); each bug found got a failing test in the right layer before it was fixed, on its own branch; the run and its findings are recorded in the ticket.
 - [ ] The order-item response schema exists once in `src/shared/` with `labTestId`, `testCode`, `testName`, `priceCents`, `turnaroundDays`.
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 
 ## Tests
 
@@ -75,8 +74,7 @@ This is the first write in the main workflow. It adds the order-creation transac
 - `docs/data-flow.md`: the place-an-order flow, including the transaction.
 - `docs/architecture.md`: the orders service and why it exists (a transaction and a rule).
 - `docs/acceptance-checklist.md`: the modal and quick-add checks (Checkpoint 1).
-- `docs/process.md`: also the Checkpoint 1 run and its findings.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; note the limitation that an order cannot be edited after placing.
+- Record in the ticket: note the limitation that an order cannot be edited after placing.
 
 ## Out of scope
 

@@ -55,7 +55,6 @@ This task builds the order tables and the two business rules that every later or
 - [ ] `ORDER_STATUSES` is exported from `src/shared/` and matches the database CHECK; AGENTS.md has the "how to add a status" touch-list.
 - [ ] With zero orders the page shows "No orders yet".
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 1).
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 
 ## Tests
 
@@ -75,7 +74,7 @@ This task builds the order tables and the two business rules that every later or
 - `docs/architecture.md`: the orders folder and the pure domain functions; where the clock is injected.
 - `docs/data-flow.md`: the list-orders flow.
 - `docs/acceptance-checklist.md`: the home page checks (Checkpoint 1).
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry; note the ready-date assumptions here (clock starts at order time, business days, no public holidays, tests run in parallel).
+- Record in the ticket: note the ready-date assumptions here (clock starts at order time, business days, no public holidays, tests run in parallel).
 
 ## Out of scope
 

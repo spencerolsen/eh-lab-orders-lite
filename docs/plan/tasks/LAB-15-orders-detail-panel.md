@@ -62,7 +62,6 @@ Every later order action happens inside this panel: moving the status (LAB-16), 
 - [ ] A `completed` or `cancelled` order returns `allowedNextStatuses: []` and `canCancel: false`; an `ordered` order returns `["collected"]` and `true`.
 - [ ] No name, date of birth or contact detail appears in the server log for this request.
 - [ ] This slice's manual checks are added to docs/acceptance-checklist.md under the checkpoint that covers it (Checkpoint 2).
-- [ ] The docs/process.md slice log entry and test log entry were written in the same pull request.
 
 ## Tests
 
@@ -78,7 +77,6 @@ Every later order action happens inside this panel: moving the status (LAB-16), 
 - `docs/data-flow.md`: add the read path for one order.
 - `docs/acceptance-checklist.md`: add the panel checks above under Checkpoint 2.
 - `AGENTS.md`: note that the panel takes only an id.
-- `docs/process.md`: slice log entry (what was asked for, what was rejected or changed and why) and test log entry.
 
 ## Out of scope
 
